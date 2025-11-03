@@ -5,10 +5,10 @@ import {
   ChevronRight, Edit2, Trash2, Save, X, CheckCircle2, 
   Clock, Pause, AlertCircle 
 } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; // Assuming interfaces are exported or copied here
+import { Task, Subtask, Employee } from "../page"; 
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 
-// --- HELPER FUNCTION FROM PARENT (Must be defined here or imported) ---
+// --- HELPER FUNCTION (Copied from original page.tsx) ---
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";

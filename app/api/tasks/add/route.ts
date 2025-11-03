@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     // ✅ Send Slack notification (non-blocking)
     try {
       const slackMessage = {
-        text: `📢 *Hey ${assigneeName}, a new task has been created!*\n• *Project:* ${project}\n• *ID:* ${projectId}\n• *Status:* ${status}\n• *Completion:* ${completionValue}%\n• *Due Date:* ${dueDate || "N/A"}\n• *Remarks:* ${remarks || "None"}`,
+        text: `📢 *Hey ${assigneeName}, a new task has been created!*\n• *ID:* ${projectId}\n• *Project:* ${project}\n• *Assignee Name:* ${assigneeName}\n• *Status:* ${status}\n• *Completion:* ${completionValue}%\n• *Due Date:* ${dueDate || "N/A"}\n• *Remarks:* ${remarks || "None"}`,
       };
 
       await fetch(webhookUrl, {

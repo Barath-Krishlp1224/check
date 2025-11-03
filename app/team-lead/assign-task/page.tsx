@@ -937,6 +937,7 @@
 
 
 // app/team-lead/assign-task/page.tsx (Updated)
+// app/team-lead/assign-task/page.tsx
 
 "use client";
 
@@ -988,11 +989,10 @@ const TasksPage: React.FC = () => {
   const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
   const [currentProjectPrefix, setCurrentProjectPrefix] = useState<string>("");
 
-  // ⬇️ STATE FOR DOWNLOAD FILTERS & XLSX LOADING ⬇️
+  // STATE FOR DOWNLOAD FILTERS & XLSX LOADING (Also used for display filtering)
   const [downloadFilterType, setDownloadFilterType] = useState<string>("all");
   const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
-  // ⬆️ END NEW STATE ⬆️
 
   /* ------------------ ✅ DEPLOYMENT-SAFE API URL BUILDER ------------------ */
   const getApiUrl = (path: string): string => {
@@ -1005,7 +1005,6 @@ const TasksPage: React.FC = () => {
 
   /* ---------------------------- FETCH FUNCTIONS ---------------------------- */
   const fetchTasks = async () => {
-    // ... (Your original fetchTasks logic)
     try {
       const url = getApiUrl("/api/tasks");
       console.log("📡 Fetching tasks from:", url);
@@ -1020,7 +1019,6 @@ const TasksPage: React.FC = () => {
   };
 
   const fetchEmployees = async () => {
-    // ... (Your original fetchEmployees logic)
     try {
       const url = getApiUrl("/api/employees");
       console.log("📡 Fetching employees from:", url);
@@ -1057,6 +1055,47 @@ const TasksPage: React.FC = () => {
     const projectNames = tasks.map(task => task.project).filter(Boolean);
     return Array.from(new Set(projectNames));
   }, [tasks]);
+  
+  /* --------------------------- DYNAMIC FILTERED TASKS (For Display) --------------------------- */
+  const filteredTasks = useMemo(() => {
+    const filter = downloadFilterType;
+    const value = downloadFilterValue.trim().toLowerCase();
+
+    if (filter === "all" || !value) {
+      return tasks;
+    }
+
+    return tasks.filter(task => {
+      switch (filter) {
+        case "project":
+          return task.project.toLowerCase() === value;
+          
+        case "assignee":
+          if (value === "all") return true; 
+          return task.assigneeName.toLowerCase() === value;
+
+        case "date":
+          // downloadFilterValue uses the exact date string format from the date input
+          return (
+            task.startDate === downloadFilterValue || 
+            task.dueDate === downloadFilterValue || 
+            (task.endDate && task.endDate === downloadFilterValue)
+          );
+        
+        case "month":
+          // downloadFilterValue uses the YYYY-MM prefix from the month input
+          return (
+            task.startDate.startsWith(downloadFilterValue) || 
+            task.dueDate.startsWith(downloadFilterValue) || 
+            (task.endDate && task.endDate.startsWith(downloadFilterValue))
+          );
+
+        default:
+          return true;
+      }
+    });
+  }, [tasks, downloadFilterType, downloadFilterValue]);
+  /* --------------------------- END DYNAMIC FILTERED TASKS --------------------------- */
 
 
   /* --------------------------- UTILITY HANDLERS --------------------------- */
@@ -1081,9 +1120,8 @@ const TasksPage: React.FC = () => {
     return `${prefix}-${nextNum}`;
   };
 
-  /* --------------------------- CRUD HANDLERS (EXCEPT UPDATE) --------------------------- */
+  /* --------------------------- CRUD HANDLERS --------------------------- */
   const handleDelete = async (id: string) => {
-    // ... (Your original handleDelete logic)
     if (!window.confirm("Are you sure you want to delete this task?")) return;
     try {
       const url = getApiUrl(`/api/tasks/${id}`);
@@ -1100,7 +1138,6 @@ const TasksPage: React.FC = () => {
   };
 
   const handleEdit = (task: Task) => {
-    // ... (Your original handleEdit logic)
     setEditRowId(task._id);
     setDraftTask(task);
     setCurrentProjectPrefix(task.projectId);
@@ -1118,7 +1155,6 @@ const TasksPage: React.FC = () => {
   const handleDraftChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    // ... (Your original handleDraftChange logic)
     const { name, value } = e.target;
     setDraftTask((prev) => ({
       ...prev,
@@ -1132,7 +1168,6 @@ const TasksPage: React.FC = () => {
     field: keyof Subtask,
     value: string | number
   ) => {
-    // ... (Your original handleSubtaskChange logic)
     const updated = [...subtasks];
     (updated[index] as any)[field] =
       field === "completion" ? Number(value) : value;
@@ -1140,7 +1175,6 @@ const TasksPage: React.FC = () => {
   };
 
   const addSubtask = () => {
-    // ... (Your original addSubtask logic)
     const newId = generateNextSubtaskId(currentProjectPrefix, subtasks);
     setSubtasks([
       ...subtasks,
@@ -1156,13 +1190,11 @@ const TasksPage: React.FC = () => {
   };
 
   const removeSubtask = (index: number) => {
-    // ... (Your original removeSubtask logic)
     setSubtasks(subtasks.filter((_, i) => i !== index));
   };
 
   /* ---------------------------- UPDATE ---------------------------- */
   const handleUpdate = async (e: React.FormEvent) => {
-    // ... (Your original handleUpdate logic)
     e.preventDefault();
     if (!editRowId) return;
 
@@ -1198,59 +1230,63 @@ const TasksPage: React.FC = () => {
   };
 
   const cancelEdit = () => {
-    // ... (Your original cancelEdit logic)
     setEditRowId(null);
     setDraftTask({});
     setSubtasks([]);
     setCurrentProjectPrefix("");
   };
 
-  /* -------------------------- EXCEL DOWNLOAD HANDLER (Moved to Parent) -------------------------- */
+  /* -------------------------- EXCEL DOWNLOAD HANDLER -------------------------- */
   const handleExcelDownload = () => {
-    // ... (Your original handleExcelDownload logic)
     if (typeof window === "undefined" || !(window as any).XLSX) {
         alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
         return;
       }
   
-      let filteredTasks: Task[] = [];
+      let tasksForExport: Task[] = [];
       const filter = downloadFilterType;
       const value = downloadFilterValue.trim();
   
-      // 1. Apply Filtering Logic
-      if (filter === "all") {
-        filteredTasks = tasks;
-      } else if (filter === "project" && value) {
-        filteredTasks = tasks.filter(task => task.project === value);
-      } else if (filter === "assignee" && value) {
-          if (value.toLowerCase() === "all") {
-              filteredTasks = tasks; 
-          } else {
-              filteredTasks = tasks.filter(task => task.assigneeName.toLowerCase() === value.toLowerCase());
-          }
-      } else if (filter === "date" && value) { 
-        filteredTasks = tasks.filter(task => 
-          task.startDate === value || 
-          task.dueDate === value || 
-          task.endDate === value
-        );
-      } else if (filter === "month" && value) { 
-          filteredTasks = tasks.filter(task => 
-              task.startDate.startsWith(value) || 
-              task.dueDate.startsWith(value) || 
-              (task.endDate && task.endDate.startsWith(value))
-          );
+      // Use the same logic as filteredTasks for consistency, but use 'tasks' (unfiltered list) as the source
+      if (filter === "all" || !value) {
+        tasksForExport = tasks;
       } else {
-        filteredTasks = tasks;
+        tasksForExport = tasks.filter(task => {
+            switch (filter) {
+                case "project":
+                    return task.project === value;
+                    
+                case "assignee":
+                    if (value.toLowerCase() === "all") return true; 
+                    return task.assigneeName.toLowerCase() === value.toLowerCase();
+
+                case "date":
+                    return (
+                      task.startDate === value || 
+                      task.dueDate === value || 
+                      (task.endDate && task.endDate === value)
+                    );
+                
+                case "month":
+                    return (
+                        task.startDate.startsWith(value) || 
+                        task.dueDate.startsWith(value) || 
+                        (task.endDate && task.endDate.startsWith(value))
+                    );
+
+                default:
+                    return true;
+            }
+        });
       }
   
-      if (filteredTasks.length === 0) {
+      if (tasksForExport.length === 0) {
           alert(`No tasks found for the current filter: ${filter} = ${value || "N/A"}`);
           return;
       }
   
       // 2. Map and Flatten Data for Spreadsheet (NESTING LOGIC)
-      const dataForExport = filteredTasks.flatMap(task => {
+      const dataForExport = tasksForExport.flatMap(task => {
           // Main Task Row Structure
           const mainRow = {
               'Task ID': task.projectId,
@@ -1374,9 +1410,9 @@ const TasksPage: React.FC = () => {
           handleExcelDownload={handleExcelDownload}
         />
 
-        {/* Task Table */}
+        {/* Task Table - Uses filteredTasks for display */}
         <TaskTable 
-          tasks={tasks}
+          tasks={filteredTasks} 
           employees={employees}
           editRowId={editRowId}
           draftTask={draftTask}

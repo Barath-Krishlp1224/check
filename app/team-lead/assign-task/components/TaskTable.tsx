@@ -2,12 +2,12 @@
 
 import React from "react";
 import { AlertCircle } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; // Assuming interfaces are exported or copied here
+import { Task, Subtask, Employee } from "../page"; 
 import TaskRow from "./TaskRow";
 
 // --- PROP INTERFACES ---
 interface TaskTableProps {
-  tasks: Task[];
+  tasks: Task[]; // This will receive the filtered list of tasks
   employees: Employee[];
   editRowId: string | null;
   draftTask: Partial<Task>;
@@ -27,6 +27,7 @@ interface TaskTableProps {
 
 // --- COMPONENT ---
 const TaskTable: React.FC<TaskTableProps> = (props) => {
+  // Now correctly checks the length of the filtered list
   if (props.tasks.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
@@ -35,7 +36,7 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
             <AlertCircle className="w-8 h-8 text-slate-400" />
           </div>
           <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
-          <p className="text-slate-500">Start by creating your first task</p>
+          <p className="text-slate-500">The current filter returned no matching tasks.</p>
         </div>
       </div>
     );
@@ -63,6 +64,7 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
           </thead>
 
           <tbody className="bg-white divide-y divide-slate-100">
+            {/* Iterates over the filtered list */}
             {props.tasks.map((task, idx) => (
               <TaskRow
                 key={task._id}

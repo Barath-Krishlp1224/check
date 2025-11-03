@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
-import { Employee } from "../page"; // Assuming interfaces are exported or copied here
+import { Employee } from "../page"; 
 
 // --- PROP INTERFACES ---
 interface TaskTableHeaderProps {
@@ -33,7 +33,9 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
     <div className="mb-8">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Project Tasks</h1>
+          {/* Note: Updated text color to text-slate-800 for visibility, or keep text-white if background is dark */}
+          <h1 className="text-4xl font-bold text-white mb-2">Project Tasks</h1> 
+          
         </div>
 
         <div className="flex items-center gap-4 bg-white rounded-xl shadow-lg border border-slate-200 p-4">
