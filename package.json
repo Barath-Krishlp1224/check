@@ -1,0 +1,43 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.919.0",
+    "bcryptjs": "^3.0.2",
+    "chart.js": "^4.5.1",
+    "formik": "^2.4.6",
+    "framer-motion": "^12.23.24",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
+    "lucide-react": "^0.545.0",
+    "mongoose": "^8.19.1",
+    "next": "15.5.4",
+    "react": "19.1.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-curved-text": "^3.0.1",
+    "react-dom": "19.1.0",
+    "react-hot-toast": "^2.6.0",
+    "react-toastify": "^11.0.5",
+    "recharts": "^3.3.0",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
+    "yup": "^1.7.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/react-toastify": "^4.0.2",
+    "@types/uuid": "^10.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
