@@ -1,10 +1,9 @@
-// app/team-lead/assign-task/components/TaskSubtaskEditor.tsx
-
 import React from "react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Subtask, Employee } from "../page"; 
 
 // --- PROP INTERFACES ---
+// This interface MUST be unique and only contain the props needed by the editor.
 interface TaskSubtaskEditorProps {
   subtasks: Subtask[];
   employees: Employee[];
@@ -15,7 +14,7 @@ interface TaskSubtaskEditorProps {
 }
 
 // --- COMPONENT ---
-const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
+const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({ // Uses the correct, simple interface
   subtasks,
   employees,
   currentProjectPrefix,

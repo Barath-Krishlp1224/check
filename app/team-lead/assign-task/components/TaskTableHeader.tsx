@@ -1,5 +1,3 @@
-// app/team-lead/assign-task/components/TaskTableHeader.tsx
-
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
 import { Employee } from "../page"; 
@@ -33,7 +31,6 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
     <div className="mb-8">
       <div className="flex items-end justify-between">
         <div>
-          {/* Note: Updated text color to text-slate-800 for visibility, or keep text-white if background is dark */}
           <h1 className="text-4xl font-bold text-white mb-2">Project Tasks</h1> 
           
         </div>
