@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, CheckSquare, BarChart3 } from "lucide-react";
+import { Users, CheckSquare, BarChart3, TrendingUp } from "lucide-react";
 
 interface EmployeeStats {
   totalEmployees: number;
@@ -47,35 +47,40 @@ export default function AdminPage() {
       value: stats.totalEmployees,
       icon: Users,
       color: "from-yellow-400 to-green-500", 
-      bgColor: "bg-yellow-50"
+      bgColor: "bg-yellow-50",
+      iconBg: "bg-yellow-100"
     },
     { 
       label: "Tech Team", 
       value: stats.techTeamCount,
       icon: Users,
-      color: "from-yellow-400 to-green-500",
-      bgColor: "bg-yellow-50"
+      color: "from-blue-400 to-cyan-500",
+      bgColor: "bg-blue-50",
+      iconBg: "bg-blue-100"
     },
     { 
       label: "Accounts Team", 
       value: stats.accountsTeamCount,
       icon: Users,
-      color: "from-yellow-400 to-green-500",
-      bgColor: "bg-yellow-50"
+      color: "from-purple-400 to-pink-500",
+      bgColor: "bg-purple-50",
+      iconBg: "bg-purple-100"
     },
     { 
       label: "HR Team", 
       value: stats.hrTeamCount,
       icon: Users,
-      color: "from-yellow-400 to-green-500",
-      bgColor: "bg-yellow-50"
+      color: "from-orange-400 to-red-500",
+      bgColor: "bg-orange-50",
+      iconBg: "bg-orange-100"
     },
     { 
       label: "Admin & Ops Team", 
       value: stats.adminOpsTeamCount,
       icon: Users,
-      color: "from-yellow-400 to-green-500",
-      bgColor: "bg-yellow-50"
+      color: "from-green-400 to-emerald-500",
+      bgColor: "bg-green-50",
+      iconBg: "bg-green-100"
     },
   ];
 
@@ -92,7 +97,6 @@ export default function AdminPage() {
             loaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8'
           }`}>
             <div className="flex items-center mt-[10%] gap-4 mb-2">
-
               <div>
                 <h1 className="text-4xl font-bold text-white">
                   Admin Dashboard
@@ -106,42 +110,75 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-            {statsCards.map((card, index) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={card.label}
-                  className={`relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 ${
-                    loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                  }`}
-                  style={{
-                    transitionDelay: `${index * 100}ms`
-                  }}
-                  onMouseEnter={() => setHoveredStat(card.label)}
-                  onMouseLeave={() => setHoveredStat(null)}
-                >
-                  {/* New Gradient Left Bar (vertical) */}
-                  <div className={`absolute top-0 left-0 bottom-0 bg-gradient-to-b ${card.color} transition-all duration-300 ${
-                    hoveredStat === card.label ? 'w-2' : 'w-1' 
-                  }`}></div>
-                  
-                  <div className="p-4 pl-6">
-                    <div>
-                      <p className="text-black text-sm font-medium mb-1">
-                        {card.label}
-                      </p>
-                      <p className={`text-2xl font-bold text-gray-900 transition-all duration-300 ${
-                        hoveredStat === card.label ? 'scale-105' : ''
-                      }`}>
-                        {card.value}
-                      </p>
-                    </div>
+          {/* Single Container with Employee Stats - Card Style */}
+          <div className="max-w-xl mb-8">
+            <div className={`bg-white rounded-2xl shadow-2xl p-4 border border-gray-100 transition-all duration-1000 overflow-hidden ${
+              loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}>
+              {/* Header with gradient background */}
+              <div className="bg-gradient-to-r from-gray-900 to-black -m-4 mb-4 p-4 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      
+                      Staff Count
+                    </h2>
+                    
                   </div>
+             
                 </div>
-              );
-            })}
+              </div>
+              
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {statsCards.map((card, index) => {
+                  const Icon = card.icon;
+                  return (
+                    <div
+                      key={card.label}
+                      className={`relative group transition-all duration-500 ${
+                        loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                      }`}
+                      style={{
+                        transitionDelay: `${index * 100}ms`
+                      }}
+                      onMouseEnter={() => setHoveredStat(card.label)}
+                      onMouseLeave={() => setHoveredStat(null)}
+                    >
+                      <div className={`relative rounded-lg p-2.5 border-2 transition-all duration-300 ${
+                        hoveredStat === card.label 
+                          ? 'bg-gray-800 border-gray-700 shadow-lg scale-105' 
+                          : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                      }`}>
+                        {/* Icon Circle */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300 ${
+                          hoveredStat === card.label ? 'bg-gray-700' : 'bg-gray-800'
+                        }`}>
+                          <Icon className={`w-4 h-4 transition-all duration-300 ${
+                            hoveredStat === card.label ? 'text-white scale-110' : 'text-gray-400'
+                          }`} />
+                        </div>
+                        
+                        {/* Label and Value */}
+                        <p className="text-gray-400 text-xs font-medium mb-0.5">
+                          {card.label}
+                        </p>
+                        <p className={`text-xl font-bold transition-all duration-300 ${
+                          hoveredStat === card.label ? 'text-white' : 'text-gray-300'
+                        }`}>
+                          {card.value}
+                        </p>
+                        
+                        {/* Bottom gradient line on hover */}
+                        <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-600 to-gray-400 rounded-b-xl transition-all duration-300 ${
+                          hoveredStat === card.label ? 'opacity-100' : 'opacity-0'
+                        }`}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons Section */}

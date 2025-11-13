@@ -446,7 +446,10 @@ const TasksPage: React.FC = () => {
     );
 
   return (
-    <div className="min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8">
+ <div
+  className="min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8 backdrop-blur-xl border border-[#3A6073]/30 shadow-lg"
+  style={{ background: "linear-gradient(-173deg, #0F2027 73%, #203A43 50%, #2C5364 50%)" }}
+>
       <div className="max-w-[1800px] mx-auto">
         
         {/* Header and Download Controls */}

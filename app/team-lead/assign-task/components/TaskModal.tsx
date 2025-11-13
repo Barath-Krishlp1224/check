@@ -137,7 +137,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60 flex items-start justify-center p-4 sm:p-6" onClick={onClose}>
       <div 
-        className="bg-white rounded-xl shadow-2xl w-full max-w-5xl mt-12 mb-8 transform transition-all duration-300"
+        className="bg-white rounded-4xl shadow-2xl w-full max-w-5xl mt-12 mb-8 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
         {/* Modal Header */}
