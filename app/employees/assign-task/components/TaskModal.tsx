@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play } from "lucide-react"; 
+import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, CheckCircle } from "lucide-react"; 
 import { Task, Subtask, Employee } from "../page";
 import TaskSubtaskEditor from "./TaskSubtaskEditor"; 
 
@@ -15,7 +15,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   } else if (status === "In Progress") {
     colorClasses = isSubtask ? "bg-blue-100 text-blue-800" : "bg-blue-50 text-blue-700 border border-blue-200";
     icon = <Clock className="w-3 h-3" />;
-  } else if (status === "Backlog") { // ADDED: Backlog status
+  } else if (status === "Backlog") { 
     colorClasses = isSubtask ? "bg-slate-100 text-slate-800" : "bg-slate-50 text-slate-700 border border-slate-200";
     icon = <AlertCircle className="w-3 h-3" />;
   } else if (status === "On Hold" || status === "Paused" || status === "Pending") {
@@ -35,7 +35,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
 };
 
 
-// --- PROP INTERFACES ---
+// --- PROP INTERFACES (UPDATED) ---
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
@@ -54,6 +54,8 @@ interface TaskModalProps {
   addSubtask: () => void;
   removeSubtask: (index: number) => void;
   handleStartSprint: (taskId: string) => void; 
+  // 🎯 NEW PROP ADDED:
+  handleCompleteSprint: (taskId: string) => void; 
 }
 
 // --- COMPONENT ---
@@ -61,7 +63,9 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
     task, isOpen, onClose, isEditing, draftTask, subtasks, employees, currentProjectPrefix,
     handleEdit, handleDelete, handleUpdate, cancelEdit, handleDraftChange, 
-    handleSubtaskChange, addSubtask, removeSubtask, handleStartSprint 
+    handleSubtaskChange, addSubtask, removeSubtask, handleStartSprint, 
+    // 🎯 NEW PROP DESTRUCTURED:
+    handleCompleteSprint
   } = props;
   
   if (!isOpen) return null;
@@ -175,7 +179,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     onChange={handleDraftChange} 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
                   >
-                    <option>Backlog</option> {/* ADDED: Backlog option */}
+                    <option>Backlog</option> 
                     <option>In Progress</option>
                     <option>Completed</option>
                     <option>On Hold</option>
@@ -268,7 +272,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         {/* Modal Footer */}
         <div className="p-6 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white z-10">
           
-          {/* Conditional Start Sprint Button */}
+          {/* Conditional START SPRINT Button (Only visible if Backlog and not editing) */}
           {task.status === "Backlog" && !isEditing && (
             <button 
                 onClick={() => handleStartSprint(task._id)} 
@@ -277,6 +281,17 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                 <Play className="w-4 h-4" />
                 Start Sprint
               </button>
+          )}
+
+          {/* 🎯 NEW: Conditional COMPLETE SPRINT Button (Visible if In Progress/Paused/On Hold and not editing) */}
+          {(task.status === "In Progress" || task.status === "On Hold" || task.status === "Paused") && !isEditing && (
+            <button
+                onClick={() => handleCompleteSprint(task._id)}
+                className="inline-flex items-center gap-1 px-4 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+            >
+                <CheckCircle className="w-4 h-4" />
+                Complete Sprint
+            </button>
           )}
 
           {isEditing ? (

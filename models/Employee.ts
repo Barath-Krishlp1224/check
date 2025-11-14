@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-// --- Interface remains the same ---
 export interface IEmployee extends Document {
   empId: string;
   name: string;
@@ -16,6 +15,7 @@ export interface IEmployee extends Document {
   mailId: string;
   accountNumber: string;
   ifscCode: string;
+  password?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -34,24 +34,20 @@ const EmployeeSchema = new Schema<IEmployee>(
       trim: true,
     },
 
-    // ✅ CATEGORY LOGIC: Required only if the team is "Tech"
     category: {
       type: String,
       trim: true,
       default: "",
       required: function (this: IEmployee) {
-        // Category is required for ALL Tech roles (Developer, IT Admin, DevOps, etc.)
         return this.team === "Tech";
       },
     },
 
-    // ✅ SUB-CATEGORY LOGIC: Required only if the team is "Tech" AND the category is "Developer"
     subCategory: {
       type: String,
       trim: true,
       default: "",
       required: function (this: IEmployee) {
-        // SubCategory is only relevant/required for the Developer category under Tech
         return this.team === "Tech" && this.category === "Developer";
       },
     },
@@ -68,11 +64,11 @@ const EmployeeSchema = new Schema<IEmployee>(
     },
     accountNumber: { type: String, required: true, trim: true },
     ifscCode: { type: String, required: true, trim: true },
+    password: { type: String, required: true },
   },
   { timestamps: true }
 );
 
-// ✅ Avoid redefinition during Next.js hot reload
 delete mongoose.models.Employee;
 
 const Employee: Model<IEmployee> =

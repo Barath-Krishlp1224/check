@@ -4,13 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
-// --- Hierarchical Data Structure Type ---
 type DepartmentMap = string[];
 type SubCategoryMap = { [key: string]: DepartmentMap };
 type CategoryMap = { [key: string]: DepartmentMap | SubCategoryMap };
 type Structure = { [team: string]: CategoryMap };
 
-// --- Formik Values Interface ---
 interface IFormValues {
   empId: string;
   name: string;
@@ -26,9 +24,10 @@ interface IFormValues {
   mailId: string;
   accountNumber: string;
   ifscCode: string;
+  password?: string;
+  confirmPassword?: string;
 }
 
-// --- Base Field Props ---
 interface BaseFieldProps {
   label: string;
   name: keyof IFormValues;
@@ -50,7 +49,6 @@ interface SelectFieldProps extends BaseFieldProps {
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
-// --- Reusable Input Component ---
 const InputField: React.FC<InputFieldProps> = ({
   label,
   name,
@@ -78,7 +76,6 @@ const InputField: React.FC<InputFieldProps> = ({
   </div>
 );
 
-// --- Reusable Select Component ---
 const SelectField: React.FC<SelectFieldProps> = ({
   label,
   name,
@@ -112,13 +109,11 @@ const SelectField: React.FC<SelectFieldProps> = ({
   </div>
 );
 
-// --- Main Component ---
 const AddEmployeePage: React.FC = () => {
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
   const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
 
-  // --- Hierarchical Data Structure (UPDATED) ---
   const structure: Structure = {
     Tech: {
       Developer: {
@@ -130,9 +125,7 @@ const AddEmployeePage: React.FC = () => {
         ],
         "UI/UX Developer": ["UI/UX Developer"],
       },
-      // ✅ NEW: IT Admin category with Department array
       "IT Admin": ["IT Administrator"],
-      // ⚠️ UPDATED: DevOps list (removed IT Administrator)
       DevOps: ["Product Manager"], 
       Tester: ["QA Engineer – Manual & Automation"],
       Designer: ["UI/UX Designer"],
@@ -149,7 +142,6 @@ const AddEmployeePage: React.FC = () => {
     },
   };
 
-  // --- Validation Schema ---
   const validationSchema = Yup.object({
     empId: Yup.string()
       .matches(
@@ -182,6 +174,12 @@ const AddEmployeePage: React.FC = () => {
     ifscCode: Yup.string()
       .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code (e.g., SBIN0001234)")
       .required("IFSC code is required"),
+    password: Yup.string()
+      .min(8, "Password must be at least 8 characters")
+      .required("Password is required"),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref("password")], "Passwords must match")
+      .required("Confirm Password is required"),
     photo: Yup.mixed<File>()
       .nullable()
       .test("fileFormat", "Only PNG, JPEG, JPG allowed", (value) => {
@@ -190,7 +188,6 @@ const AddEmployeePage: React.FC = () => {
       }),
   });
 
-  // --- Formik Setup ---
   const formik = useFormik<IFormValues>({
     initialValues: {
       empId: "",
@@ -207,12 +204,14 @@ const AddEmployeePage: React.FC = () => {
       mailId: "",
       accountNumber: "",
       ifscCode: "",
+      password: "",
+      confirmPassword: "",
     },
     validationSchema,
     onSubmit: async (values) => {
       const data = new FormData();
       Object.entries(values).forEach(([key, value]) => {
-        if (value !== null && value !== "") {
+        if (value !== null && value !== "" && key !== "confirmPassword") {
           if (key === "photo" && value instanceof File) {
             data.append(key, value);
           } else {
@@ -222,7 +221,6 @@ const AddEmployeePage: React.FC = () => {
       });
 
       try {
-        // NOTE: This API endpoint is assumed. Ensure your backend route is correct.
         const res = await fetch("/api/employees/add", {
           method: "POST",
           body: data,
@@ -245,7 +243,6 @@ const AddEmployeePage: React.FC = () => {
     },
   });
 
-  // --- Cascading Dropdown Logic (Handles Team selection) ---
   useEffect(() => {
     const { team } = formik.values;
     formik.setFieldValue("category", "");
@@ -261,7 +258,6 @@ const AddEmployeePage: React.FC = () => {
     setDepartmentOptions([]);
   }, [formik.values.team]);
 
-  // --- Cascading Dropdown Logic (Handles Category selection) ---
   useEffect(() => {
     const { team, category } = formik.values;
     formik.setFieldValue("subCategory", "");
@@ -271,15 +267,12 @@ const AddEmployeePage: React.FC = () => {
       const teamData = structure[team];
       const categoryData = teamData[category];
 
-      // Handle sub-categories (currently only Tech -> Developer)
       if (team === "Tech" && category === "Developer") {
         setSubCategoryOptions(Object.keys(categoryData as SubCategoryMap));
       } else {
         setSubCategoryOptions([]);
-        // Set a non-empty value for validation when subCategory is not applicable
         formik.setFieldValue("subCategory", "N/A"); 
 
-        // For categories without sub-categories (e.g., IT Admin, DevOps, Accounts)
         if (Array.isArray(categoryData)) {
           setDepartmentOptions(categoryData);
         } else {
@@ -292,12 +285,10 @@ const AddEmployeePage: React.FC = () => {
     }
   }, [formik.values.category, formik.values.team]);
 
-  // --- Cascading Dropdown Logic (Handles Sub-Category selection) ---
   useEffect(() => {
     const { team, category, subCategory } = formik.values;
     formik.setFieldValue("department", "");
 
-    // Only runs for the nested structure (Tech -> Developer -> SubCategory)
     if (team === "Tech" && category === "Developer" && subCategory) {
       const teamData = structure[team];
       const categoryData = teamData[category] as SubCategoryMap;
@@ -305,7 +296,6 @@ const AddEmployeePage: React.FC = () => {
     }
   }, [formik.values.subCategory]);
 
-  // --- Input Styles ---
   const inputBaseClass =
     "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900";
   const getInputClass = (field: keyof IFormValues) =>
@@ -315,7 +305,6 @@ const AddEmployeePage: React.FC = () => {
         : "border-gray-300"
     }`;
 
-  // --- UI ---
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
       <div className="max-w-5xl mx-auto">
@@ -333,7 +322,6 @@ const AddEmployeePage: React.FC = () => {
             encType="multipart/form-data"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Basic Info */}
               <InputField
                 label="Employee ID"
                 name="empId"
@@ -394,7 +382,6 @@ const AddEmployeePage: React.FC = () => {
                 getInputClass={getInputClass}
               />
 
-              {/* Dropdowns */}
               <SelectField
                 label="Team"
                 name="team"
@@ -419,7 +406,6 @@ const AddEmployeePage: React.FC = () => {
                 />
               )}
 
-              {/* Show SubCategory only for Tech → Developer */}
               {formik.values.team === "Tech" &&
                 formik.values.category === "Developer" &&
                 subCategoryOptions.length > 0 && (
@@ -448,7 +434,6 @@ const AddEmployeePage: React.FC = () => {
                 />
               )}
 
-              {/* Contact Info */}
               <InputField
                 label="Phone Number"
                 name="phoneNumber"
@@ -499,7 +484,30 @@ const AddEmployeePage: React.FC = () => {
                 getInputClass={getInputClass}
               />
 
-              {/* Photo Upload */}
+              <InputField
+                label="Password"
+                name="password"
+                type="password"
+                placeholder="Enter password"
+                value={formik.values.password || ""}
+                onChange={formik.handleChange}
+                error={formik.errors.password}
+                touched={formik.touched.password}
+                getInputClass={getInputClass}
+              />
+
+              <InputField
+                label="Confirm Password"
+                name="confirmPassword"
+                type="password"
+                placeholder="Confirm password"
+                value={formik.values.confirmPassword || ""}
+                onChange={formik.handleChange}
+                error={formik.errors.confirmPassword}
+                touched={formik.touched.confirmPassword}
+                getInputClass={getInputClass}
+              />
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Employee Photo
@@ -521,7 +529,6 @@ const AddEmployeePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Buttons */}
             <div className="mt-8 flex gap-4">
               <button
                 type="submit"

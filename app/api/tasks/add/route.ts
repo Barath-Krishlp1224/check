@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
 
-const webhookUrl = process.env.SLACK_WEBHOOK_URL!; // ✅ correct usage
+const webhookUrl = process.env.SLACK_WEBHOOK_URL!; 
 
 export async function POST(req: Request) {
   await connectDB();
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       endDate,
       dueDate,
       completion,
-      status,
+      status, 
       remarks,
     } = body;
 
@@ -33,6 +33,9 @@ export async function POST(req: Request) {
 
     const completionValue =
       completion !== "" && completion !== undefined ? Number(completion) : 0;
+      
+    // Use the status provided by the frontend, defaulting to "Backlog"
+    const taskStatus = status || "Backlog";
 
     // ✅ Create new Task
     const newTask = new Task({
@@ -43,17 +46,22 @@ export async function POST(req: Request) {
       endDate,
       dueDate,
       completion: completionValue,
-      status: status || "In Progress",
+      status: taskStatus, // Use the determined status
       remarks,
     });
 
     const savedTask = await newTask.save();
     console.log("✅ Task saved successfully:", savedTask);
 
-    // ✅ Send Slack notification (non-blocking)
+    // --- Slack notification setup ---
     try {
+      let notificationText = `📢 *Hey ${assigneeName}, a new task has been added to the Backlog!*`;
+      if (taskStatus !== "Backlog") {
+          notificationText = `📢 *Hey ${assigneeName}, a new task has been created!*`;
+      }
+      
       const slackMessage = {
-        text: `📢 *Hey ${assigneeName}, a new task has been created!*\n• *ID:* ${projectId}\n• *Project:* ${project}\n• *Assignee Name:* ${assigneeName}\n• *Status:* ${status}\n• *Completion:* ${completionValue}%\n• *Due Date:* ${dueDate || "N/A"}\n• *Remarks:* ${remarks || "None"}`,
+        text: `${notificationText}\n• *ID:* ${projectId}\n• *Project:* ${project}\n• *Assignee:* ${assigneeName}\n• *Status:* ${taskStatus}\n• *Completion:* ${completionValue}%\n• *Due Date:* ${dueDate || "N/A"}\n• *Remarks:* ${remarks || "None"}`,
       };
 
       await fetch(webhookUrl, {
@@ -66,6 +74,7 @@ export async function POST(req: Request) {
     } catch (slackErr) {
       console.error("⚠️ Slack notification failed:", slackErr);
     }
+    // -----------------------------------
 
     return NextResponse.json(
       { success: true, message: "Task added successfully", task: savedTask },

@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await connectDB();
+  
   try {
-    const tasks = await Task.find().sort({ createdAt: -1 });
+    const url = new URL(req.url);
+    // Retrieve the assigneeName query parameter
+    const assigneeName = url.searchParams.get("assigneeName");
+
+    let query = {};
+    if (assigneeName) {
+      // Filter by assigneeName, using a case-insensitive regex match
+      query = { assigneeName: { $regex: new RegExp(`^${assigneeName}$`, 'i') } };
+    } 
+
+    const tasks = await Task.find(query).sort({ createdAt: -1 });
+
     return NextResponse.json({ success: true, tasks });
   } catch (error: any) {
     return NextResponse.json(
@@ -29,3 +41,8 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// NOTE: You must also ensure your PUT endpoint for /api/tasks/[taskId] 
+// is correctly implemented to handle status and completion updates sent by 
+// handleStartSprint and handleCompleteSprint. This file does not show the PUT 
+// route for dynamic IDs.

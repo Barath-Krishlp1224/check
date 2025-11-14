@@ -20,7 +20,7 @@ const EmployeesPage: React.FC = () => {
     endDate: "",
     dueDate: "",
     completion: "",
-    status: "In Progress",
+    status: "Backlog", // CHANGED: Initial status is now Backlog
     remarks: "",
   });
 
@@ -88,7 +88,7 @@ const EmployeesPage: React.FC = () => {
           endDate: "",
           dueDate: "",
           completion: "",
-          status: "In Progress",
+          status: "Backlog", // Reset to Backlog
           remarks: "",
         });
       } else {
@@ -102,6 +102,7 @@ const EmployeesPage: React.FC = () => {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const colors = {
+      "Backlog": "bg-slate-100 text-slate-700 border-slate-200", // ADDED: New status color
       "In Progress": "bg-blue-100 text-blue-700 border-blue-200",
       "Paused": "bg-amber-100 text-amber-700 border-amber-200",
       "Completed": "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -306,6 +307,7 @@ const EmployeesPage: React.FC = () => {
                         onChange={handleChange}
                         className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                       >
+                        <option value="Backlog">Backlog</option> {/* ADDED: Backlog option */}
                         <option value="In Progress">In Progress</option>
                         <option value="Paused">Paused</option>
                         <option value="Completed">Completed</option>

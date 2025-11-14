@@ -6,8 +6,8 @@ import { AlertCircle, Play } from "lucide-react";
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
+import { CheckCircle } from "lucide-react"; // Imported for conceptual use in TaskModal
 
-/* ----------------------------- Interfaces (EXPORTED for sub-components) ----------------------------- */
 export interface Subtask {
   id?: string;
   title: string;
@@ -26,7 +26,6 @@ export interface Task {
   endDate?: string;
   dueDate: string;
   completion: number;
-  // NOTE: Status can now be "Backlog"
   status: "Backlog" | "In Progress" | "Paused" | "Completed" | "On Hold" | string;
   remarks?: string;
   subtasks?: Subtask[];
@@ -37,7 +36,6 @@ export interface Employee {
   name: string;
 }
 
-/* ----------------------------- Component ----------------------------- */
 const TasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -56,7 +54,9 @@ const TasksPage: React.FC = () => {
   const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
 
-  /* ------------------ API URL BUILDER ------------------ */
+  // 🚨 IMPORTANT: Replace "John Doe" with dynamic user retrieval logic
+  const LOGGED_IN_USER_NAME = "John Doe"; 
+
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
       return `${window.location.origin}${path}`;
@@ -65,10 +65,12 @@ const TasksPage: React.FC = () => {
     return `${base}${path}`;
   };
 
-  /* ---------------------------- FETCH FUNCTIONS ---------------------------- */
   const fetchTasks = async () => {
+    const userName = LOGGED_IN_USER_NAME;
     try {
-      const url = getApiUrl("/api/tasks");
+      // 🎯 Server-side filtering applied here
+      const url = getApiUrl(`/api/tasks?assigneeName=${encodeURIComponent(userName)}`);
+      
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) setTasks(data.tasks);
@@ -91,7 +93,6 @@ const TasksPage: React.FC = () => {
     }
   };
 
-  /* ---------------------------- EFFECT HOOK ---------------------------- */
   useEffect(() => {
     import('xlsx').then(XLSX => {
         (window as any).XLSX = XLSX;
@@ -107,24 +108,29 @@ const TasksPage: React.FC = () => {
       setLoading(false);
     };
     init();
-  }, []);
+  }, [LOGGED_IN_USER_NAME]);
 
-  /* --------------------------- UTILITY: UNIQUE PROJECTS --------------------------- */
-  const uniqueProjects = useMemo(() => {
-    const projectNames = tasks.map(task => task.project).filter(Boolean);
-    return Array.from(new Set(projectNames));
+  // Tasks are already filtered by the server
+  const currentUserTasks = useMemo(() => {
+    return tasks; 
   }, [tasks]);
   
-  /* --------------------------- DYNAMIC FILTERED TASKS (For Display) --------------------------- */
+  const uniqueProjects = useMemo(() => {
+    const projectNames = currentUserTasks.map(task => task.project).filter(Boolean);
+    return Array.from(new Set(projectNames));
+  }, [currentUserTasks]);
+  
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
+    
+    let baseTasks = currentUserTasks; 
 
     if (filter === "all" || !value) {
-      return tasks;
+      return baseTasks;
     }
 
-    return tasks.filter(task => {
+    return baseTasks.filter(task => {
       switch (filter) {
         case "project":
           return task.project.toLowerCase() === value;
@@ -133,7 +139,7 @@ const TasksPage: React.FC = () => {
           if (value === "all") return true; 
           return task.assigneeName.toLowerCase() === value;
           
-        case "status": // ADDED: Status filter logic
+        case "status": 
           return task.status.toLowerCase() === value;
 
         case "date":
@@ -154,9 +160,8 @@ const TasksPage: React.FC = () => {
           return true;
       }
     });
-  }, [tasks, downloadFilterType, downloadFilterValue]);
+  }, [currentUserTasks, downloadFilterType, downloadFilterValue]);
 
-  /* --------------------------- MODAL/UTILITY HANDLERS --------------------------- */
   const generateNextSubtaskId = (prefix: string, currentSubtasks: Subtask[]) => {
     const numbers = currentSubtasks.map((sub) => {
       if (sub.id && sub.id.startsWith(`${prefix}-`)) {
@@ -187,7 +192,6 @@ const TasksPage: React.FC = () => {
     }, 300); 
   };
   
-  /* --------------------------- EDIT/DRAFT HANDLERS (Used by TaskModal) --------------------------- */
   const handleEdit = (task: Task) => {
     setIsEditing(true);
     setDraftTask(task);
@@ -220,7 +224,6 @@ const TasksPage: React.FC = () => {
     }));
   };
 
-  /* ---------------------------- SUBTASK HANDLERS ---------------------------- */
   const handleSubtaskChange = (
     index: number,
     field: keyof Subtask,
@@ -251,7 +254,6 @@ const TasksPage: React.FC = () => {
     setSubtasks(subtasks.filter((_, i) => i !== index));
   };
 
-  /* ---------------------------- CRUD HANDLERS ---------------------------- */
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskForModal?._id) return;
@@ -284,7 +286,6 @@ const TasksPage: React.FC = () => {
     }
   };
   
-  // ADDED: Start Sprint Handler
   const handleStartSprint = async (taskId: string) => {
     if (!window.confirm("Do you want to start the sprint for this task? Status will change to 'In Progress'.")) return;
     try {
@@ -308,6 +309,41 @@ const TasksPage: React.FC = () => {
     }
   };
 
+  // 🎯 NEW HANDLER: Complete Sprint
+  const handleCompleteSprint = async (taskId: string) => {
+    if (!window.confirm("Do you want to complete this sprint? Status will change to 'Completed' and completion will be set to 100%.")) return;
+    
+    const taskToComplete = tasks.find(t => t._id === taskId);
+    let updateBody: Partial<Task> = { status: "Completed" };
+
+    if (taskToComplete && taskToComplete.completion < 100) {
+        const confirmCompletion = window.confirm("Task completion is less than 100%. Set completion to 100% and complete?");
+        if (confirmCompletion) {
+            updateBody.completion = 100;
+        } 
+    }
+
+    try {
+        const url = getApiUrl(`/api/tasks/${taskId}`);
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updateBody),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert("🎉 Sprint completed! Task status is now 'Completed'.");
+            closeTaskModal();
+            fetchTasks(); 
+        } else {
+            alert(`❌ Failed to complete sprint: ${data.error || "Unknown error"}`);
+        }
+    } catch (err) {
+        console.error("Complete Sprint error:", err);
+        alert("Server error during status update.");
+    }
+  };
+
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
@@ -326,7 +362,6 @@ const TasksPage: React.FC = () => {
     }
   };
 
-  /* -------------------------- EXCEL DOWNLOAD HANDLER -------------------------- */
   const handleExcelDownload = () => {
     if (typeof window === "undefined" || !(window as any).XLSX) {
         alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
@@ -336,11 +371,13 @@ const TasksPage: React.FC = () => {
       let tasksForExport: Task[] = [];
       const filter = downloadFilterType;
       const value = downloadFilterValue.trim();
+
+      let baseExportTasks = currentUserTasks; 
   
       if (filter === "all" || !value) {
-        tasksForExport = tasks;
+        tasksForExport = baseExportTasks;
       } else {
-        tasksForExport = tasks.filter(task => {
+        tasksForExport = baseExportTasks.filter(task => {
             switch (filter) {
                 case "project":
                     return task.project === value;
@@ -349,7 +386,7 @@ const TasksPage: React.FC = () => {
                     if (value.toLowerCase() === "all") return true; 
                     return task.assigneeName.toLowerCase() === value.toLowerCase();
 
-                case "status": // Added to Excel download filter
+                case "status": 
                     return task.status === value; 
 
                 case "date":
@@ -443,15 +480,12 @@ const TasksPage: React.FC = () => {
       XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
   
       const safeValue = value.replace(/[^a-z0-9]/gi, '_');
-      const fileName = filter === "all" ? "All_Tasks_Report.xlsx" : `${filter}_${safeValue}_Tasks_Report.xlsx`;
+      const fileName = filter === "all" ? "My_Tasks_Report.xlsx" : `My_Tasks_${filter}_${safeValue}_Report.xlsx`;
   
       XLSX.writeFile(wb, fileName);
       alert(`✅ Task report downloaded as ${fileName}`);
   };
-  /* -------------------------- END DOWNLOAD HANDLER -------------------------- */
 
-
-  /* ---------------------------- RENDER ---------------------------- */
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -484,7 +518,6 @@ const TasksPage: React.FC = () => {
 >
       <div className="max-w-[1800px] mx-auto">
         
-        {/* Header and Download Controls */}
         <TaskTableHeader 
           uniqueProjects={uniqueProjects}
           employees={employees}
@@ -496,7 +529,6 @@ const TasksPage: React.FC = () => {
           handleExcelDownload={handleExcelDownload}
         />
         
-        {/* Task Cards Grid (3 in a row layout) */}
         {filteredTasks.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
                 <div className="text-center py-16">
@@ -504,7 +536,7 @@ const TasksPage: React.FC = () => {
                         <AlertCircle className="w-8 h-8 text-slate-400" />
                     </div>
                     <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
-                    <p className="text-slate-500">The current filter returned no matching tasks.</p>
+                    <p className="text-slate-500">The current filter returned no matching tasks for **{LOGGED_IN_USER_NAME}**.</p>
                 </div>
             </div>
         ) : (
@@ -519,7 +551,6 @@ const TasksPage: React.FC = () => {
             </div>
         )}
 
-        {/* Task Modal (Popup) */}
         {selectedTaskForModal && (
             <TaskModal
                 task={selectedTaskForModal}
@@ -539,6 +570,8 @@ const TasksPage: React.FC = () => {
                 addSubtask={addSubtask}
                 removeSubtask={removeSubtask}
                 handleStartSprint={handleStartSprint}
+                // Passing the new handler
+                handleCompleteSprint={handleCompleteSprint}
             />
         )}
         

@@ -3,12 +3,12 @@ import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
+// import bcrypt from "bcryptjs"; // You need to install and import bcryptjs
 
 export const config = {
   api: { bodyParser: false },
 };
 
-// 🔹 Initialize AWS S3 Client
 const s3 = new S3Client({
   region: process.env.S3_REGION!,
   credentials: {
@@ -17,7 +17,6 @@ const s3 = new S3Client({
   },
 });
 
-// ✅ Utility regex
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 const phoneRegex = /^[0-9]{10}$/;
@@ -27,26 +26,23 @@ export async function POST(req: Request) {
   try {
     const data = await req.formData();
 
-    // 🔹 Extract all fields
     const empId = data.get("empId")?.toString().trim().toUpperCase() || "";
     const name = data.get("name")?.toString().trim() || "";
     const fatherName = data.get("fatherName")?.toString().trim() || "";
     const dateOfBirth = data.get("dateOfBirth")?.toString() || "";
     const joiningDate = data.get("joiningDate")?.toString() || "";
     const team = data.get("team")?.toString() || "";
-    // Note: category and subCategory are now required fields in the client, but their content needs dynamic validation.
     const category = data.get("category")?.toString().trim() || "";
-    const subCategory = data.get("subCategory")?.toString().trim() || ""; // Could be "N/A"
+    const subCategory = data.get("subCategory")?.toString().trim() || ""; 
     const department = data.get("department")?.toString() || "";
     const phoneNumber = data.get("phoneNumber")?.toString() || "";
     const mailId = data.get("mailId")?.toString().trim().toLowerCase() || "";
     const accountNumber = data.get("accountNumber")?.toString() || "";
     const ifscCode = data.get("ifscCode")?.toString().trim().toUpperCase() || "";
+    const password = data.get("password")?.toString() || "";
 
     const photoFile = data.get("photo") as File | null;
 
-    // 🔹 Validate general required fields
-    // We remove 'category' and 'subCategory' from this generic check because the client side ensures they have *a* value.
     const requiredFields = {
       empId,
       name,
@@ -59,6 +55,7 @@ export async function POST(req: Request) {
       mailId,
       accountNumber,
       ifscCode,
+      password
     };
 
     for (const [key, value] of Object.entries(requiredFields)) {
@@ -70,7 +67,6 @@ export async function POST(req: Request) {
       }
     }
     
-    // ✅ NEW: Validate 'category' and 'subCategory' based on client logic
     if (!category) {
         return NextResponse.json(
             { success: false, message: "category is required." },
@@ -78,8 +74,6 @@ export async function POST(req: Request) {
         );
     }
 
-    // ⚠️ UPDATED: SubCategory is ONLY required if team is "Tech" AND category is "Developer"
-    // And, it must NOT be "N/A" (which the client uses as a placeholder for non-applicable)
     if (team === "Tech" && category === "Developer" && (!subCategory || subCategory === "N/A")) {
       return NextResponse.json(
         { success: false, message: "Sub-Category is required for Developer team." },
@@ -87,10 +81,6 @@ export async function POST(req: Request) {
       );
     }
     
-    // If subCategory is present but NOT applicable, ensure it's "N/A" (as per client logic)
-    // Otherwise, we'll strip the 'N/A' placeholder before saving to the DB.
-    
-    // 🔹 Validate formats
     if (!emailRegex.test(mailId))
       return NextResponse.json({ success: false, message: "Invalid email format." }, { status: 400 });
     if (!ifscRegex.test(ifscCode))
@@ -100,7 +90,6 @@ export async function POST(req: Request) {
     if (!accountRegex.test(accountNumber))
       return NextResponse.json({ success: false, message: "Account number must be 9-18 digits." }, { status: 400 });
 
-    // 🔹 Upload photo to S3
     let photoUrl = "";
     if (photoFile && photoFile.size > 0) {
       const arrayBuffer = await photoFile.arrayBuffer();
@@ -119,10 +108,10 @@ export async function POST(req: Request) {
       photoUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
     }
 
-    // 🔹 Connect DB
+    const hashedPassword = password; // await bcrypt.hash(password, 10); // USE REAL HASHING HERE
+
     await connectDB();
 
-    // 🔹 Duplicate checks
     const existingEmp = await Employee.findOne({
       $or: [{ empId: new RegExp(`^${empId}$`, "i") }, { mailId: new RegExp(`^${mailId}$`, "i") }],
     });
@@ -135,10 +124,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Email already registered." }, { status: 409 });
     }
 
-    // ✅ NEW: Clean up subCategory before saving (replace "N/A" with empty string)
     const finalSubCategory = (team === "Tech" && category === "Developer") ? subCategory : "";
     
-    // 🔹 Create new employee (include category/subCategory)
     const newEmployee = new Employee({
       empId,
       name,
@@ -147,13 +134,14 @@ export async function POST(req: Request) {
       joiningDate,
       team,
       category: category,
-      subCategory: finalSubCategory, // Use the cleaned value
+      subCategory: finalSubCategory, 
       department,
       phoneNumber,
       mailId,
       accountNumber,
       ifscCode,
       photo: photoUrl,
+      password: hashedPassword, // Store the HASHED password
     });
 
     await newEmployee.save();
@@ -165,7 +153,7 @@ export async function POST(req: Request) {
       photoUrl,
     });
   } catch (error: any) {
-    console.error("❌ Error adding employee:", error);
+    console.error("Error adding employee:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Internal Server Error" },
       { status: 500 }
