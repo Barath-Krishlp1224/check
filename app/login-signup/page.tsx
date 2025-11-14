@@ -136,8 +136,16 @@ export default function LoginSignupPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-80px)] pt-20 p-4">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] pt-20 p-4">
       
+      <div className="absolute top-0 left-0 p-6 z-30">
+        <img 
+          src="/logo hd.png" 
+          alt="Lemonpay Logo"
+          className="h-auto w-60 drop-shadow-lg" 
+        />
+      </div>
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl"></div>

@@ -42,9 +42,7 @@ export default function RootLayout({
         {/* Gradient Overlay */}
         <div
           className="fixed top-0 left-0 w-full h-full -z-10 opacity-90"
-          style={{
-            backgroundImage: "linear-gradient(to right, #0F2027, #203A43, #2C5364)",
-          }}
+         style={{ background: "linear-gradient(-12deg, #0F2027 73%, #203A43 50%, #2C5364 50%)" }}
         ></div>
 
         {/* Navbar */}
