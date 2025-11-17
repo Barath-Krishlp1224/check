@@ -74,9 +74,16 @@ export async function POST(req: Request) {
       );
     }
 
-    if (team === "Tech" && category === "Developer" && (!subCategory || subCategory === "N/A")) {
+    if (
+      team === "Tech" &&
+      category === "Developer" &&
+      (!subCategory || subCategory === "N/A")
+    ) {
       return NextResponse.json(
-        { success: false, message: "Sub-Category is required for Developer team." },
+        {
+          success: false,
+          message: "Sub-Category is required for Developer team.",
+        },
         { status: 400 }
       );
     }
@@ -101,7 +108,10 @@ export async function POST(req: Request) {
 
     if (!accountRegex.test(accountNumber))
       return NextResponse.json(
-        { success: false, message: "Account number must be 9-18 digits." },
+        {
+          success: false,
+          message: "Account number must be 9-18 digits.",
+        },
         { status: 400 }
       );
 
@@ -109,7 +119,10 @@ export async function POST(req: Request) {
     if (photoFile && photoFile.size > 0) {
       const arrayBuffer = await photoFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const fileName = `${empId}_${uuidv4()}_${photoFile.name.replace(/\s/g, "_")}`;
+      const fileName = `${empId}_${uuidv4()}_${photoFile.name.replace(
+        /\s/g,
+        "_"
+      )}`;
 
       await s3.send(
         new PutObjectCommand({
@@ -123,7 +136,6 @@ export async function POST(req: Request) {
       photoUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
     }
 
-    // 🔐 HASH PASSWORD HERE
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await connectDB();

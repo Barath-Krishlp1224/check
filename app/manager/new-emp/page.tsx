@@ -110,39 +110,62 @@ const SelectField: React.FC<SelectFieldProps> = ({
   </div>
 );
 
+// 🔧 Team → Category → SubCategory/Department structure
+const structure: Structure = {
+  // 1) Founders
+  Founders: {
+    Founders: ["Founder", "Co-Founder"],
+  },
+
+  // 2) Manager
+  Manager: {
+    Manager: ["Manager"],
+  },
+
+  // 3) TL-Reporting Manager
+  "TL-Reporting Manager": {
+    "TL-Reporting Manager": ["Team Lead", "Reporting Manager"],
+  },
+
+  // 4) HR
+  HR: {
+    HR: ["HR Executive", "HR Manager"],
+  },
+
+  // 5) Tech (same as before)
+  Tech: {
+    Developer: {
+      Frontend: ["Junior Frontend Developer", "Senior Frontend Developer"],
+      Backend: ["Junior Backend Developer", "Senior Backend Developer"],
+      "Full Stack": [
+        "Junior Full Stack Developer",
+        "Senior Full Stack Developer",
+      ],
+      "UI/UX Developer": ["UI/UX Developer"],
+    },
+    "IT Admin": ["IT Administrator"],
+    DevOps: ["Product Manager"],
+    Tester: ["QA Engineer – Manual & Automation"],
+    Designer: ["UI/UX Designer"],
+    "Team Leads": ["Project Manager"],
+  },
+
+  // 6) Accounts (as it is)
+  Accounts: {
+    Accountant: ["Accountant", "Senior Accountant"],
+  },
+
+  // 7) Admin & Operations (as it is)
+  "Admin & Operations": {
+    "Admin & Operations": ["Admin & Operations"],
+  },
+};
+
 const AddEmployeePage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
   const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
-
-  const structure: Structure = {
-    Tech: {
-      Developer: {
-        Frontend: ["Junior Frontend Developer", "Senior Frontend Developer"],
-        Backend: ["Junior Backend Developer", "Senior Backend Developer"],
-        "Full Stack": [
-          "Junior Full Stack Developer",
-          "Senior Full Stack Developer",
-        ],
-        "UI/UX Developer": ["UI/UX Developer"],
-      },
-      "IT Admin": ["IT Administrator"],
-      DevOps: ["Product Manager"],
-      Tester: ["QA Engineer – Manual & Automation"],
-      Designer: ["UI/UX Designer"],
-      "Team Leads": ["Project Manager"],
-    },
-    Accounts: {
-      Accountant: ["Accountant", "Senior Accountant"],
-    },
-    "Admin & Operations": {
-      "Admin & Operations": ["Admin & Operations"],
-    },
-    HR: {
-      HR: ["HR Executive", "HR Manager"],
-    },
-  };
 
   const steps = [
     { title: "Personal Info", fields: ["empId", "name", "fatherName", "dateOfBirth"] },
@@ -254,6 +277,7 @@ const AddEmployeePage: React.FC = () => {
     },
   });
 
+  // When TEAM changes → reset and load categories
   useEffect(() => {
     const { team } = formik.values;
     formik.setFieldValue("category", "");
@@ -269,6 +293,7 @@ const AddEmployeePage: React.FC = () => {
     setDepartmentOptions([]);
   }, [formik.values.team]);
 
+  // When CATEGORY changes → handle subCategory + department logic
   useEffect(() => {
     const { team, category } = formik.values;
     formik.setFieldValue("subCategory", "");
@@ -278,6 +303,7 @@ const AddEmployeePage: React.FC = () => {
       const teamData = structure[team];
       const categoryData = teamData[category];
 
+      // Only Tech → Developer has nested subCategories
       if (team === "Tech" && category === "Developer") {
         setSubCategoryOptions(Object.keys(categoryData as SubCategoryMap));
       } else {
@@ -296,6 +322,7 @@ const AddEmployeePage: React.FC = () => {
     }
   }, [formik.values.category, formik.values.team]);
 
+  // When SUBCATEGORY changes → load departments (only Tech → Developer)
   useEffect(() => {
     const { team, category, subCategory } = formik.values;
     formik.setFieldValue("department", "");
@@ -305,7 +332,7 @@ const AddEmployeePage: React.FC = () => {
       const categoryData = teamData[category] as SubCategoryMap;
       setDepartmentOptions(categoryData[subCategory] || []);
     }
-  }, [formik.values.subCategory]);
+  }, [formik.values.subCategory, formik.values.team, formik.values.category]);
 
   const inputBaseClass =
     "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gray-400 text-gray-900";
@@ -319,8 +346,10 @@ const AddEmployeePage: React.FC = () => {
   const validateStep = async (step: number) => {
     const fieldsToValidate = steps[step].fields;
     const errors = await formik.validateForm();
-    const stepErrors = fieldsToValidate.filter((field) => errors[field as keyof IFormValues]);
-    
+    const stepErrors = fieldsToValidate.filter(
+      (field) => errors[field as keyof IFormValues]
+    );
+
     fieldsToValidate.forEach((field) => {
       formik.setFieldTouched(field as keyof IFormValues, true);
     });
@@ -564,13 +593,16 @@ const AddEmployeePage: React.FC = () => {
                 name="photo"
                 accept=".png,.jpg,.jpeg"
                 onChange={(e) =>
-                  formik.setFieldValue("photo", e.currentTarget.files?.[0] || null)
+                  formik.setFieldValue(
+                    "photo",
+                    e.currentTarget.files?.[0] || null
+                  )
                 }
                 className={getInputClass("photo")}
               />
               {formik.touched.photo && formik.errors.photo && (
                 <p className="mt-1 text-sm text-red-500">
-                  {formik.errors.photo}
+                  {formik.errors.photo as string}
                 </p>
               )}
             </div>

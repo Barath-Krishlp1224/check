@@ -8,7 +8,14 @@ export interface IEmployee extends Document {
   fatherName: string;
   dateOfBirth: string;
   joiningDate: string;
-  team: "Tech" | "Accounts" | "HR" | "Admin & Operations";
+  team:
+    | "Founders"
+    | "Manager"
+    | "TL-Reporting Manager"
+    | "Tech"
+    | "Accounts"
+    | "HR"
+    | "Admin & Operations";
   category?: string;
   subCategory?: string;
   department: string;
@@ -17,8 +24,8 @@ export interface IEmployee extends Document {
   mailId: string;
   accountNumber: string;
   ifscCode: string;
-  password: string; // required, not optional
-  role: Role;       // NEW: role for routing
+  password: string;
+  role: Role;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -34,7 +41,15 @@ const EmployeeSchema = new Schema<IEmployee>(
     team: {
       type: String,
       required: true,
-      enum: ["Tech", "Accounts", "HR", "Admin & Operations"],
+      enum: [
+        "Founders",
+        "Manager",
+        "TL-Reporting Manager",
+        "Tech",
+        "Accounts",
+        "HR",
+        "Admin & Operations",
+      ],
       trim: true,
     },
 
@@ -43,6 +58,8 @@ const EmployeeSchema = new Schema<IEmployee>(
       trim: true,
       default: "",
       required: function (this: IEmployee) {
+        // Only strictly required for Tech in backend,
+        // but frontend will always send one for all teams.
         return this.team === "Tech";
       },
     },
@@ -74,7 +91,6 @@ const EmployeeSchema = new Schema<IEmployee>(
 
     password: { type: String, required: true },
 
-    // NEW: role for login redirect (defaults to Employee)
     role: {
       type: String,
       enum: ["Admin", "Manager", "TeamLead", "Employee"],
@@ -85,10 +101,12 @@ const EmployeeSchema = new Schema<IEmployee>(
   { timestamps: true }
 );
 
-// this line is a bit unusual but if you want it:
+// Avoid OverwriteModelError in dev
+// (you already had this style)
 delete (mongoose.models as any).Employee;
 
 const Employee: Model<IEmployee> =
-  mongoose.models.Employee || mongoose.model<IEmployee>("Employee", EmployeeSchema);
+  mongoose.models.Employee ||
+  mongoose.model<IEmployee>("Employee", EmployeeSchema);
 
 export default Employee;
