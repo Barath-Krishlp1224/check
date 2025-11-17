@@ -158,7 +158,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
           <div className="mb-8 border-b pb-6">
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">Task Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {renderField("Project Name", "project", "text")}
+              {renderField("Task Name", "project", "text")}
               {renderField("Assignee", "assigneeName", "select")}
               {renderField("Start Date", "startDate", "date")}
               {renderField("Due Date", "dueDate", "date")}

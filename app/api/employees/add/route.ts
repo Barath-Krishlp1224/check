@@ -3,7 +3,7 @@ import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
-// import bcrypt from "bcryptjs"; // You need to install and import bcryptjs
+import bcrypt from "bcryptjs";
 
 export const config = {
   api: { bodyParser: false },
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const joiningDate = data.get("joiningDate")?.toString() || "";
     const team = data.get("team")?.toString() || "";
     const category = data.get("category")?.toString().trim() || "";
-    const subCategory = data.get("subCategory")?.toString().trim() || ""; 
+    const subCategory = data.get("subCategory")?.toString().trim() || "";
     const department = data.get("department")?.toString() || "";
     const phoneNumber = data.get("phoneNumber")?.toString() || "";
     const mailId = data.get("mailId")?.toString().trim().toLowerCase() || "";
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     const photoFile = data.get("photo") as File | null;
 
-    const requiredFields = {
+    const requiredFields: Record<string, string> = {
       empId,
       name,
       fatherName,
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       mailId,
       accountNumber,
       ifscCode,
-      password
+      password,
     };
 
     for (const [key, value] of Object.entries(requiredFields)) {
@@ -66,12 +66,12 @@ export async function POST(req: Request) {
         );
       }
     }
-    
+
     if (!category) {
-        return NextResponse.json(
-            { success: false, message: "category is required." },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { success: false, message: "category is required." },
+        { status: 400 }
+      );
     }
 
     if (team === "Tech" && category === "Developer" && (!subCategory || subCategory === "N/A")) {
@@ -80,15 +80,30 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    
+
     if (!emailRegex.test(mailId))
-      return NextResponse.json({ success: false, message: "Invalid email format." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid email format." },
+        { status: 400 }
+      );
+
     if (!ifscRegex.test(ifscCode))
-      return NextResponse.json({ success: false, message: "Invalid IFSC format." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid IFSC format." },
+        { status: 400 }
+      );
+
     if (!phoneRegex.test(phoneNumber))
-      return NextResponse.json({ success: false, message: "Phone must be 10 digits." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Phone must be 10 digits." },
+        { status: 400 }
+      );
+
     if (!accountRegex.test(accountNumber))
-      return NextResponse.json({ success: false, message: "Account number must be 9-18 digits." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Account number must be 9-18 digits." },
+        { status: 400 }
+      );
 
     let photoUrl = "";
     if (photoFile && photoFile.size > 0) {
@@ -108,24 +123,37 @@ export async function POST(req: Request) {
       photoUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
     }
 
-    const hashedPassword = password; // await bcrypt.hash(password, 10); // USE REAL HASHING HERE
+    // 🔐 HASH PASSWORD HERE
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     await connectDB();
 
     const existingEmp = await Employee.findOne({
-      $or: [{ empId: new RegExp(`^${empId}$`, "i") }, { mailId: new RegExp(`^${mailId}$`, "i") }],
+      $or: [
+        { empId: new RegExp(`^${empId}$`, "i") },
+        { mailId: new RegExp(`^${mailId}$`, "i") },
+      ],
     });
 
     if (existingEmp) {
-      if (existingEmp.empId.toLowerCase() === empId.toLowerCase())
-        return NextResponse.json({ success: false, message: "Employee ID already exists." }, { status: 409 });
+      if (existingEmp.empId.toLowerCase() === empId.toLowerCase()) {
+        return NextResponse.json(
+          { success: false, message: "Employee ID already exists." },
+          { status: 409 }
+        );
+      }
 
-      if (existingEmp.mailId.toLowerCase() === mailId.toLowerCase())
-        return NextResponse.json({ success: false, message: "Email already registered." }, { status: 409 });
+      if (existingEmp.mailId.toLowerCase() === mailId.toLowerCase()) {
+        return NextResponse.json(
+          { success: false, message: "Email already registered." },
+          { status: 409 }
+        );
+      }
     }
 
-    const finalSubCategory = (team === "Tech" && category === "Developer") ? subCategory : "";
-    
+    const finalSubCategory =
+      team === "Tech" && category === "Developer" ? subCategory : "";
+
     const newEmployee = new Employee({
       empId,
       name,
@@ -133,15 +161,16 @@ export async function POST(req: Request) {
       dateOfBirth,
       joiningDate,
       team,
-      category: category,
-      subCategory: finalSubCategory, 
+      category,
+      subCategory: finalSubCategory,
       department,
       phoneNumber,
       mailId,
       accountNumber,
       ifscCode,
       photo: photoUrl,
-      password: hashedPassword, // Store the HASHED password
+      password: hashedPassword,
+      // role will default to "Employee" from schema
     });
 
     await newEmployee.save();

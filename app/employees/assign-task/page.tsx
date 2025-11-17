@@ -418,7 +418,7 @@ const TasksPage: React.FC = () => {
           const mainRow = {
               'Task ID': task.projectId,
               'Item Type': 'Task',
-              'Project Name': task.project,
+              'Task Name': task.project,
               'Main Assignee': task.assigneeName,
               'Start Date': task.startDate,
               'End Date': task.endDate || 'N/A',
@@ -441,7 +441,7 @@ const TasksPage: React.FC = () => {
           const subtaskRows = task.subtasks.map(sub => ({
               'Task ID': '', 
               'Item Type': 'Subtask',
-              'Project Name': `— ${task.project}`, 
+              'Task Name': `— ${task.project}`, 
               'Main Assignee': '', 
               'Start Date': '', 
               'End Date': '', 
@@ -513,8 +513,7 @@ const TasksPage: React.FC = () => {
 
   return (
  <div
-  className="min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8 backdrop-blur-xl border border-[#3A6073]/30 shadow-lg"
-  style={{ background: "linear-gradient(-173deg, #0F2027 73%, #203A43 50%, #2C5364 50%)" }}
+  className="min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8"
 >
       <div className="max-w-[1800px] mx-auto">
         

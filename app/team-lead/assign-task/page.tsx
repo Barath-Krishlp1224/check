@@ -397,7 +397,7 @@ const TasksPage: React.FC = () => {
           const mainRow = {
               'Task ID': task.projectId,
               'Item Type': 'Task',
-              'Project Name': task.project,
+              'Task Name': task.project,
               'Main Assignee': task.assigneeName,
               'Start Date': task.startDate,
               'End Date': task.endDate || 'N/A',
@@ -420,7 +420,7 @@ const TasksPage: React.FC = () => {
           const subtaskRows = task.subtasks.map(sub => ({
               'Task ID': '',
               'Item Type': 'Subtask',
-              'Project Name': `— ${task.project}`,
+              'Task Name': `— ${task.project}`,
               'Main Assignee': '',
               'Start Date': '',
               'End Date': '',

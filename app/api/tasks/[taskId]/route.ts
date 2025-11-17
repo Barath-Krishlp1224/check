@@ -108,7 +108,7 @@ export async function PUT(
                     {
                         "type": "section",
                         "fields": [
-                            { "type": "mrkdwn", "text": `*Project Name:*\n${updatedTask.project}` },
+                            { "type": "mrkdwn", "text": `*Task Name:*\n${updatedTask.project}` },
                             { "type": "mrkdwn", "text": `*Assignee:*\n${updatedTask.assigneeName}` },
                             { "type": "mrkdwn", "text": `*Completion:*\n${updatedTask.completion}%` },
                             { "type": "mrkdwn", "text": `*Due Date:*\n${updatedTask.dueDate}` },

@@ -279,7 +279,7 @@ const ViewTaskPage: React.FC = () => {
                       <option value="" disabled>Select Field</option>
                       <option value="empId">Employee ID</option>
                       {/* ❌ Removed 'Employee Name' option */}
-                      <option value="project">Project Name</option>
+                      <option value="project">Task Name</option>
                     </select>
                 </div>
                 

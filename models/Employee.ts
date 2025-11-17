@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
+
 export interface IEmployee extends Document {
   empId: string;
   name: string;
@@ -15,7 +17,8 @@ export interface IEmployee extends Document {
   mailId: string;
   accountNumber: string;
   ifscCode: string;
-  password?: string;
+  password: string; // required, not optional
+  role: Role;       // NEW: role for routing
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -27,6 +30,7 @@ const EmployeeSchema = new Schema<IEmployee>(
     fatherName: { type: String, required: true, trim: true },
     dateOfBirth: { type: String, required: true, trim: true },
     joiningDate: { type: String, required: true, trim: true },
+
     team: {
       type: String,
       required: true,
@@ -54,7 +58,9 @@ const EmployeeSchema = new Schema<IEmployee>(
 
     department: { type: String, required: true, trim: true },
     photo: { type: String, default: "" },
+
     phoneNumber: { type: String, required: true, trim: true },
+
     mailId: {
       type: String,
       required: true,
@@ -62,14 +68,25 @@ const EmployeeSchema = new Schema<IEmployee>(
       lowercase: true,
       trim: true,
     },
+
     accountNumber: { type: String, required: true, trim: true },
     ifscCode: { type: String, required: true, trim: true },
+
     password: { type: String, required: true },
+
+    // NEW: role for login redirect (defaults to Employee)
+    role: {
+      type: String,
+      enum: ["Admin", "Manager", "TeamLead", "Employee"],
+      default: "Employee",
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
-delete mongoose.models.Employee;
+// this line is a bit unusual but if you want it:
+delete (mongoose.models as any).Employee;
 
 const Employee: Model<IEmployee> =
   mongoose.models.Employee || mongoose.model<IEmployee>("Employee", EmployeeSchema);
