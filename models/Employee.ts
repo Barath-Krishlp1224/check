@@ -12,6 +12,7 @@ export interface IEmployee extends Document {
     | "Founders"
     | "Manager"
     | "TL-Reporting Manager"
+    | "IT Admin"
     | "Tech"
     | "Accounts"
     | "HR"
@@ -45,6 +46,7 @@ const EmployeeSchema = new Schema<IEmployee>(
         "Founders",
         "Manager",
         "TL-Reporting Manager",
+        "IT Admin",
         "Tech",
         "Accounts",
         "HR",
@@ -58,8 +60,7 @@ const EmployeeSchema = new Schema<IEmployee>(
       trim: true,
       default: "",
       required: function (this: IEmployee) {
-        // Only strictly required for Tech in backend,
-        // but frontend will always send one for all teams.
+        // Strictly required only for Tech in backend.
         return this.team === "Tech";
       },
     },
@@ -101,8 +102,7 @@ const EmployeeSchema = new Schema<IEmployee>(
   { timestamps: true }
 );
 
-// Avoid OverwriteModelError in dev
-// (you already had this style)
+// avoid overwrite errors in dev
 delete (mongoose.models as any).Employee;
 
 const Employee: Model<IEmployee> =

@@ -8,22 +8,32 @@ export async function GET() {
 
     const [
       totalEmployees,
+      foundersTeamCount,
+      managerTeamCount,
+      tlReportingManagerTeamCount,
+      itAdminTeamCount,
       techTeamCount,
       accountsTeamCount,
       adminOpsTeamCount,
-      hrTeamCount 
+      hrTeamCount,
     ] = await Promise.all([
-      Employee.countDocuments(),
-      Employee.countDocuments({ team: "Tech" }),
-      Employee.countDocuments({ team: "Accounts" }),
-      // CORRECTED: Use the exact string "Admin & Operations" as defined in the schema/frontend
-      Employee.countDocuments({ team: "Admin & Operations" }), 
-      // CORRECTED: Use the exact string "HR"
-      Employee.countDocuments({ team: "HR" }) 
+      Employee.countDocuments(),                              // total
+      Employee.countDocuments({ team: "Founders" }),          // Founders
+      Employee.countDocuments({ team: "Manager" }),           // Manager
+      Employee.countDocuments({ team: "TL-Reporting Manager" }), // TL-Reporting Manager
+      Employee.countDocuments({ team: "IT Admin" }),          // IT Admin
+      Employee.countDocuments({ team: "Tech" }),              // Tech
+      Employee.countDocuments({ team: "Accounts" }),          // Accounts
+      Employee.countDocuments({ team: "Admin & Operations" }),// Admin & Ops
+      Employee.countDocuments({ team: "HR" }),                // HR
     ]);
 
     return NextResponse.json({
       totalEmployees,
+      foundersTeamCount,
+      managerTeamCount,
+      tlReportingManagerTeamCount,
+      itAdminTeamCount,
       techTeamCount,
       accountsTeamCount,
       adminOpsTeamCount,
@@ -31,6 +41,9 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("Error fetching employee stats:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
+      { status: 500 }
+    );
   }
-} 
+}

@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 
+type Team =
+  | "Founders"
+  | "Manager"
+  | "TL-Reporting Manager"
+  | "IT Admin"
+  | "Tech"
+  | "Accounts"
+  | "HR"
+  | "Admin & Operations";
+
 export default function LoginPage() {
   const [form, setForm] = useState({
     empId: "",
@@ -48,28 +58,60 @@ export default function LoginPage() {
         return;
       }
 
-      alert(data.message);
+      alert(data.message || "Login successful");
 
       if (data.user && data.user.role && data.user.empId) {
         const userRole = data.user.role as Role;
+        const userEmpId = data.user.empId as string;
+        const userName = data.user.name as string | undefined;
+        const userTeam = data.user.team as Team | undefined;
 
         localStorage.setItem("userRole", userRole);
-        localStorage.setItem("userEmpId", data.user.empId);
+        localStorage.setItem("userEmpId", userEmpId);
 
-        if (data.user.name) {
-          localStorage.setItem("userName", data.user.name);
+        if (userName) {
+          localStorage.setItem("userName", userName);
         }
 
+        if (userTeam) {
+          localStorage.setItem("userTeam", userTeam);
+        }
+
+        // Role-based + team-based routing
         if (userRole === "Admin") {
           router.push("/admin");
         } else if (userRole === "Manager") {
           router.push("/manager");
         } else if (userRole === "TeamLead") {
           router.push("/team-lead");
-        } else if (userRole === "Employee") {
-          router.push("/employees");
         } else {
-          router.push("/home");
+          // Employee → route by team
+          switch (userTeam) {
+            case "HR":
+              router.push("/hr");
+              break;
+            case "Accounts":
+              router.push("/accounts");
+              break;
+            case "Admin & Operations":
+              router.push("/admin-operations");
+              break;
+            case "Tech":
+              router.push("/employees"); // or "/tech"
+              break;
+            case "IT Admin":
+              router.push("/it-admin");
+              break;
+            case "Founders":
+              router.push("/founders");
+              break;
+            case "Manager":
+            case "TL-Reporting Manager":
+              router.push("/manager");
+              break;
+            default:
+              router.push("/home");
+          }
         }
       } else {
         setError(

@@ -132,7 +132,7 @@ const structure: Structure = {
     HR: ["HR Executive", "HR Manager"],
   },
 
-  // 5) Tech (same as before)
+  // 5) Tech
   Tech: {
     Developer: {
       Frontend: ["Junior Frontend Developer", "Senior Frontend Developer"],
@@ -143,19 +143,24 @@ const structure: Structure = {
       ],
       "UI/UX Developer": ["UI/UX Developer"],
     },
-    "IT Admin": ["IT Administrator"],
+    // ❌ IT Admin removed from here
     DevOps: ["Product Manager"],
     Tester: ["QA Engineer – Manual & Automation"],
     Designer: ["UI/UX Designer"],
     "Team Leads": ["Project Manager"],
   },
 
-  // 6) Accounts (as it is)
+  // 6) IT Admin (now separate like Founders, Manager, Accounts)
+  "IT Admin": {
+    "IT Admin": ["IT Administrator"],
+  },
+
+  // 7) Accounts
   Accounts: {
     Accountant: ["Accountant", "Senior Accountant"],
   },
 
-  // 7) Admin & Operations (as it is)
+  // 8) Admin & Operations
   "Admin & Operations": {
     "Admin & Operations": ["Admin & Operations"],
   },
