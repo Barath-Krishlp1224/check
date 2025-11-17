@@ -26,6 +26,18 @@ export interface IEmployee extends Document {
   accountNumber: string;
   ifscCode: string;
   password: string;
+
+  // 🔹 NEW FIELDS
+  employmentType: "Fresher" | "Experienced";
+  aadharNumber: string;
+  panNumber: string;
+  aadharDoc?: string;
+  panDoc?: string;
+  tenthMarksheet?: string;
+  twelfthMarksheet?: string;
+  provisionalCertificate?: string;
+  experienceCertificate?: string;
+
   role: Role;
   createdAt?: Date;
   updatedAt?: Date;
@@ -60,7 +72,6 @@ const EmployeeSchema = new Schema<IEmployee>(
       trim: true,
       default: "",
       required: function (this: IEmployee) {
-        // Strictly required only for Tech in backend.
         return this.team === "Tech";
       },
     },
@@ -91,6 +102,22 @@ const EmployeeSchema = new Schema<IEmployee>(
     ifscCode: { type: String, required: true, trim: true },
 
     password: { type: String, required: true },
+
+    employmentType: {
+      type: String,
+      enum: ["Fresher", "Experienced"],
+      required: true,
+    },
+
+    aadharNumber: { type: String, required: true, trim: true },
+    panNumber: { type: String, required: true, trim: true },
+
+    aadharDoc: { type: String, default: "" },
+    panDoc: { type: String, default: "" },
+    tenthMarksheet: { type: String, default: "" },
+    twelfthMarksheet: { type: String, default: "" },
+    provisionalCertificate: { type: String, default: "" },
+    experienceCertificate: { type: String, default: "" },
 
     role: {
       type: String,

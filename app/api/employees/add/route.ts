@@ -21,6 +21,28 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 const phoneRegex = /^[0-9]{10}$/;
 const accountRegex = /^[0-9]{9,18}$/;
+const aadharRegex = /^[0-9]{12}$/;
+const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+async function uploadToS3(file: File, empId: string, label: string) {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const fileName = `${empId}_${label}_${uuidv4()}_${file.name.replace(
+    /\s/g,
+    "_"
+  )}`;
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: process.env.S3_BUCKET_NAME!,
+      Key: fileName,
+      Body: buffer,
+      ContentType: file.type,
+    })
+  );
+
+  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
+}
 
 export async function POST(req: Request) {
   try {
@@ -38,10 +60,25 @@ export async function POST(req: Request) {
     const phoneNumber = data.get("phoneNumber")?.toString() || "";
     const mailId = data.get("mailId")?.toString().trim().toLowerCase() || "";
     const accountNumber = data.get("accountNumber")?.toString() || "";
-    const ifscCode = data.get("ifscCode")?.toString().trim().toUpperCase() || "";
+    const ifscCode =
+      data.get("ifscCode")?.toString().trim().toUpperCase() || "";
     const password = data.get("password")?.toString() || "";
 
+    const employmentType = data.get("employmentType")?.toString() || "";
+    const aadharNumber = data.get("aadharNumber")?.toString().trim() || "";
+    const panNumber = data.get("panNumber")?.toString().trim().toUpperCase() || "";
+
     const photoFile = data.get("photo") as File | null;
+    const aadharFile = data.get("aadharFile") as File | null;
+    const panFile = data.get("panFile") as File | null;
+    const tenthMarksheet = data.get("tenthMarksheet") as File | null;
+    const twelfthMarksheet = data.get("twelfthMarksheet") as File | null;
+    const provisionalCertificate = data.get(
+      "provisionalCertificate"
+    ) as File | null;
+    const experienceCertificate = data.get(
+      "experienceCertificate"
+    ) as File | null;
 
     const requiredFields: Record<string, string> = {
       empId,
@@ -56,6 +93,9 @@ export async function POST(req: Request) {
       accountNumber,
       ifscCode,
       password,
+      employmentType,
+      aadharNumber,
+      panNumber,
     };
 
     for (const [key, value] of Object.entries(requiredFields)) {
@@ -65,6 +105,13 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
+    }
+
+    if (!["Fresher", "Experienced"].includes(employmentType)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid employment type." },
+        { status: 400 }
+      );
     }
 
     if (!category) {
@@ -115,25 +162,110 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    let photoUrl = "";
-    if (photoFile && photoFile.size > 0) {
-      const arrayBuffer = await photoFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const fileName = `${empId}_${uuidv4()}_${photoFile.name.replace(
-        /\s/g,
-        "_"
-      )}`;
-
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: process.env.S3_BUCKET_NAME!,
-          Key: fileName,
-          Body: buffer,
-          ContentType: photoFile.type,
-        })
+    if (!aadharRegex.test(aadharNumber))
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Aadhar number must be 12 digits.",
+        },
+        { status: 400 }
       );
 
-      photoUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
+    if (!panRegex.test(panNumber))
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid PAN format (e.g., ABCDE1234F).",
+        },
+        { status: 400 }
+      );
+
+    // Docs presence checks
+    if (!aadharFile || aadharFile.size === 0) {
+      return NextResponse.json(
+        { success: false, message: "Aadhar document is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!panFile || panFile.size === 0) {
+      return NextResponse.json(
+        { success: false, message: "PAN document is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!tenthMarksheet || tenthMarksheet.size === 0) {
+      return NextResponse.json(
+        { success: false, message: "10th marksheet is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!twelfthMarksheet || twelfthMarksheet.size === 0) {
+      return NextResponse.json(
+        { success: false, message: "12th marksheet is required." },
+        { status: 400 }
+      );
+    }
+
+    if (employmentType === "Fresher") {
+      if (!provisionalCertificate || provisionalCertificate.size === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Provisional certificate is required for fresher.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (employmentType === "Experienced") {
+      if (!experienceCertificate || experienceCertificate.size === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Experience certificate is required for experienced candidates.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Upload files to S3
+    let photoUrl = "";
+    let aadharDocUrl = "";
+    let panDocUrl = "";
+    let tenthUrl = "";
+    let twelfthUrl = "";
+    let provisionalUrl = "";
+    let experienceUrl = "";
+
+    if (photoFile && photoFile.size > 0) {
+      photoUrl = await uploadToS3(photoFile, empId, "photo");
+    }
+
+    aadharDocUrl = await uploadToS3(aadharFile, empId, "aadhar");
+    panDocUrl = await uploadToS3(panFile, empId, "pan");
+    tenthUrl = await uploadToS3(tenthMarksheet, empId, "10th");
+    twelfthUrl = await uploadToS3(twelfthMarksheet, empId, "12th");
+
+    if (employmentType === "Fresher" && provisionalCertificate) {
+      provisionalUrl = await uploadToS3(
+        provisionalCertificate,
+        empId,
+        "provisional"
+      );
+    }
+
+    if (employmentType === "Experienced" && experienceCertificate) {
+      experienceUrl = await uploadToS3(
+        experienceCertificate,
+        empId,
+        "experience"
+      );
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -182,7 +314,16 @@ export async function POST(req: Request) {
       ifscCode,
       photo: photoUrl,
       password: hashedPassword,
-      // role will default to "Employee" from schema
+      employmentType,
+      aadharNumber,
+      panNumber,
+      aadharDoc: aadharDocUrl,
+      panDoc: panDocUrl,
+      tenthMarksheet: tenthUrl,
+      twelfthMarksheet: twelfthUrl,
+      provisionalCertificate: provisionalUrl,
+      experienceCertificate: experienceUrl,
+      // role defaults to Employee in schema
     });
 
     await newEmployee.save();
