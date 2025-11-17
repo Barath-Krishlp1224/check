@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, Play, LogOut } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, LogOut } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 import TaskTableHeader from "./components/TaskTableHeader";
@@ -467,7 +467,6 @@ const TasksPage: React.FC = () => {
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
-        // In a real application, you would also clear authentication tokens here
         router.push('/');
     }
   };

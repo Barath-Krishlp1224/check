@@ -93,8 +93,6 @@ const Navbar: React.FC = () => {
             {/* Notification Button (Bell Icon) */}
             <button className="relative p-2 hover:bg-white/10 rounded-lg transition-all duration-200">
               {/* Notification Badge */}
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              
               <div className="relative w-6 h-6">
                 <Image
                   src="/bell.png" // Replace with the actual path to your bell icon
