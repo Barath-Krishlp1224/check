@@ -2,7 +2,7 @@
 import { Schema, model, models } from "mongoose";
 
 const SubtaskSchema = new Schema({
-  id: { type: String }, // optional frontend ID
+  id: { type: String },
   title: { type: String, required: true },
   status: { type: String, default: "Pending" },
   completion: { type: Number, default: 0 },
@@ -20,11 +20,11 @@ const TaskSchema = new Schema(
     assigneeName: { type: String, required: true },
     project: { type: String, required: true },
 
-    // 🔹 Department: Tech or Accounts
+    // 🔹 Single, unique department field
     department: {
       type: String,
       enum: ["Tech", "Accounts"],
-      required: true,
+      required: false, // set true if all docs have it
     },
 
     remarks: { type: String },
@@ -32,16 +32,17 @@ const TaskSchema = new Schema(
     endDate: { type: String },
     dueDate: { type: String },
 
-    // 🔹 Default aligned with frontend
     status: { type: String, default: "Backlog" },
-
     completion: { type: Number, default: 0, min: 0, max: 100 },
 
     subtasks: [SubtaskSchema],
+
+    // 🔹 Notification flags (only defined once each)
+    dueReminderSent: { type: Boolean, default: false },
+    overdueNotified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 const Task = models.Task || model("Task", TaskSchema);
-
 export default Task;

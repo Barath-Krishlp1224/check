@@ -41,6 +41,9 @@ export interface Task {
     | string;
   remarks?: string;
   subtasks?: Subtask[];
+
+  // Optional, if you have department in the DB:
+  department?: "Tech" | "Accounts" | string;
 }
 
 export interface Employee {
@@ -104,7 +107,24 @@ const TasksPage: React.FC = () => {
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) setEmployees(data.employees);
+    } catch (err) {}
+  };
+
+  // 🔹 NEW: trigger due-date Slack reminders (2 days before + overdue)
+  const triggerDueDateNotifications = async () => {
+    try {
+      const url = getApiUrl("/api/tasks/reminders");
+      const res = await fetch(url, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        console.warn("Reminders job failed:", data.error || "Unknown error");
+      } else {
+        console.log(
+          `Reminders job done. 2-day reminders: ${data.remindersSent}, overdue alerts: ${data.overdueAlertsSent}`
+        );
+      }
     } catch (err) {
+      console.warn("Error calling reminders API:", err);
     }
   };
 
@@ -127,6 +147,8 @@ const TasksPage: React.FC = () => {
       setLoading(true);
       setError("");
       await Promise.all([fetchTasks(), fetchEmployees()]);
+      // 🔹 After tasks are loaded, trigger due date notifications
+      await triggerDueDateNotifications();
       setLoading(false);
     };
     init();
