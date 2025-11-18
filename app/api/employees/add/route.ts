@@ -27,21 +27,23 @@ const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 async function uploadToS3(file: File, empId: string, label: string) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const fileName = `${empId}_${label}_${uuidv4()}_${file.name.replace(
-    /\s/g,
-    "_"
-  )}`;
+
+  const cleanName = file.name.replace(/\s/g, "_");
+
+  const fileName = `${label}_${uuidv4()}_${cleanName}`;
+
+  const key = `Onboarding Documentation's/${empId}/${fileName}`;
 
   await s3.send(
     new PutObjectCommand({
       Bucket: process.env.S3_BUCKET_NAME!,
-      Key: fileName,
+      Key: key,
       Body: buffer,
       ContentType: file.type,
     })
   );
 
-  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
+  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`;
 }
 
 export async function POST(req: Request) {
@@ -66,7 +68,8 @@ export async function POST(req: Request) {
 
     const employmentType = data.get("employmentType")?.toString() || "";
     const aadharNumber = data.get("aadharNumber")?.toString().trim() || "";
-    const panNumber = data.get("panNumber")?.toString().trim().toUpperCase() || "";
+    const panNumber =
+      data.get("panNumber")?.toString().trim().toUpperCase() || "";
 
     const photoFile = data.get("photo") as File | null;
     const aadharFile = data.get("aadharFile") as File | null;
@@ -180,7 +183,6 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    // Docs presence checks
     if (!aadharFile || aadharFile.size === 0) {
       return NextResponse.json(
         { success: false, message: "Aadhar document is required." },
@@ -234,7 +236,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Upload files to S3
     let photoUrl = "";
     let aadharDocUrl = "";
     let panDocUrl = "";
@@ -323,7 +324,6 @@ export async function POST(req: Request) {
       twelfthMarksheet: twelfthUrl,
       provisionalCertificate: provisionalUrl,
       experienceCertificate: experienceUrl,
-      // role defaults to Employee in schema
     });
 
     await newEmployee.save();

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, CheckSquare, BarChart3 } from "lucide-react";
+import { Users, CheckSquare, BarChart3, Plus, Minus } from "lucide-react";
 
 interface EmployeeStats {
   totalEmployees: number;
@@ -31,6 +31,8 @@ export default function AdminPage() {
   const [hoveredStat, setHoveredStat] = useState<string | null>(null);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [isStaffCountOpen, setIsStaffCountOpen] = useState(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
   useEffect(() => {
     setLoaded(true);
@@ -98,11 +100,21 @@ export default function AdminPage() {
     },
   ];
 
+  const firstColumnCards = statsCards.slice(0, 5);
+  const secondColumnCards = statsCards.slice(5);
+
+  const toggleStaffCount = () => {
+    setIsStaffCountOpen(!isStaffCountOpen);
+  };
+
+  const toggleQuickActions = () => {
+    setIsQuickActionsOpen(!isQuickActionsOpen);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header Section */}
           <div
             className={`mb-8 transition-all duration-1000 ${
               loaded ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-8"
@@ -116,9 +128,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Staff Count and Quick Actions - Side by Side */}
           <div className="flex gap-8">
-            {/* Staff Count Section - Left Side */}
             <div className="flex-shrink-0">
               <div
                 className={`transition-all duration-1000 ${
@@ -127,60 +137,114 @@ export default function AdminPage() {
                     : "opacity-0 translate-y-8"
                 }`}
               >
-                {/* Header */}
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold text-white">Staff Count</h2>
-                  <div className="w-16 h-1 bg-blue-600 rounded-full mt-2"></div>
+                {/* Staff Count Header with Dropdown Toggle - Updated */}
+                <div
+                  className="mb-4 flex items-center gap-3 cursor-pointer group w-full"
+                  onClick={toggleStaffCount}
+                >
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-bold text-white">Staff Count</h2>
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                      {isStaffCountOpen ? (
+                        <Minus className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <Plus className="w-5 h-5 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+                  
                 </div>
 
-                {/* Stats Grid - Vertical list */}
-                <div className="flex flex-col gap-4">
-                  {statsCards.map((card, index) => (
-                    <div
-                      key={card.label}
-                      className={`w-70 relative group transition-all duration-500 hover:scale-[1.03] ${
-                        loaded
-                          ? "opacity-100 scale-100"
-                          : "opacity-0 scale-95"
-                      }`}
-                      style={{
-                        transitionDelay: `${index * 100}ms`,
-                      }}
-                      onMouseEnter={() => setHoveredStat(card.label)}
-                      onMouseLeave={() => setHoveredStat(null)}
-                    >
-                      <div className="rounded-xl p-4 border-2 transition-all duration-300 bg-white shadow-sm">
-                        <div className="flex items-center justify-between gap-4">
-                          {/* Label and Value */}
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-gray-900 text-sm font-bold">
-                              {card.label}:
-                            </p>
-                            <p className="text-2xl text-black font-bold transition-all duration-300">
-                              {card.value}
-                            </p>
-                          </div>
+                <div
+                  className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                    isStaffCountOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex flex-col gap-4">
+                      {firstColumnCards.map((card, index) => (
+                        <div
+                          key={card.label}
+                          className={`w-70 relative group transition-all duration-500 hover:scale-[1.03] ${
+                            loaded && isStaffCountOpen
+                              ? "opacity-100 scale-100"
+                              : "opacity-0 scale-95"
+                          }`}
+                          style={{
+                            transitionDelay: isStaffCountOpen ? `${index * 100}ms` : '0ms',
+                          }}
+                          onMouseEnter={() => setHoveredStat(card.label)}
+                          onMouseLeave={() => setHoveredStat(null)}
+                        >
+                          <div className="rounded-xl p-4 border-2 transition-all duration-300 bg-white shadow-sm">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-baseline gap-2">
+                                <p className="text-gray-900 text-sm font-bold">
+                                  {card.label}:
+                                </p>
+                                <p className="text-2xl text-black font-bold transition-all duration-300">
+                                  {card.value}
+                                </p>
+                              </div>
 
-                          {/* PNG Icon */}
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300">
-                            <img
-                              src={card.icon}
-                              alt={card.label}
-                              className="w-12 h-12 object-contain"
-                            />
+                              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                                <img
+                                  src={card.icon}
+                                  alt={card.label}
+                                  className="w-12 h-12 object-contain"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+
+                    <div className="flex flex-col gap-4">
+                      {secondColumnCards.map((card, index) => (
+                        <div
+                          key={card.label}
+                          className={`w-70 relative group transition-all duration-500 hover:scale-[1.03] ${
+                            loaded && isStaffCountOpen
+                              ? "opacity-100 scale-100"
+                              : "opacity-0 scale-95"
+                          }`}
+                          style={{
+                            transitionDelay: isStaffCountOpen ? `${(index + 5) * 100}ms` : '0ms',
+                          }}
+                          onMouseEnter={() => setHoveredStat(card.label)}
+                          onMouseLeave={() => setHoveredStat(null)}
+                        >
+                          <div className="rounded-xl p-4 border-2 transition-all duration-300 bg-white shadow-sm">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-baseline gap-2">
+                                <p className="text-gray-900 text-sm font-bold">
+                                  {card.label}:
+                                </p>
+                                <p className="text-2xl text-black font-bold transition-all duration-300">
+                                  {card.value}
+                                </p>
+                              </div>
+
+                              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                                <img
+                                  src={card.icon}
+                                  alt={card.label}
+                                  className="w-12 h-12 object-contain"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Vertical Separator */}
             <div className="w-1 bg-white opacity-50 rounded-full"></div>
 
-            {/* Action Buttons Section - Right Side */}
             <div className="flex-shrink-0">
               <div
                 className={`transition-all duration-1000 delay-500 ${
@@ -189,78 +253,114 @@ export default function AdminPage() {
                     : "opacity-0 translate-y-8"
                 }`}
               >
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold text-white">
-                    Quick Actions
-                  </h2>
-                  <div className="w-16 h-1 bg-blue-600 rounded-full mt-2"></div>
+                {/* Quick Actions Header with Dropdown Toggle - Updated */}
+                <div
+                  className="mb-4 flex items-center gap-3 cursor-pointer group w-full"
+                  onClick={toggleQuickActions}
+                >
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-bold text-white">
+                      Quick Actions
+                    </h2>
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                      {isQuickActionsOpen ? (
+                        <Minus className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <Plus className="w-5 h-5 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+                  
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  {/* View Employee List Button */}
-                  <a href="/admin/view-emp" className="group">
-                    <div
-                      className="w-60 relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05]"
-                      onMouseEnter={() => setHoveredButton("view")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
-                          <Users className="w-6 h-6 transition-all duration-300 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
-                            View Employee List
-                          </h3>
+                <div
+                  className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                    isQuickActionsOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="flex flex-col gap-4">
+                    <a href="/admin/view-emp" className="group">
+                      <div
+                        className={`w-60 relative p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05] ${
+                          loaded && isQuickActionsOpen
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-95"
+                        }`}
+                        style={{
+                          transitionDelay: isQuickActionsOpen ? '0ms' : '0ms',
+                        }}
+                        onMouseEnter={() => setHoveredButton("view")}
+                        onMouseLeave={() => setHoveredButton(null)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
+                            <Users className="w-6 h-6 transition-all duration-300 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-sm">
+                              View Employee List
+                            </h3>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </a>
+                    </a>
 
-                  {/* View Employee Tasks Button */}
-                  <a href="/view-task" className="group">
-                    <div
-                      className="w-60 relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05]"
-                      onMouseEnter={() => setHoveredButton("tasks")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
-                          <CheckSquare className="w-6 h-6 transition-all duration-300 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
-                            View Employee Tasks
-                          </h3>
+                    <a href="/view-task" className="group">
+                      <div
+                        className={`w-60 relative p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05] ${
+                          loaded && isQuickActionsOpen
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-95"
+                        }`}
+                        style={{
+                          transitionDelay: isQuickActionsOpen ? '100ms' : '0ms',
+                        }}
+                        onMouseEnter={() => setHoveredButton("tasks")}
+                        onMouseLeave={() => setHoveredButton(null)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
+                            <CheckSquare className="w-6 h-6 transition-all duration-300 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-sm">
+                              View Employee Tasks
+                            </h3>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </a>
+                    </a>
 
-                  {/* View Employee Performance Button */}
-                  <a href="/employeetasks" className="group">
-                    <div
-                      className="w-60 relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05]"
-                      onMouseEnter={() => setHoveredButton("performance")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
-                          <BarChart3 className="w-6 h-6 transition-all duration-300 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
-                            View Performance
-                          </h3>
+                    <a href="/employeetasks" className="group">
+                      <div
+                        className={`w-60 relative p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05] ${
+                          loaded && isQuickActionsOpen
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-95"
+                        }`}
+                        style={{
+                          transitionDelay: isQuickActionsOpen ? '200ms' : '0ms',
+                        }}
+                        onMouseEnter={() => setHoveredButton("performance")}
+                        onMouseLeave={() => setHoveredButton(null)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
+                            <BarChart3 className="w-6 h-6 transition-all duration-300 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-sm">
+                              View Performance
+                            </h3>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </a>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Vertical Separator (if you want it) */}
             <div className="w-1 bg-white opacity-50 rounded-full"></div>
           </div>
         </div>
