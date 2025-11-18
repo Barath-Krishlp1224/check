@@ -122,10 +122,10 @@ const ManagerDashboard: React.FC = () => {
   ];
 
   // Action Handlers
-  const handleViewEmployees = () => router.push("/manager/view-list");
-  const handleAddEmployee = () => router.push("/manager/new-emp");
-  const handleViewEmployeeTasks = () => router.push("/view-task");
-  const handleViewPerformance = () => router.push("/employeetasks");
+  const handleViewEmployees = () => router.push("/components/manager/view-list");
+  const handleAddEmployee = () => router.push("/components/manager/new-emp");
+  const handleViewEmployeeTasks = () => router.push("/components/view-task");
+  const handleViewPerformance = () => router.push("/components/employeetasks");
 
   // Quick Action cards
   const actionCards = [

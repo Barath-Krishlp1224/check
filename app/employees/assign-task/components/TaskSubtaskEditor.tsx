@@ -1,6 +1,9 @@
 import React from "react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Subtask, Employee } from "../page"; 
+
+// --- PROP INTERFACES ---
+// This interface MUST be unique and only contain the props needed by the editor.
 interface TaskSubtaskEditorProps {
   subtasks: Subtask[];
   employees: Employee[];
@@ -9,7 +12,9 @@ interface TaskSubtaskEditorProps {
   addSubtask: () => void;
   removeSubtask: (index: number) => void;
 }
-const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({ 
+
+// --- COMPONENT ---
+const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({ // Uses the correct, simple interface
   subtasks,
   employees,
   currentProjectPrefix,
@@ -127,4 +132,5 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
     </div>
   </div>
 );
+
 export default TaskSubtaskEditor;

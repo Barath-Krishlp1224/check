@@ -79,6 +79,8 @@ export default function LoginPage() {
             router.push("/components/founders");
             break;
           case "Manager":
+            router.push("/components/manager");
+            break;
           case "TL-Reporting Manager":
             router.push("/components/team-lead");
             break;

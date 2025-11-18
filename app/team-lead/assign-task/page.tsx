@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -27,18 +27,7 @@ export interface Task {
   endDate?: string;
   dueDate: string;
   completion: number;
-  status:
-    | "Backlog"
-    | "In Progress"
-    | "Dev Review"
-    | "Deployed in QA"
-    | "Test In Progress"
-    | "QA Sign Off"
-    | "Deployment Stage"
-    | "Pilot Test"
-    | "Completed"
-    | "Paused"
-    | string;
+  status: "Backlog" | "In Progress" | "Dev Review" | "Deployed in QA" | "Test In Progress" | "QA Sign Off" | "Deployment Stage" | "Pilot Test" | "Completed" | "Paused" | string;
   remarks?: string;
   subtasks?: Subtask[];
 }
@@ -50,8 +39,6 @@ export interface Employee {
 
 export type ViewType = "card" | "board";
 
-type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
-
 const TasksPage: React.FC = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -62,9 +49,7 @@ const TasksPage: React.FC = () => {
   const [viewType, setViewType] = useState<ViewType>("card");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(
-    null
-  );
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [draftTask, setDraftTask] = useState<Partial<Task>>({});
@@ -74,9 +59,6 @@ const TasksPage: React.FC = () => {
   const [downloadFilterType, setDownloadFilterType] = useState<string>("all");
   const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
-
-  const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string>("");
 
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
@@ -109,19 +91,11 @@ const TasksPage: React.FC = () => {
   };
 
   useEffect(() => {
-    import("xlsx")
-      .then((XLSX) => {
+    import('xlsx').then(XLSX => {
         (window as any).XLSX = XLSX;
         setXlsxLoaded(true);
-      })
-      .catch(() => {});
-
-    if (typeof window !== "undefined") {
-      const role = (localStorage.getItem("userRole") || "") as Role;
-      const name = localStorage.getItem("userName") || "";
-      setCurrentUserRole(role || null);
-      setCurrentUserName(name);
-    }
+    }).catch(err => {
+    });
 
     const init = async () => {
       setLoading(true);
@@ -132,30 +106,20 @@ const TasksPage: React.FC = () => {
     init();
   }, []);
 
-  const visibleTasks = useMemo(() => {
-    if (currentUserRole === "Employee" && currentUserName.trim()) {
-      const nameLower = currentUserName.toLowerCase();
-      return tasks.filter(
-        (task) => task.assigneeName?.toLowerCase() === nameLower
-      );
-    }
-    return tasks;
-  }, [tasks, currentUserRole, currentUserName]);
-
   const uniqueProjects = useMemo(() => {
-    const projectNames = visibleTasks.map((task) => task.project).filter(Boolean);
+    const projectNames = tasks.map(task => task.project).filter(Boolean);
     return Array.from(new Set(projectNames));
-  }, [visibleTasks]);
+  }, [tasks]);
 
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
 
     if (filter === "all" || !value) {
-      return visibleTasks;
+      return tasks;
     }
 
-    return visibleTasks.filter((task) => {
+    return tasks.filter(task => {
       switch (filter) {
         case "project":
           return task.project.toLowerCase() === value;
@@ -185,7 +149,7 @@ const TasksPage: React.FC = () => {
           return true;
       }
     });
-  }, [visibleTasks, downloadFilterType, downloadFilterValue]);
+  }, [tasks, downloadFilterType, downloadFilterValue]);
 
   const generateNextSubtaskId = (prefix: string, currentSubtasks: Subtask[]) => {
     const numbers = currentSubtasks.map((sub) => {
@@ -212,8 +176,8 @@ const TasksPage: React.FC = () => {
   const closeTaskModal = () => {
     setIsModalOpen(false);
     setTimeout(() => {
-      setSelectedTaskForModal(null);
-      cancelEdit();
+        setSelectedTaskForModal(null);
+        cancelEdit();
     }, 300);
   };
 
@@ -222,18 +186,13 @@ const TasksPage: React.FC = () => {
     setDraftTask(task);
     setCurrentProjectPrefix(task.projectId);
 
-    const subtasksWithIDs: Subtask[] = (task.subtasks || []).map(
-      (sub, index, arr) => {
-        if (!sub.id || !sub.id.startsWith(task.projectId)) {
-          const tempId = generateNextSubtaskId(
-            task.projectId,
-            arr.slice(0, index)
-          );
-          return { ...sub, id: tempId };
-        }
-        return sub;
+    const subtasksWithIDs: Subtask[] = (task.subtasks || []).map((sub, index, arr) => {
+      if (!sub.id || !sub.id.startsWith(task.projectId)) {
+        const tempId = generateNextSubtaskId(task.projectId, arr.slice(0, index));
+        return { ...sub, id: tempId };
       }
-    );
+      return sub;
+    });
     setSubtasks(subtasksWithIDs);
   };
 
@@ -245,7 +204,7 @@ const TasksPage: React.FC = () => {
   };
 
   const handleDraftChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setDraftTask((prev) => ({
@@ -284,51 +243,36 @@ const TasksPage: React.FC = () => {
     setSubtasks(subtasks.filter((_, i) => i !== index));
   };
 
-  const onTaskStatusChange = useCallback(
-    async (taskId: string, newStatus: string) => {
-      try {
-        const url = getApiUrl(`/api/tasks/${taskId}`);
-        const res = await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setTasks((prevTasks) =>
-            prevTasks.map((task) =>
-              task._id === taskId
-                ? { ...task, status: newStatus as Task["status"] }
-                : task
-            )
-          );
-          fetchTasks();
+  const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
+    try {
+      const url = getApiUrl(`/api/tasks/${taskId}`);
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task._id === taskId ? { ...task, status: newStatus as Task['status'] } : task
+          )
+        );
+        fetchTasks();
 
-          const statusesToNotify = [
-            "Backlog",
-            "In Progress",
-            "Paused",
-            "Completed",
-          ];
+        const statusesToNotify = ["Backlog", "In Progress", "Paused", "Completed"];
 
-          if (statusesToNotify.includes(newStatus)) {
-            console.log(
-              `Slack Notification Triggered for Task ${taskId}: Status changed to ${newStatus}`
-            );
-          }
-        } else {
-          alert(
-            `❌ Failed to update task status: ${
-              data.error || "Unknown error"
-            }`
-          );
+        if (statusesToNotify.includes(newStatus)) {
+            console.log(`Slack Notification Triggered for Task ${taskId}: Status changed to ${newStatus}`);
         }
-      } catch (err) {
-        alert("A server error occurred during status update.");
+
+      } else {
+        alert(`❌ Failed to update task status: ${data.error || "Unknown error"}`);
       }
-    },
-    []
-  );
+    } catch (err) {
+      alert("A server error occurred during status update.");
+    }
+  }, []);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,9 +298,7 @@ const TasksPage: React.FC = () => {
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(
-          `❌ Failed to update task: ${data.error || "Unknown error"}`
-        );
+        alert(`❌ Failed to update task: ${data.error || "Unknown error"}`);
       }
     } catch (err) {
       alert("A server error occurred during update.");
@@ -364,31 +306,24 @@ const TasksPage: React.FC = () => {
   };
 
   const handleStartSprint = async (taskId: string) => {
-    if (
-      !window.confirm(
-        "Do you want to start the sprint for this task? Status will change to 'In Progress'."
-      )
-    )
-      return;
+    if (!window.confirm("Do you want to start the sprint for this task? Status will change to 'In Progress'.")) return;
     try {
-      const url = getApiUrl(`/api/tasks/${taskId}`);
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "In Progress" }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert("🚀 Sprint started! Task status is now 'In Progress'.");
-        closeTaskModal();
-        fetchTasks();
-      } else {
-        alert(
-          `❌ Failed to start sprint: ${data.error || "Unknown error"}`
-        );
-      }
+        const url = getApiUrl(`/api/tasks/${taskId}`);
+        const res = await fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "In Progress" }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert("🚀 Sprint started! Task status is now 'In Progress'.");
+            closeTaskModal();
+            fetchTasks();
+        } else {
+            alert(`❌ Failed to start sprint: ${data.error || "Unknown error"}`);
+        }
     } catch (err) {
-      alert("Server error during status update.");
+        alert("Server error during status update.");
     }
   };
 
@@ -410,138 +345,129 @@ const TasksPage: React.FC = () => {
 
   const handleExcelDownload = () => {
     if (typeof window === "undefined" || !(window as any).XLSX) {
-      alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
-      return;
-    }
-
-    let tasksForExport: Task[] = [];
-    const filter = downloadFilterType;
-    const value = downloadFilterValue.trim();
-
-    if (filter === "all" || !value) {
-      tasksForExport = visibleTasks;
-    } else {
-      tasksForExport = visibleTasks.filter((task) => {
-        switch (filter) {
-          case "project":
-            return task.project === value;
-
-          case "assignee":
-            if (value.toLowerCase() === "all") return true;
-            return (
-              task.assigneeName.toLowerCase() === value.toLowerCase()
-            );
-
-          case "status":
-            return task.status === value;
-
-          case "date":
-            return (
-              task.startDate === value ||
-              task.dueDate === value ||
-              (task.endDate && task.endDate === value)
-            );
-
-          case "month":
-            return (
-              task.startDate.startsWith(value) ||
-              task.dueDate.startsWith(value) ||
-              (task.endDate && task.endDate.startsWith(value))
-            );
-
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (tasksForExport.length === 0) {
-      alert(
-        `No tasks found for the current filter: ${
-          filter
-        } = ${value || "N/A"}`
-      );
-      return;
-    }
-
-    const dataForExport = tasksForExport.flatMap((task) => {
-      const mainRow = {
-        "Task ID": task.projectId,
-        "Item Type": "Task",
-        "Task Name": task.project,
-        "Main Assignee": task.assigneeName,
-        "Start Date": task.startDate,
-        "End Date": task.endDate || "N/A",
-        "Due Date": task.dueDate,
-        "Task Progress (%)": task.completion,
-        "Task Status": task.status,
-        "Task Remarks": task.remarks || "-",
-        "Subtask ID": "N/A",
-        "Subtask Title": "N/A",
-        "Subtask Assignee": "N/A",
-        "Subtask Progress (%)": "N/A",
-        "Subtask Status": "N/A",
-        "Subtask Remarks": "N/A",
-      };
-
-      if (!task.subtasks || task.subtasks.length === 0) {
-        return [mainRow];
+        alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
+        return;
       }
 
-      const subtaskRows = task.subtasks.map((sub) => ({
-        "Task ID": "",
-        "Item Type": "Subtask",
-        "Task Name": `— ${task.project}`,
-        "Main Assignee": "",
-        "Start Date": "",
-        "End Date": "",
-        "Due Date": "",
-        "Task Progress (%)": "",
-        "Task Status": "",
-        "Task Remarks": "",
-        "Subtask ID": sub.id || "N/A",
-        "Subtask Title": sub.title,
-        "Subtask Assignee": sub.assigneeName || "Unassigned",
-        "Subtask Progress (%)": sub.completion,
-        "Subtask Status": sub.status,
-        "Subtask Remarks": sub.remarks || "-",
-      }));
+      let tasksForExport: Task[] = [];
+      const filter = downloadFilterType;
+      const value = downloadFilterValue.trim();
 
-      return [mainRow, ...subtaskRows];
-    });
+      if (filter === "all" || !value) {
+        tasksForExport = tasks;
+      } else {
+        tasksForExport = tasks.filter(task => {
+            switch (filter) {
+                case "project":
+                    return task.project === value;
 
-    const XLSX = (window as any).XLSX;
-    const ws = XLSX.utils.json_to_sheet(dataForExport);
+                case "assignee":
+                    if (value.toLowerCase() === "all") return true;
+                    return task.assigneeName.toLowerCase() === value.toLowerCase();
 
-    const objectKeys = Object.keys(dataForExport[0] || {});
-    const wscols = objectKeys.map((key) => {
-      let max_width = key.length;
-      dataForExport.forEach((row) => {
-        const cellValue = String((row as any)[key] || "");
-        max_width = Math.max(max_width, cellValue.length);
+                case "status":
+                    return task.status === value;
+
+                case "date":
+                    return (
+                      task.startDate === value ||
+                      task.dueDate === value ||
+                      (task.endDate && task.endDate === value)
+                    );
+
+                case "month":
+                    return (
+                        task.startDate.startsWith(value) ||
+                        task.dueDate.startsWith(value) ||
+                        (task.endDate && task.endDate.startsWith(value))
+                    );
+
+                default:
+                    return true;
+            }
+        });
+      }
+
+      if (tasksForExport.length === 0) {
+          alert(`No tasks found for the current filter: ${filter} = ${value || "N/A"}`);
+          return;
+      }
+
+      const dataForExport = tasksForExport.flatMap(task => {
+          const mainRow = {
+              'Task ID': task.projectId,
+              'Item Type': 'Task',
+              'Task Name': task.project,
+              'Main Assignee': task.assigneeName,
+              'Start Date': task.startDate,
+              'End Date': task.endDate || 'N/A',
+              'Due Date': task.dueDate,
+              'Task Progress (%)': task.completion,
+              'Task Status': task.status,
+              'Task Remarks': task.remarks || '-',
+              'Subtask ID': 'N/A',
+              'Subtask Title': 'N/A',
+              'Subtask Assignee': 'N/A',
+              'Subtask Progress (%)': 'N/A',
+              'Subtask Status': 'N/A',
+              'Subtask Remarks': 'N/A',
+          };
+
+          if (!task.subtasks || task.subtasks.length === 0) {
+              return [mainRow];
+          }
+
+          const subtaskRows = task.subtasks.map(sub => ({
+              'Task ID': '',
+              'Item Type': 'Subtask',
+              'Task Name': `— ${task.project}`,
+              'Main Assignee': '',
+              'Start Date': '',
+              'End Date': '',
+              'Due Date': '',
+              'Task Progress (%)': '',
+              'Task Status': '',
+              'Task Remarks': '',
+              'Subtask ID': sub.id || 'N/A',
+              'Subtask Title': sub.title,
+              'Subtask Assignee': sub.assigneeName || 'Unassigned',
+              'Subtask Progress (%)': sub.completion,
+              'Subtask Status': sub.status,
+              'Subtask Remarks': sub.remarks || '-',
+          }));
+
+          return [mainRow, ...subtaskRows];
       });
-      const finalWidth = Math.min(max_width + 2, 60);
-      return { wch: finalWidth };
-    });
 
-    ws["!cols"] = wscols;
+      const XLSX = (window as any).XLSX;
+      const ws = XLSX.utils.json_to_sheet(dataForExport);
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
+      const objectKeys = Object.keys(dataForExport[0] || {});
+      const wscols = objectKeys.map(key => {
+          let max_width = key.length;
+          dataForExport.forEach(row => {
+              const cellValue = String((row as any)[key] || '');
+              max_width = Math.max(max_width, cellValue.length);
+          });
+          const finalWidth = Math.min(max_width + 2, 60);
+          return { wch: finalWidth };
+      });
 
-    const safeValue = value.replace(/[^a-z0-9]/gi, "_");
-    const fileName =
-      filter === "all"
-        ? "All_Tasks_Report.xlsx"
-        : `${filter}_${safeValue}_Tasks_Report.xlsx`;
+      ws['!cols'] = wscols;
 
-    XLSX.writeFile(wb, fileName);
-    alert(`✅ Task report downloaded as ${fileName}`);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
+
+      const safeValue = value.replace(/[^a-z0-9]/gi, '_');
+      const fileName = filter === "all" ? "All_Tasks_Report.xlsx" : `${filter}_${safeValue}_Tasks_Report.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+      alert(`✅ Task report downloaded as ${fileName}`);
   };
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
-      router.push("/");
+        router.push('/');
     }
   };
 
@@ -550,9 +476,7 @@ const TasksPage: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen ">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-          <p className="text-slate-600 font-medium">
-            Loading tasks and employees...
-          </p>
+          <p className="text-slate-600 font-medium">Loading tasks and employees...</p>
         </div>
       </div>
     );
@@ -597,7 +521,7 @@ const TasksPage: React.FC = () => {
         >
           <ListTodo className="w-6 h-6" />
         </button>
-        <div className="flex-grow"></div>
+        <div className="flex-grow"></div> 
         <button
           onClick={handleLogout}
           className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
@@ -609,9 +533,10 @@ const TasksPage: React.FC = () => {
 
       <div
         className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8"
-        style={{ marginLeft: "5rem" }}
+        style={{ marginLeft: '5rem' }}
       >
         <div className="max-w-[1800px] mx-auto">
+
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
             employees={employees}
@@ -624,64 +549,61 @@ const TasksPage: React.FC = () => {
           />
 
           {filteredTasks.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-                  <AlertCircle className="w-8 h-8 text-slate-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                  No tasks found
-                </h3>
-                <p className="text-slate-500">
-                  The current filter returned no matching tasks.
-                </p>
+              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                  <div className="text-center py-16">
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
+                          <AlertCircle className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
+                      <p className="text-slate-500">The current filter returned no matching tasks.</p>
+                  </div>
               </div>
-            </div>
           ) : (
             <>
               {viewType === "card" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredTasks.map((task) => (
-                    <TaskCard
-                      key={task._id}
-                      task={task}
-                      onViewDetails={openTaskModal}
-                    />
-                  ))}
+                    {filteredTasks.map((task) => (
+                        <TaskCard
+                            key={task._id}
+                            task={task}
+                            onViewDetails={openTaskModal}
+                        />
+                    ))}
                 </div>
               )}
 
               {viewType === "board" && (
-                <TaskBoardView
-                  tasks={filteredTasks}
-                  openTaskModal={openTaskModal}
-                  onTaskStatusChange={onTaskStatusChange}
-                />
+                  <TaskBoardView
+                      tasks={filteredTasks}
+                      openTaskModal={openTaskModal}
+                      onTaskStatusChange={onTaskStatusChange}
+                  />
               )}
             </>
           )}
 
           {selectedTaskForModal && (
-            <TaskModal
-              task={selectedTaskForModal}
-              isOpen={isModalOpen}
-              onClose={closeTaskModal}
-              isEditing={isEditing}
-              draftTask={draftTask}
-              subtasks={subtasks}
-              employees={employees}
-              currentProjectPrefix={currentProjectPrefix}
-              handleEdit={handleEdit}
-              handleDelete={handleDelete}
-              handleUpdate={handleUpdate}
-              cancelEdit={cancelEdit}
-              handleDraftChange={handleDraftChange}
-              handleSubtaskChange={handleSubtaskChange}
-              addSubtask={addSubtask}
-              removeSubtask={removeSubtask}
-              handleStartSprint={handleStartSprint}
-            />
+              <TaskModal
+                  task={selectedTaskForModal}
+                  isOpen={isModalOpen}
+                  onClose={closeTaskModal}
+                  isEditing={isEditing}
+                  draftTask={draftTask}
+                  subtasks={subtasks}
+                  employees={employees}
+                  currentProjectPrefix={currentProjectPrefix}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
+                  handleUpdate={handleUpdate}
+                  cancelEdit={cancelEdit}
+                  handleDraftChange={handleDraftChange}
+                  handleSubtaskChange={handleSubtaskChange}
+                  addSubtask={addSubtask}
+                  removeSubtask={removeSubtask}
+                  handleStartSprint={handleStartSprint}
+              />
           )}
+
         </div>
       </div>
     </div>

@@ -1,3 +1,5 @@
+// app/team-lead/assign-task/components/TaskRow.tsx
+
 import React from "react";
 import { 
   ChevronRight, Edit2, Trash2, Save, X, CheckCircle2, 
@@ -5,10 +7,13 @@ import {
 } from "lucide-react";
 import { Task, Subtask, Employee } from "../page"; 
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
+
+// --- HELPER FUNCTION (Copied from original page.tsx) ---
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
   let icon = null;
+
   if (status === "Completed") {
     colorClasses = isSubtask ? "bg-emerald-100 text-emerald-800" : "bg-emerald-50 text-emerald-700 border border-emerald-200";
     icon = <CheckCircle2 className="w-3 h-3" />;
@@ -22,6 +27,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
     colorClasses = isSubtask ? "bg-gray-100 text-gray-800" : "bg-gray-50 text-gray-700 border border-gray-200";
     icon = <AlertCircle className="w-3 h-3" />;
   }
+
   return (
     <span className={`${baseClasses} ${colorClasses}`}>
       {icon}
@@ -29,6 +35,9 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
     </span>
   );
 };
+
+
+// --- PROP INTERFACES ---
 interface TaskRowProps {
   task: Task;
   idx: number;
@@ -48,6 +57,8 @@ interface TaskRowProps {
   addSubtask: () => void;
   removeSubtask: (index: number) => void;
 }
+
+// --- COMPONENT ---
 const TaskRow: React.FC<TaskRowProps> = ({
   task,
   idx,
@@ -69,9 +80,12 @@ const TaskRow: React.FC<TaskRowProps> = ({
 }) => {
   const current = isEditing ? draftTask : task;
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+
   return (
     <React.Fragment>
+      {/* MAIN TASK ROW */}
       <tr className={`transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50`}>
+        {/* Toggle Button */}
         <td className="px-4 py-4">
           {hasSubtasks && (
             <button 
@@ -82,12 +96,15 @@ const TaskRow: React.FC<TaskRowProps> = ({
             </button>
           )}
         </td>
+        {/* Task ID */}
         <td className="px-4 py-4 text-sm font-semibold text-indigo-600">{task.projectId}</td>
+        {/* Type */}
         <td className="px-4 py-4">
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
             Task
           </span>
         </td>
+        {/* Project */}
         <td className="px-4 py-4 text-sm font-medium text-gray-900">
           {isEditing ? (
             <input 
@@ -100,6 +117,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             task.project
           )}
         </td>
+        {/* Assignee */}
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
             <select 
@@ -117,6 +135,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             <span className="font-medium">{task.assigneeName}</span>
           )}
         </td>
+        {/* Start Date */}
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
             <input 
@@ -130,6 +149,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             task.startDate
           )}
         </td>
+        {/* End Date */}
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
             <input 
@@ -143,6 +163,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             task.endDate || <span className="text-gray-500">N/A</span>
           )}
         </td>
+        {/* Due Date */}
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
             <input 
@@ -156,6 +177,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             task.dueDate
           )}
         </td>
+        {/* Progress */}
         <td className="px-4 py-4">
           {isEditing ? (
             <input
@@ -179,6 +201,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             </div>
           )}
         </td>
+        {/* Status */}
         <td className="px-4 py-4">
           {isEditing ? (
             <select 
@@ -196,6 +219,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             getStatusBadge(task.status)
           )}
         </td>
+        {/* Remarks */}
         <td className="px-4 py-4 text-sm text-black max-w-[200px] whitespace-normal">
           {isEditing ? (
             <input 
@@ -210,6 +234,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             </div>
           )}
         </td>
+        {/* Actions */}
         <td className="px-4 py-4 text-right">
           {isEditing ? (
             <div className="flex justify-end gap-2">
@@ -248,6 +273,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
           )}
         </td>
       </tr>
+
+      {/* SUBTASK VIEWER */}
       {isExpanded && !isEditing && hasSubtasks && (
         <tr className="bg-slate-50">
           <td colSpan={12} className="px-8 py-6">
@@ -302,6 +329,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
           </td>
         </tr>
       )}
+
+      {/* SUBTASK EDITOR (Embedded) */}
       {isEditing && (
         <tr className="bg-slate-50">
           <td colSpan={12} className="px-8 py-6">
@@ -319,4 +348,5 @@ const TaskRow: React.FC<TaskRowProps> = ({
     </React.Fragment>
   );
 };
+
 export default TaskRow;

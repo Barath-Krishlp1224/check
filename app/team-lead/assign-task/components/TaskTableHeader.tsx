@@ -1,6 +1,8 @@
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
 import { Employee } from "../page"; 
+
+// --- PROP INTERFACES ---
 interface TaskTableHeaderProps {
   uniqueProjects: string[];
   employees: Employee[];
@@ -11,6 +13,8 @@ interface TaskTableHeaderProps {
   xlsxLoaded: boolean;
   handleExcelDownload: () => void;
 }
+
+// --- COMPONENT ---
 const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
   uniqueProjects,
   employees,
@@ -22,6 +26,7 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
   handleExcelDownload,
 }) => {
   const isDownloadDisabled = !xlsxLoaded || (downloadFilterType !== "all" && !downloadFilterValue);
+
   return (
     <div className="mb-8">
       <div className="flex items-end justify-between">
@@ -31,22 +36,26 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
         </div>
         <div className="flex items-center gap-4 bg-white rounded-xl shadow-lg border border-slate-200 p-4">
           
+          {/* Filter Type Selector */}
           <select
             value={downloadFilterType}
             onChange={(e) => {
               setDownloadFilterType(e.target.value);
-              setDownloadFilterValue(""); 
+              setDownloadFilterValue(""); // Reset value when type changes
             }}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm text-gray-700 font-medium bg-slate-50"
           >
             <option value="all">All Tasks (Default)</option>
-            <option value="status">By Status (Backlog/Sprint)</option> 
+            <option value="status">By Status (Backlog/Sprint)</option> {/* ADDED: New Status Filter Type */}
             <option value="project">By Project Name</option>
             <option value="assignee">By Assignee</option>
             <option value="date">By Single Date</option>
             <option value="month">By Month (YYYY-MM)</option>
           </select>
+
+          {/* Filter Value Input/Select */}
           
+          {/* Status Filter */}
           {downloadFilterType === "status" && (
             <select
               value={downloadFilterValue}
@@ -61,6 +70,7 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
               <option value="On Hold">On Hold Files</option>
             </select>
           )}
+
           {downloadFilterType === "project" && (
             <select
               value={downloadFilterValue}
@@ -104,6 +114,8 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
               ))}
             </select>
           )}
+
+          {/* Download Button */}
           <button
             onClick={handleExcelDownload}
             className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all shadow-md ${
@@ -121,4 +133,5 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
     </div>
   );
 };
+
 export default TaskTableHeader;

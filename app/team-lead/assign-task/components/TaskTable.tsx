@@ -1,9 +1,13 @@
+// app/team-lead/assign-task/components/TaskTable.tsx
+
 import React from "react";
 import { AlertCircle } from "lucide-react";
 import { Task, Subtask, Employee } from "../page"; 
 import TaskRow from "./TaskRow";
+
+// --- PROP INTERFACES ---
 interface TaskTableProps {
-  tasks: Task[]; 
+  tasks: Task[]; // This will receive the filtered list of tasks
   employees: Employee[];
   editRowId: string | null;
   draftTask: Partial<Task>;
@@ -18,9 +22,12 @@ interface TaskTableProps {
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
   addSubtask: () => void;
-  removeSubtask: () => void;
+  removeSubtask: (index: number) => void;
 }
+
+// --- COMPONENT ---
 const TaskTable: React.FC<TaskTableProps> = (props) => {
+  // Now correctly checks the length of the filtered list
   if (props.tasks.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
@@ -34,6 +41,7 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
       </div>
     );
   }
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -54,7 +62,9 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
               <th className="px-4 py-4 text-right text-xs font-bold text-white uppercase tracking-wider w-[14%]">Actions</th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-slate-100">
+            {/* Iterates over the filtered list */}
             {props.tasks.map((task, idx) => (
               <TaskRow
                 key={task._id}
@@ -83,4 +93,5 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
     </div>
   );
 };
+
 export default TaskTable;
