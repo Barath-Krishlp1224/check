@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Calendar, User, Briefcase, Target, Clock, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  User,
+  Target,
+  Clock,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 
 interface Employee {
   _id: string;
@@ -16,11 +24,12 @@ const EmployeesPage: React.FC = () => {
     assigneeName: "",
     projectId: "",
     project: "",
+    department: "", // 🔹 NEW
     startDate: new Date().toISOString().split("T")[0],
     endDate: "",
     dueDate: "",
     completion: "",
-    status: "Backlog", // CHANGED: Initial status is now Backlog
+    status: "Backlog",
     remarks: "",
   });
 
@@ -45,7 +54,11 @@ const EmployeesPage: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value } = e.target;
     setFormData((s) => ({ ...s, [name]: value }));
   };
@@ -58,17 +71,25 @@ const EmployeesPage: React.FC = () => {
       setMessage("❌ Project ID and Project Name are required.");
       return;
     }
-    
+
     if (!formData.assigneeName.trim()) {
-        setMessage("❌ Please select an Assignee.");
-        return;
+      setMessage("❌ Please select an Assignee.");
+      return;
+    }
+
+    if (!formData.department.trim()) {
+      setMessage("❌ Please select a Department (Tech or Accounts).");
+      return;
     }
 
     try {
       const payload = {
         ...formData,
-        completion: formData.completion === "" ? undefined : Number(formData.completion), 
+        completion:
+          formData.completion === "" ? undefined : Number(formData.completion),
       };
+
+      console.log("🚀 Sending payload:", payload);
 
       const res = await fetch("/api/tasks/add", {
         method: "POST",
@@ -84,11 +105,12 @@ const EmployeesPage: React.FC = () => {
           assigneeName: "",
           projectId: "",
           project: "",
+          department: "",
           startDate: new Date().toISOString().split("T")[0],
           endDate: "",
           dueDate: "",
           completion: "",
-          status: "Backlog", // Reset to Backlog
+          status: "Backlog",
           remarks: "",
         });
       } else {
@@ -102,14 +124,18 @@ const EmployeesPage: React.FC = () => {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const colors = {
-      "Backlog": "bg-slate-100 text-slate-700 border-slate-200", // ADDED: New status color
+      Backlog: "bg-slate-100 text-slate-700 border-slate-200",
       "In Progress": "bg-blue-100 text-blue-700 border-blue-200",
-      "Paused": "bg-amber-100 text-amber-700 border-amber-200",
-      "Completed": "bg-emerald-100 text-emerald-700 border-emerald-200",
-      "On Hold": "bg-slate-100 text-slate-700 border-slate-200"
+      Paused: "bg-amber-100 text-amber-700 border-amber-200",
+      Completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      "On Hold": "bg-slate-100 text-slate-700 border-slate-200",
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colors[status as keyof typeof colors]}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+          colors[status as keyof typeof colors]
+        }`}
+      >
         {status === "Completed" && <CheckCircle2 className="w-3 h-3" />}
         {status}
       </span>
@@ -123,9 +149,7 @@ const EmployeesPage: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-white">
-                Create New Task
-              </h1>
+              <h1 className="text-3xl font-bold text-white">Create New Task</h1>
             </div>
           </div>
         </div>
@@ -145,9 +169,13 @@ const EmployeesPage: React.FC = () => {
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600" />
               )}
-              <p className={`font-medium text-sm ${
-                message.includes("successfully") ? "text-emerald-800" : "text-red-800"
-              }`}>
+              <p
+                className={`font-medium text-sm ${
+                  message.includes("successfully")
+                    ? "text-emerald-800"
+                    : "text-red-800"
+                }`}
+              >
                 {message}
               </p>
             </div>
@@ -165,7 +193,7 @@ const EmployeesPage: React.FC = () => {
                   Project Information
                 </h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Project ID *
@@ -192,6 +220,21 @@ const EmployeesPage: React.FC = () => {
                     className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Department *
+                  </label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  >
+                    <option value="">Select department</option>
+                    <option value="Tech">Tech</option>
+                    <option value="Accounts">Accounts</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -213,7 +256,7 @@ const EmployeesPage: React.FC = () => {
                     {loading ? (
                       <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-500 bg-slate-50">
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
                           Loading employees...
                         </div>
                       </div>
@@ -307,7 +350,7 @@ const EmployeesPage: React.FC = () => {
                         onChange={handleChange}
                         className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                       >
-                        <option value="Backlog">Backlog</option> {/* ADDED: Backlog option */}
+                        <option value="Backlog">Backlog</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Paused">Paused</option>
                         <option value="Completed">Completed</option>
@@ -338,9 +381,14 @@ const EmployeesPage: React.FC = () => {
                       </div>
                       {formData.completion && (
                         <div className="mt-2 bg-slate-100 rounded-full h-2 overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
-                            style={{ width: `${Math.min(Number(formData.completion), 100)}%` }}
+                            style={{
+                              width: `${Math.min(
+                                Number(formData.completion),
+                                100
+                              )}%`,
+                            }}
                           />
                         </div>
                       )}
@@ -385,7 +433,6 @@ const EmployeesPage: React.FC = () => {
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
