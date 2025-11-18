@@ -8,7 +8,7 @@ export default function EmptyPage() {
 
   const handleEmployeeOnboard = () => router.push("/components/it-admin/new-emp");
   const handleSecondAction =   () => router.push("/components/manager/view-list");
-  const handleViewTasks =      () => router.push("/components/it-admin/view-task");
+  const handleViewTasks =      () => router.push("/components/view-task");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">

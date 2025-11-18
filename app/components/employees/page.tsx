@@ -1,6 +1,6 @@
 "use client";
 
-import Employees from "./assign-task/page";
+import Employees from "../view-task/page";
 
 export default function EmptyPage() {
   return (
