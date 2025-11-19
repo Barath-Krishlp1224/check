@@ -1,3 +1,4 @@
+// EmployeesPage.tsx (Client Component)
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -14,17 +15,33 @@ import {
 interface Employee {
   _id: string;
   name: string;
+  empId?: string;
+  team?: string; // expected values: "Tech", "Accounts", "IT Admin", "Manager", "Admin & Operations", "HR", etc.
+  category?: string;
+  department?: string;
 }
+
+const DEPARTMENT_OPTIONS = [
+  "Tech",
+  "Accounts",
+  "IT Admin",
+  "Manager",
+  "Admin & Operations",
+  "HR",
+  "Founders",
+  "TL-Reporting Manager",
+];
 
 const EmployeesPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchingByDept, setFetchingByDept] = useState(false); // used when we intentionally re-fetch
 
   const [formData, setFormData] = useState({
     assigneeName: "",
     projectId: "",
     project: "",
-    department: "", // 🔹 NEW
+    department: "",
     startDate: new Date().toISOString().split("T")[0],
     endDate: "",
     dueDate: "",
@@ -35,24 +52,64 @@ const EmployeesPage: React.FC = () => {
 
   const [message, setMessage] = useState("");
 
+  // Fetch all employees once on mount
   useEffect(() => {
     const fetchEmployees = async () => {
+      setLoading(true);
       try {
         const res = await fetch("/api/employees");
         const data = await res.json();
-        if (data.success) {
-          setEmployees(data.employees);
+        if (data.success && Array.isArray(data.employees)) {
+          // Defensive: ensure each employee has the fields we expect
+          const normalized = data.employees.map((e: any) => ({
+            _id: e._id ?? e.id ?? String(Math.random()),
+            name: e.name ?? e.fullName ?? "Unknown",
+            empId: e.empId ?? e.empID ?? e.employeeId ?? "",
+            team: (e.team ?? e.department ?? "").trim(), // try team first, fallback to department field if present
+            category: e.category ?? "",
+            department: e.department ?? "",
+          })) as Employee[];
+          setEmployees(normalized);
         } else {
-          console.error("Failed to fetch employees:", data.error);
+          setEmployees([]);
         }
       } catch (err) {
         console.error("Error fetching employees:", err);
+        setEmployees([]);
       } finally {
         setLoading(false);
       }
     };
     fetchEmployees();
   }, []);
+
+  // Filtered assignees derived from selected department (client-side)
+  const filteredAssignees =
+    formData.department && Array.isArray(employees)
+      ? employees.filter(
+          (e) =>
+            (e.team ?? "")
+              .toString()
+              .trim()
+              .toLowerCase() === formData.department.trim().toLowerCase()
+        )
+      : [];
+
+  // Disable assignee select until department chosen or while loading
+  const assigneeDisabled = !formData.department || loading || fetchingByDept;
+
+  // Clear assignee if department changes and selected assignee doesn't belong to new dept
+  useEffect(() => {
+    if (!formData.department) {
+      setFormData((s) => ({ ...s, assigneeName: "" }));
+      return;
+    }
+    const selected = employees.find((e) => e.name === formData.assigneeName);
+    if (selected && (selected.team ?? "").toLowerCase() !== formData.department.toLowerCase()) {
+      setFormData((s) => ({ ...s, assigneeName: "" }));
+    }
+    // we don't re-fetch the whole list by default; client-side filtering is used
+  }, [formData.department, employees, formData.assigneeName]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -78,7 +135,9 @@ const EmployeesPage: React.FC = () => {
     }
 
     if (!formData.department.trim()) {
-      setMessage("❌ Please select a Department (Tech or Accounts).");
+      setMessage(
+        "❌ Please select a Department (choose Tech, Accounts, IT Admin, Manager, Admin & Operations, HR etc.)."
+      );
       return;
     }
 
@@ -88,8 +147,6 @@ const EmployeesPage: React.FC = () => {
         completion:
           formData.completion === "" ? undefined : Number(formData.completion),
       };
-
-      console.log("🚀 Sending payload:", payload);
 
       const res = await fetch("/api/tasks/add", {
         method: "POST",
@@ -113,6 +170,26 @@ const EmployeesPage: React.FC = () => {
           status: "Backlog",
           remarks: "",
         });
+        // refresh employee list defensively (optional)
+        try {
+          setFetchingByDept(true);
+          const refreshRes = await fetch("/api/employees");
+          const refreshJson = await refreshRes.json();
+          if (refreshJson.success && Array.isArray(refreshJson.employees)) {
+            const normalized = refreshJson.employees.map((e: any) => ({
+              _id: e._id ?? e.id ?? String(Math.random()),
+              name: e.name ?? e.fullName ?? "Unknown",
+              empId: e.empId ?? "",
+              team: (e.team ?? e.department ?? "").trim(),
+              category: e.category ?? "",
+              department: e.department ?? "",
+            })) as Employee[];
+            setEmployees(normalized);
+          }
+        } catch (err) {
+        } finally {
+          setFetchingByDept(false);
+        }
       } else {
         setMessage(data?.error || "❌ Failed to submit task");
       }
@@ -129,11 +206,11 @@ const EmployeesPage: React.FC = () => {
       Paused: "bg-amber-100 text-amber-700 border-amber-200",
       Completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
       "On Hold": "bg-slate-100 text-slate-700 border-slate-200",
-    };
+    } as const;
     return (
       <span
         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
-          colors[status as keyof typeof colors]
+          (colors as any)[status]
         }`}
       >
         {status === "Completed" && <CheckCircle2 className="w-3 h-3" />}
@@ -145,7 +222,6 @@ const EmployeesPage: React.FC = () => {
   return (
     <div className="min-h-screen mt-[10%] py-8 px-4">
       <div className="mx-auto max-w-6xl">
-        {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div>
@@ -154,7 +230,6 @@ const EmployeesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Status Message */}
         {message && (
           <div
             className={`mb-6 rounded-xl border-l-4 p-4 shadow-sm ${
@@ -182,10 +257,11 @@ const EmployeesPage: React.FC = () => {
           </div>
         )}
 
-        {/* Main Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden"
+        >
           <div className="p-8">
-            {/* Project Information Card */}
             <div className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="w-5 h-5 text-blue-600" />
@@ -207,6 +283,7 @@ const EmployeesPage: React.FC = () => {
                     className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                   />
                 </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Project Name *
@@ -220,6 +297,7 @@ const EmployeesPage: React.FC = () => {
                     className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                   />
                 </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Department *
@@ -231,17 +309,18 @@ const EmployeesPage: React.FC = () => {
                     className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                   >
                     <option value="">Select department</option>
-                    <option value="Tech">Tech</option>
-                    <option value="Accounts">Accounts</option>
+                    {DEPARTMENT_OPTIONS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left Column */}
               <div className="space-y-6">
-                {/* Assignee Section */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <User className="w-5 h-5 text-slate-600" />
@@ -253,7 +332,8 @@ const EmployeesPage: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Assignee *
                     </label>
-                    {loading ? (
+
+                    {loading || fetchingByDept ? (
                       <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-500 bg-slate-50">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
@@ -265,20 +345,38 @@ const EmployeesPage: React.FC = () => {
                         name="assigneeName"
                         value={formData.assigneeName}
                         onChange={handleChange}
-                        className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                        disabled={assigneeDisabled}
+                        aria-disabled={assigneeDisabled}
+                        className={`w-full border rounded-lg px-4 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm ${
+                          assigneeDisabled ? "opacity-60 cursor-not-allowed" : ""
+                        }`}
                       >
-                        <option value="">Select an assignee</option>
-                        {employees.map((emp) => (
-                          <option key={emp._id} value={emp.name}>
-                            {emp.name}
+                        <option value="">
+                          {assigneeDisabled
+                            ? "Choose a department first"
+                            : formData.department
+                            ? `Select an assignee from ${formData.department}`
+                            : "Select an assignee"}
+                        </option>
+
+                        {!assigneeDisabled &&
+                          filteredAssignees.length > 0 &&
+                          filteredAssignees.map((emp) => (
+                            <option key={emp._id} value={emp.name}>
+                              {emp.name} {emp.empId ? `• ${emp.empId}` : ""}
+                            </option>
+                          ))}
+
+                        {!assigneeDisabled && filteredAssignees.length === 0 && (
+                          <option value="" disabled>
+                            No assignees found for {formData.department}
                           </option>
-                        ))}
+                        )}
                       </select>
                     )}
                   </div>
                 </div>
 
-                {/* Timeline Section */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Calendar className="w-5 h-5 text-slate-600" />
@@ -329,9 +427,7 @@ const EmployeesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Column */}
               <div className="space-y-6">
-                {/* Task Progress Section */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Clock className="w-5 h-5 text-slate-600" />
@@ -360,6 +456,7 @@ const EmployeesPage: React.FC = () => {
                         <StatusBadge status={formData.status} />
                       </div>
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         Completion Percentage
@@ -396,7 +493,6 @@ const EmployeesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Remarks Section */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="w-5 h-5 text-slate-600" />
@@ -422,17 +518,16 @@ const EmployeesPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
           <div className="px-8 py-6 bg-slate-50 border-t border-slate-200">
             <button
-              onClick={handleSubmit}
+              type="submit"
               className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white font-semibold py-3.5 px-6 rounded-xl hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-5 h-5" />
               Create Task
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

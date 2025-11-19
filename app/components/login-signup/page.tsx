@@ -83,7 +83,7 @@ export default function LoginPage() {
           else {
             switch (userTeam) {
               case "HR": router.push("/components/hr"); break;
-              case "Accounts": router.push("/components/accounts"); break;
+              case "Accounts": router.push("/components/employees/accounts/assign-task"); break;
               case "Admin & Operations": router.push("/components/admin-operations"); break;
               case "Tech": router.push("/components/employees"); break;
               case "IT Admin": router.push("/components/it-admin"); break;

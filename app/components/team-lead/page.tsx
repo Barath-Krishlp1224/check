@@ -21,19 +21,27 @@ const EmployeesPage: React.FC = () => {
       {/* Buttons */}
       <div className="flex flex-col md:flex-row gap-6">
         <button
+          type="button"
           onClick={() => router.push("/components/team-lead/create-task")}
-          // Applying the new white box and black text style
-          className={buttonClasses} 
+          className={buttonClasses}
         >
           Create Task
         </button>
 
         <button
-          onClick={() => router.push("/components/team-lead/assign-task")}
-          // Applying the new white box and black text style
-          className={buttonClasses} 
+          type="button"
+          onClick={() => router.push("/components/task-view")}
+          className={buttonClasses}
         >
           View Task
+        </button>
+
+        <button
+          type="button"
+          onClick={() => router.push("/components/view-task")}
+          className={buttonClasses}
+        >
+          My Tasks
         </button>
       </div>
     </div>

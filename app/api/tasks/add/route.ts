@@ -2,15 +2,56 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
+import Employee from "@/models/Employee";
 
-const techWebhookUrl = process.env.SLACK_WEBHOOK_URL;
-const accountsWebhookUrl = process.env.SLACK_WEBHOOK_URL_ACC;
+type ReqBody = {
+  projectId: string;
+  assigneeName: string;
+  project: string;
+  department: string;
+  startDate?: string;
+  endDate?: string;
+  dueDate?: string;
+  completion?: string | number;
+  status?: string;
+  remarks?: string;
+};
+
+const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
+  tech: process.env.SLACK_WEBHOOK_URL,
+  accounts: process.env.SLACK_WEBHOOK_URL_ACC,
+  "it admin": process.env.SLACK_WEBHOOK_URL_ITADMIN ?? process.env.SLACK_WEBHOOK_URL,
+  manager: process.env.SLACK_WEBHOOK_URL_MANAGER ?? process.env.SLACK_WEBHOOK_URL,
+  "admin & operations": process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
+  admin: process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
+  hr: process.env.SLACK_WEBHOOK_URL_HR ?? process.env.SLACK_WEBHOOK_URL,
+  founders: process.env.SLACK_WEBHOOK_URL_FOUNDERS ?? process.env.SLACK_WEBHOOK_URL,
+  "tl-reporting manager": process.env.SLACK_WEBHOOK_URL_TL ?? process.env.SLACK_WEBHOOK_URL,
+};
+
+const normalizeDeptKey = (d?: string) => (d ? d.toString().trim().toLowerCase() : "");
+
+async function postToSlack(webhookUrl: string, payload: any) {
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => "<no body>");
+      console.warn("Slack webhook returned non-OK:", res.status, bodyText);
+    }
+  } catch (err) {
+    console.error("Slack webhook POST failed:", err);
+  }
+}
 
 export async function POST(req: Request) {
   await connectDB();
 
   try {
-    const body = await req.json();
+    const body = (await req.json()) as ReqBody;
     console.log("🟡 Incoming Task Data:", body);
 
     const {
@@ -24,34 +65,28 @@ export async function POST(req: Request) {
       completion,
       status,
       remarks,
-    } = body;
+    } = body || {};
 
-    // ✅ Basic validation
+    // Basic validation
     if (!assigneeName || !projectId || !project) {
       return NextResponse.json(
-        {
-          error:
-            "Missing required fields: assigneeName, projectId, project",
-        },
+        { success: false, error: "Missing required fields: assigneeName, projectId, project" },
         { status: 400 }
       );
     }
 
     if (!department) {
       return NextResponse.json(
-        { error: "Department is required (Tech or Accounts)." },
+        { success: false, error: "Department is required." },
         { status: 400 }
       );
     }
 
     const completionValue =
-      completion !== "" && completion !== undefined
-        ? Number(completion)
-        : 0;
-
+      completion !== "" && completion !== undefined ? Number(completion) : 0;
     const taskStatus = status || "Backlog";
 
-    // ✅ Create new Task in DB
+    // Create and save task
     const newTask = new Task({
       assigneeName,
       projectId,
@@ -66,52 +101,46 @@ export async function POST(req: Request) {
     });
 
     const savedTask = await newTask.save();
-    console.log("✅ Task saved successfully:", savedTask);
+    console.log("✅ Task saved successfully:", savedTask._id ?? savedTask);
 
-    // --- Slack notification ---
+    // Enrich assignee label with empId if exists
+    let assigneeLabel = assigneeName;
     try {
-      let webhookUrl: string | undefined;
+      const emp = await Employee.findOne({ name: new RegExp(`^${assigneeName}$`, "i") }, "empId name").lean();
+      if (emp) assigneeLabel = `${emp.name}${emp.empId ? ` (${emp.empId})` : ""}`;
+    } catch (err) {
+      console.warn("Assignee lookup failed:", err);
+    }
 
-      if (department === "Accounts") {
-        webhookUrl = accountsWebhookUrl || undefined;
-      } else if (department === "Tech") {
-        webhookUrl = techWebhookUrl || undefined;
+    // Determine webhook
+    const deptKey = normalizeDeptKey(department);
+    const webhookUrl = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
+
+    if (!webhookUrl) {
+      console.warn("⚠️ No Slack webhook configured for department:", department);
+    } else {
+      try {
+        const headline = `📌 New Task — ${department}`;
+        const blocks: any[] = [
+          { type: "section", text: { type: "mrkdwn", text: `*${headline}*` } },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*Project:* ${project} (${projectId})\n*Assignee:* ${assigneeLabel}\n*Department:* ${department}\n*Status:* ${taskStatus}${dueDate ? `\n*Due:* ${dueDate}` : ""}`,
+            },
+          },
+          ...(remarks ? [{ type: "section", text: { type: "mrkdwn", text: `*Remarks:* ${remarks}` } }] : []),
+          { type: "context", elements: [{ type: "mrkdwn", text: `Task saved: ${savedTask._id}` }] },
+        ];
+
+        // Attempt to send blocks first (better formatting). Slack ignores unknown block fields, so OK.
+        await postToSlack(webhookUrl, { blocks });
+
+        console.log(`✅ Slack notification sent to webhook for department="${deptKey}"`);
+      } catch (slackErr) {
+        console.error("⚠️ Slack notification failed:", slackErr);
       }
-
-      if (!webhookUrl) {
-        console.error(
-          "⚠️ No Slack webhook URL configured for department:",
-          department
-        );
-      } else {
-        let notificationText = `📢 *Hey ${assigneeName}, a new ${department} task has been added to the Backlog!*`;
-
-        if (taskStatus !== "Backlog") {
-          notificationText = `📢 *Hey ${assigneeName}, a new ${department} task has been created!*`;
-        }
-
-        const slackMessage = {
-          text: `${notificationText}
-• *ID:* ${projectId}
-• *Project:* ${project}
-• *Department:* ${department}
-• *Assignee:* ${assigneeName}
-• *Status:* ${taskStatus}
-• *Completion:* ${completionValue}%
-• *Due Date:* ${dueDate || "N/A"}
-• *Remarks:* ${remarks || "None"}`,
-        };
-
-        await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(slackMessage),
-        });
-
-        console.log("✅ Slack notification sent!");
-      }
-    } catch (slackErr) {
-      console.error("⚠️ Slack notification failed:", slackErr);
     }
 
     return NextResponse.json(
@@ -121,14 +150,9 @@ export async function POST(req: Request) {
   } catch (error: any) {
     let errorMessage = error.message || "Failed to add task";
     if (error.code === 11000) {
-      errorMessage =
-        "Project ID must be unique. A task with this ID already exists.";
+      errorMessage = "Project ID must be unique. A task with this ID already exists.";
     }
-
     console.error("🔥 Error adding task:", errorMessage);
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
