@@ -305,7 +305,7 @@ export default function AdminPage() {
                       </div>
                     </a>
 
-                    <a href="/view-task" className="group">
+                    <a href="/components/founders/assign-task" className="group">
                       <div
                         className={`w-60 relative p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05] ${
                           loaded && isQuickActionsOpen

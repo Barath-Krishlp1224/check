@@ -15,36 +15,20 @@ const Navbar: React.FC = () => {
     return null;
   }
 
-  // 🔔 Notification state
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  // 👤 Username
+  const [userName, setUserName] = useState<string | null>(null);
 
-  // 👤 Profile dropdown state
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedName = localStorage.getItem("userName");
+      if (storedName) setUserName(storedName);
+    }
+  }, []);
+
+  // 👤 Profile dropdown
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
 
-  // 🔔 Fetch unread notifications (you can change the endpoint as needed)
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch("/api/notifications/unread-count");
-        if (!res.ok) return;
-        const data = await res.json();
-        setUnreadCount(data.count || 0);
-      } catch (err) {
-        // Fail silently for now
-        console.warn("Failed to fetch notifications:", err);
-      }
-    };
-
-    // Initial fetch
-    fetchNotifications();
-
-    // Poll every 60 seconds (optional)
-    const interval = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // 👤 Close profile dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -72,7 +56,7 @@ const Navbar: React.FC = () => {
       localStorage.removeItem("userName");
     }
     setIsProfileOpen(false);
-    router.push("/login");
+    router.push("/");
   };
 
   return (
@@ -85,7 +69,8 @@ const Navbar: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-23">
-          {/* Left - Logo */}
+
+          {/* Logo */}
           <div className="flex items-center">
             <Link href="/">
               <div className="relative opacity-90 hover:opacity-100 transition-opacity duration-200 cursor-pointer">
@@ -100,32 +85,16 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* Right - Icons */}
-          <div className="flex items-center space-x-1">
-            <div className="hidden md:block w-px h-6 bg-white/20 mx-2"></div>
+          {/* Right section */}
+          <div className="flex items-center space-x-4">
 
-            {/* 🔔 Notification Button */}
-            <button className="relative p-2 hover:bg-white/10 rounded-lg transition-all duration-200">
-              <div className="relative w-6 h-6">
-                <Image
-                  src="/bell.png"
-                  alt="Notifications"
-                  layout="fill"
-                  objectFit="contain"
-                  className="opacity-80 hover:opacity-100"
-                />
-              </div>
+            <div className="hidden md:block w-px h-6 bg-white/20"></div>
 
-              {/* Badge */}
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold px-1.5 py-[1px] shadow-md">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </button>
+            {/* USERNAME + PROFILE ICON */}
+            <div className="relative flex items-center space-x-2" ref={profileRef}>
 
-            {/* 👤 Profile + Dropdown */}
-            <div className="relative" ref={profileRef}>
+
+              {/* Profile icon */}
               <button
                 className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200"
                 onClick={() => setIsProfileOpen((prev) => !prev)}
@@ -144,7 +113,6 @@ const Navbar: React.FC = () => {
               {/* Dropdown */}
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-slate-200 py-2 text-sm">
-                  {/* You can add more items here later like "Profile", "Settings" etc. */}
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-700"
@@ -154,6 +122,13 @@ const Navbar: React.FC = () => {
                 </div>
               )}
             </div>
+              {/* 👤 Username (outside dropdown, clean) */}
+              {userName && (
+                <span className="text-white text-sm font-medium tracking-wide">
+                  {userName}
+                </span>
+              )}
+
           </div>
         </div>
       </div>

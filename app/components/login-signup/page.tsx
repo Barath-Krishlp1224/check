@@ -1,7 +1,10 @@
 "use client";
 
+// 1. Import ToastContainer and toast
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // 2. Import CSS
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 type Team =
@@ -16,15 +19,27 @@ type Team =
 
 export default function LoginPage() {
   const [form, setForm] = useState({ empId: "", password: "" });
-  const [error, setError] = useState("");
+  // Removed the local 'error' state since we'll use toast for errors
   const router = useRouter();
+
+  // Helper function for showing validation errors
+  const showValidationError = (message: string) => {
+    toast.error(message, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
-    if (!form.empId) return setError("Employee ID or Email is required.");
-    if (!form.password) return setError("Password is required.");
+    if (!form.empId) return showValidationError("Employee ID or Email is required.");
+    if (!form.password) return showValidationError("Password is required.");
 
     try {
       const res = await fetch("/api/login", {
@@ -37,41 +52,53 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) return setError(data.error || "Something went wrong");
 
-      alert(data.message || "Login successful");
-
-      if (!data.user?.role || !data.user?.empId) {
-        return setError("Login successful but required user data is missing.");
+      if (!res.ok) {
+        // Use toast.error for API errors (e.g., "Invalid credentials")
+        const errorMessage = data.error || "Login failed. Please check your credentials.";
+        return toast.error(errorMessage);
       }
 
-      const userRole = data.user.role as Role;
-      const userTeam = data.user.team as Team | undefined;
+      // 3. Use toast.success for successful login
+      toast.success(data.message || "Login successful!", {
+        onClose: () => {
+          // Check for required user data after a successful response
+          if (!data.user?.role || !data.user?.empId) {
+            return toast.error("Login successful but required user data is missing.");
+          }
 
-      localStorage.setItem("userRole", userRole);
-      localStorage.setItem("userEmpId", data.user.empId);
+          const userRole = data.user.role as Role;
+          const userTeam = data.user.team as Team | undefined;
 
-      if (data.user.name) localStorage.setItem("userName", data.user.name);
-      if (userTeam) localStorage.setItem("userTeam", userTeam);
+          // Store user data in localStorage
+          localStorage.setItem("userRole", userRole);
+          localStorage.setItem("userEmpId", data.user.empId);
+          if (data.user.name) localStorage.setItem("userName", data.user.name);
+          if (userTeam) localStorage.setItem("userTeam", userTeam);
 
-      if (userRole === "Admin") router.push("/components/admin");
-      else if (userRole === "Manager") router.push("/components/manager");
-      else if (userRole === "TeamLead") router.push("/components/team-lead");
-      else {
-        switch (userTeam) {
-          case "HR": router.push("/components/hr"); break;
-          case "Accounts": router.push("/components/accounts"); break;
-          case "Admin & Operations": router.push("/components/admin-operations"); break;
-          case "Tech": router.push("/components/employees"); break;
-          case "IT Admin": router.push("/components/it-admin"); break;
-          case "Founders": router.push("/components/founders"); break;
-          case "Manager": router.push("/components/manager"); break;
-          case "TL-Reporting Manager": router.push("/components/team-lead"); break;
-          default: router.push("/components/home");
-        }
-      }
+          // Redirect logic after toast closes
+          if (userRole === "Admin") router.push("/components/admin");
+          else if (userRole === "Manager") router.push("/components/manager");
+          else if (userRole === "TeamLead") router.push("/components/team-lead");
+          else {
+            switch (userTeam) {
+              case "HR": router.push("/components/hr"); break;
+              case "Accounts": router.push("/components/accounts"); break;
+              case "Admin & Operations": router.push("/components/admin-operations"); break;
+              case "Tech": router.push("/components/employees"); break;
+              case "IT Admin": router.push("/components/it-admin"); break;
+              case "Founders": router.push("/components/founders"); break;
+              case "Manager": router.push("/components/manager"); break;
+              case "TL-Reporting Manager": router.push("/components/team-lead"); break;
+              default: router.push("/components/home");
+            }
+          }
+        },
+        autoClose: 1000, // Optional: Short autoClose to redirect quicker
+      });
     } catch {
-      setError("Network error. Try again later.");
+      // Use toast.error for network errors
+      toast.error("Network error. Try again later.");
     }
   };
 
@@ -81,6 +108,9 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-white">
+      {/* 4. Add ToastContainer to the root of your component's return */}
+      <ToastContainer position="top-right" autoClose={5000} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
+
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
         <div
@@ -178,26 +208,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 animate-pulse">
-              <div className="flex items-center">
-                <svg
-                  className="w-5 h-5 text-red-600 mr-3 flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <p className="text-red-800 text-sm font-medium">{error}</p>
-              </div>
-            </div>
-          )}
-
+          {/* Removed the static error message div */}
+          
           {/* Submit button */}
           <button
             onClick={handleSubmit}
