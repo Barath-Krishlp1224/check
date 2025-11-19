@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, CheckSquare, BarChart3, Plus, Minus } from "lucide-react";
+import { Users, CheckSquare, Plus, Minus } from "lucide-react";
 
 interface EmployeeStats {
   totalEmployees: number;
@@ -137,7 +137,6 @@ export default function AdminPage() {
                     : "opacity-0 translate-y-8"
                 }`}
               >
-                {/* Staff Count Header with Dropdown Toggle - Updated */}
                 <div
                   className="mb-4 flex items-center gap-3 cursor-pointer group w-full"
                   onClick={toggleStaffCount}
@@ -152,7 +151,6 @@ export default function AdminPage() {
                       )}
                     </div>
                   </div>
-                  
                 </div>
 
                 <div
@@ -253,7 +251,6 @@ export default function AdminPage() {
                     : "opacity-0 translate-y-8"
                 }`}
               >
-                {/* Quick Actions Header with Dropdown Toggle - Updated */}
                 <div
                   className="mb-4 flex items-center gap-3 cursor-pointer group w-full"
                   onClick={toggleQuickActions}
@@ -270,7 +267,6 @@ export default function AdminPage() {
                       )}
                     </div>
                   </div>
-                  
                 </div>
 
                 <div
@@ -324,33 +320,7 @@ export default function AdminPage() {
                           </div>
                           <div className="flex-1">
                             <h3 className="font-semibold text-gray-900 text-sm">
-                              View Employee Tasks
-                            </h3>
-                          </div>
-                        </div>
-                      </div>
-                    </a>
-
-                    <a href="/employeetasks" className="group">
-                      <div
-                        className={`w-60 relative p-6 rounded-xl border-2 transition-all duration-500 cursor-pointer bg-white shadow-sm border-gray-200 hover:scale-[1.05] ${
-                          loaded && isQuickActionsOpen
-                            ? "opacity-100 scale-100"
-                            : "opacity-0 scale-95"
-                        }`}
-                        style={{
-                          transitionDelay: isQuickActionsOpen ? '200ms' : '0ms',
-                        }}
-                        onMouseEnter={() => setHoveredButton("performance")}
-                        onMouseLeave={() => setHoveredButton(null)}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-blue-100">
-                            <BarChart3 className="w-6 h-6 transition-all duration-300 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-sm">
-                              View Performance
+                              View Employee Tasks and Perfomance
                             </h3>
                           </div>
                         </div>
