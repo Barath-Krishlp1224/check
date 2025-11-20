@@ -2,6 +2,7 @@ import React from "react";
 import { AlertCircle } from "lucide-react";
 import { Task, Subtask, Employee } from "../page"; 
 import TaskRow from "./TaskRow";
+
 interface TaskTableProps {
   tasks: Task[]; 
   employees: Employee[];
@@ -20,6 +21,7 @@ interface TaskTableProps {
   addSubtask: () => void;
   removeSubtask: () => void;
 }
+
 const TaskTable: React.FC<TaskTableProps> = (props) => {
   if (props.tasks.length === 0) {
     return (
@@ -83,4 +85,5 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
     </div>
   );
 };
+
 export default TaskTable;

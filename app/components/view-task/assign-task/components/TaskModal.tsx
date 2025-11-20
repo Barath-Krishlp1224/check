@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play } from "lucide-react"; 
 import { Task, Subtask, Employee } from "../page";
 import TaskSubtaskEditor from "./TaskSubtaskEditor"; 
+
+// Helper function (already present, kept for completeness)
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
@@ -29,6 +31,8 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
     </span>
   );
 };
+
+// Interface for TaskModalProps (already present, kept for completeness)
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
@@ -38,6 +42,7 @@ interface TaskModalProps {
   subtasks: Subtask[];
   employees: Employee[];
   currentProjectPrefix: string;
+  allTaskStatuses: string[];
   handleEdit: (task: Task) => void;
   handleDelete: (id: string) => void;
   handleUpdate: (e: React.FormEvent) => void;
@@ -47,20 +52,38 @@ interface TaskModalProps {
   addSubtask: () => void;
   removeSubtask: (index: number) => void;
   handleStartSprint: (taskId: string) => void; 
+  onTaskStatusChange: (taskId: string, newStatus: string) => void;
+  onSubtaskStatusChange: (taskId: string, subtaskId: string, newStatus: string) => void;
 }
+
 const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
-    task, isOpen, onClose, isEditing, draftTask, subtasks, employees, currentProjectPrefix,
+    task, isOpen, onClose, isEditing, draftTask, subtasks, employees, currentProjectPrefix, allTaskStatuses,
     handleEdit, handleDelete, handleUpdate, cancelEdit, handleDraftChange, 
-    handleSubtaskChange, addSubtask, removeSubtask, handleStartSprint 
+    handleSubtaskChange, addSubtask, removeSubtask, handleStartSprint, onTaskStatusChange, onSubtaskStatusChange
   } = props;
   
+  const handleMainTaskStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value;
+    if (newStatus && task._id) {
+      onTaskStatusChange(task._id, newStatus);
+    }
+  }, [task._id, onTaskStatusChange]);
+
+  const handleSubtaskStatusChange = useCallback((subtaskId: string | undefined, newStatus: string) => {
+    if (task._id && subtaskId) {
+      onSubtaskStatusChange(task._id, subtaskId, newStatus);
+    }
+  }, [task._id, onSubtaskStatusChange]);
+
   if (!isOpen) return null;
+
   const current = isEditing ? draftTask : task;
   const subtasksToDisplay = isEditing ? subtasks : task.subtasks || [];
   const hasSubtasks = subtasksToDisplay.length > 0;
   
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
   const renderField = (label: string, name: keyof Task, type: 'text' | 'date' | 'select' | 'number', options?: string[]) => {
     if (name === 'subtasks') {
         return null; 
@@ -70,11 +93,14 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     const displayString = (typeof displayValue === 'string' || typeof displayValue === 'number' || displayValue === undefined) 
         ? displayValue 
         : <span className="text-gray-500">N/A</span>;
+
+    const isSelect = type === 'select' || (name === 'status' && !isEditing);
+    const finalOptions = name === 'status' ? allTaskStatuses : options;
+
     return (
         <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-        {isEditing ? (
-            type === 'select' ? (
+        {isEditing || isSelect ? (
             name === 'assigneeName' ? (
                 <select 
                 name={name} 
@@ -87,28 +113,38 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     <option key={employee._id} value={employee.name}>{employee.name}</option>
                 ))}
                 </select>
-            ) : (
+            ) : name === 'status' && !isEditing ? (
                 <select 
                 name={name} 
-                value={current[name] as string | number || ""} 
-                onChange={handleDraftChange} 
+                value={task.status || ""} 
+                onChange={handleMainTaskStatusChange} 
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
                 >
-                {(options || []).map(opt => (
+                {finalOptions?.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                 ))}
                 </select>
-            )
+            ) : name === 'status' && isEditing ? (
+                <select 
+                    name="status" 
+                    value={current.status || ""} 
+                    onChange={handleDraftChange} 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
+                >
+                    {allTaskStatuses.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                </select>
             ) : (
-            <input 
-                type={type === 'date' ? 'date' : type === 'number' ? 'number' : 'text'}
-                name={name} 
-                value={current[name] as string | number || ""} 
-                onChange={handleDraftChange} 
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
-                min={type === 'number' ? 0 : undefined}
-                max={type === 'number' ? 100 : undefined}
-            />
+                <input 
+                    type={type === 'date' ? 'date' : type === 'number' ? 'number' : 'text'}
+                    name={name} 
+                    value={current[name] as string | number || ""} 
+                    onChange={handleDraftChange} 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+                    min={type === 'number' ? 0 : undefined}
+                    max={type === 'number' ? 100 : undefined}
+                />
             )
         ) : (
             <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
@@ -118,13 +154,17 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         </div>
     );
   };
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60 flex items-start justify-center p-4 sm:p-6" onClick={onClose}>
+    <div 
+        className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60 flex items-center justify-center p-4 sm:p-6" // Changed 'items-start' to 'items-center' for vertical centering
+        onClick={onClose}
+    >
       <div 
-        className="bg-white rounded-4xl shadow-2xl w-full max-w-5xl mt-12 mb-8 transform transition-all duration-300 overflow-hidden"
+        className="bg-white  rounded-4xl shadow-2xl w-full max-w-5xl my-12 transform transition-all duration-300 overflow-hidden" // Changed 'mt-12 mb-8' to 'my-12' for better spacing when centered
         onClick={stopPropagation}
       >
-        <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
+        <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0  bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-900">
             {isEditing ? `Edit Task: ${task.projectId}` : `Task Details: ${task.projectId}`}
           </h2>
@@ -149,22 +189,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                {isEditing ? (
-                  <select 
-                    name="status" 
-                    value={current.status || ""} 
-                    onChange={handleDraftChange} 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
-                  >
-                    <option>Backlog</option> 
-                    <option>In Progress</option>
-                    <option>Completed</option>
-                    <option>On Hold</option>
-                    <option>Paused</option>
-                  </select>
-                ) : (
-                  <div className="py-2">{getStatusBadge(task.status)}</div>
-                )}
+                {renderField("Status", "status", "select", allTaskStatuses)}
               </div>
               <div className="col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
@@ -194,6 +219,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               handleSubtaskChange={handleSubtaskChange}
               addSubtask={addSubtask}
               removeSubtask={removeSubtask}
+              allTaskStatuses={["Pending", "In Progress", "Completed", "Paused"]} 
             />
           ) : (
             hasSubtasks ? (
@@ -226,7 +252,18 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                             <span className="text-xs font-semibold text-gray-900">{subtask.completion}%</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">{getStatusBadge(subtask.status, true)}</td>
+                        <td className="px-4 py-3">
+                          <select 
+                              value={subtask.status || "Pending"} 
+                              onChange={(e) => handleSubtaskStatusChange(subtask.id, e.target.value)}
+                              className="w-full px-3 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-xs text-gray-900 bg-white"
+                          >
+                              <option>Pending</option>
+                              <option>In Progress</option>
+                              <option>Completed</option>
+                              <option>Paused</option>
+                          </select>
+                        </td>
                         <td className="px-4 py-3 text-sm text-gray-700">{subtask.remarks || '-'}</td>
                       </tr>
                     ))}
@@ -240,7 +277,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             )
           )}
         </div>
-        <div className="p-6 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white z-10">
+        <div className="p-6 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0  bg-white z-10">
           
           {task.status === "Backlog" && !isEditing && (
             <button 
@@ -270,15 +307,13 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             </>
           ) : (
             <>
-              {(task.status !== "Completed") && (
-                  <button 
-                    onClick={() => handleEdit(task)} 
-                    className="inline-flex items-center gap-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit Task
-                  </button>
-              )}
+              <button 
+                onClick={() => handleEdit(task)} 
+                className="inline-flex items-center gap-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit Task
+              </button>
               
               <button 
                 onClick={() => handleDelete(task._id)} 
@@ -294,4 +329,5 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     </div>
   );
 };
+
 export default TaskModal;

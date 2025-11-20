@@ -6,11 +6,13 @@ import {
     Draggable,
     DropResult,
 } from '@hello-pangea/dnd';
+
 interface TaskBoardViewProps {
     tasks: Task[];
     openTaskModal: (task: Task) => void;
     onTaskStatusChange: (taskId: string, newStatus: string) => void;
 }
+
 const statusColumns = [
     { title: "To Do (Backlog)", status: "Backlog" },
     { title: "In Progress (Sprint)", status: "In Progress" },
@@ -23,12 +25,14 @@ const statusColumns = [
     { title: "Pilot Test", status: "Pilot Test" },
     { title: "Done", status: "Completed" },
 ];
+
 const getProgressBarColor = (completion: number) => {
     if (completion === 100) return 'bg-green-500';
     if (completion >= 70) return 'bg-blue-500';
     if (completion >= 30) return 'bg-yellow-500';
     return 'bg-red-500';
 };
+
 const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task) => void }> = ({ task, index, openTaskModal }) => (
     <Draggable draggableId={task._id} index={index}>
         {(provided, snapshot) => (
@@ -62,6 +66,7 @@ const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task
         )}
     </Draggable>
 );
+
 const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onTaskStatusChange }) => {
     
     const tasksByStatus = useMemo(() => {
@@ -74,6 +79,7 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
             return acc;
         }, {} as { [key: string]: Task[] });
     }, [tasks]);
+
     const onDragEnd = (result: DropResult) => {
         const { destination, source, draggableId } = result;
         if (!destination) return;
@@ -87,6 +93,7 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
             onTaskStatusChange(taskId, newStatus);
         }
     };
+
     return (
         <DragDropContext onDragEnd={onDragEnd}>
             <div className="flex space-x-5 overflow-x-auto pb-6 px-2">
@@ -130,4 +137,5 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
         </DragDropContext>
     );
 };
+
 export default TaskBoardView;

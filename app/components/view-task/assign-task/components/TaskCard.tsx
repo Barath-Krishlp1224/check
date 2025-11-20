@@ -1,12 +1,14 @@
 import React from "react";
 import { Clock, CheckCircle2, User, ChevronRight, Pause, AlertCircle } from "lucide-react";
 import { Task } from "../page";
+
 interface TaskCardProps {
   task: Task;
   onViewDetails: (task: Task) => void;
 }
+
 const getStatusBadge = (status: string) => {
-  const baseClasses = "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full";
+  const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
   let icon = null;
   if (status === "Completed") {
@@ -32,6 +34,7 @@ const getStatusBadge = (status: string) => {
     </span>
   );
 };
+
 const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   return (
@@ -72,4 +75,5 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
     </div>
   );
 };
+
 export default TaskCard;

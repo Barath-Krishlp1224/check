@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Task, Subtask, Employee } from "../page"; 
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
+
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
@@ -29,6 +30,22 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
     </span>
   );
 };
+
+const mainTaskEditStatuses = [
+  "Backlog",
+  "In Progress",
+  "Dev Review",
+  "Deployed in QA",
+  "Test In Progress",
+  "QA Sign Off",
+  "Deployment Stage",
+  "Pilot Test",
+  "Completed",
+  "Paused",
+];
+
+const subtaskStatuses = ["Pending", "In Progress", "Completed", "Paused"];
+
 interface TaskRowProps {
   task: Task;
   idx: number;
@@ -48,6 +65,7 @@ interface TaskRowProps {
   addSubtask: () => void;
   removeSubtask: (index: number) => void;
 }
+
 const TaskRow: React.FC<TaskRowProps> = ({
   task,
   idx,
@@ -187,10 +205,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
               onChange={handleDraftChange} 
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             >
-              <option>In Progress</option>
-              <option>Completed</option>
-              <option>On Hold</option>
-              <option>Paused</option>
+              {mainTaskEditStatuses.map(status => (
+                 <option key={status} value={status}>{status}</option>
+              ))}
             </select>
           ) : (
             getStatusBadge(task.status)
@@ -312,6 +329,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
               handleSubtaskChange={handleSubtaskChange}
               addSubtask={addSubtask}
               removeSubtask={removeSubtask}
+              allTaskStatuses={subtaskStatuses}
             />
           </td>
         </tr>
@@ -319,4 +337,5 @@ const TaskRow: React.FC<TaskRowProps> = ({
     </React.Fragment>
   );
 };
+
 export default TaskRow;

@@ -1,6 +1,7 @@
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
 import { Employee } from "../page"; 
+
 interface TaskTableHeaderProps {
   uniqueProjects: string[];
   employees: Employee[];
@@ -11,6 +12,7 @@ interface TaskTableHeaderProps {
   xlsxLoaded: boolean;
   handleExcelDownload: () => void;
 }
+
 const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
   uniqueProjects,
   employees,
@@ -121,4 +123,5 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
     </div>
   );
 };
+
 export default TaskTableHeader;

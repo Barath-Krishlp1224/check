@@ -1,6 +1,9 @@
 import React from "react";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { Subtask, Employee } from "../page"; 
+
+const subtaskStatuses = ["Pending", "In Progress", "Completed", "Paused"];
+
 interface TaskSubtaskEditorProps {
   subtasks: Subtask[];
   employees: Employee[];
@@ -8,7 +11,9 @@ interface TaskSubtaskEditorProps {
   handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
   addSubtask: () => void;
   removeSubtask: (index: number) => void;
+  allTaskStatuses: string[];
 }
+
 const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({ 
   subtasks,
   employees,
@@ -17,7 +22,7 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
   addSubtask,
   removeSubtask,
 }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+  <div className="bg-white  rounded-lg shadow-sm border border-slate-200 p-6">
     <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
       <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full"></span>
       Subtasks (Edit Mode)
@@ -37,7 +42,7 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {subtasks.map((sub, i) => (
-            <tr key={i} className="bg-white">
+            <tr key={i} className="bg-white ">
               <td className="px-4 py-3 text-center font-semibold text-purple-600 bg-slate-50">
                 {sub.id || "New"}
               </td>
@@ -67,9 +72,9 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
                   onChange={(e) => handleSubtaskChange(i, "status", e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
                 >
-                  <option>Pending</option>
-                  <option>In Progress</option>
-                  <option>Completed</option>
+                  {subtaskStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </td>
               <td className="px-4 py-3">
@@ -127,4 +132,5 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
     </div>
   </div>
 );
+
 export default TaskSubtaskEditor;

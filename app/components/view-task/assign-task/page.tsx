@@ -42,7 +42,6 @@ export interface Task {
   remarks?: string;
   subtasks?: Subtask[];
 
-  // Optional, if you have department in the DB:
   department?: "Tech" | "Accounts" | string;
 }
 
@@ -54,6 +53,19 @@ export interface Employee {
 export type ViewType = "card" | "board";
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
+
+export const allTaskStatuses = [
+  "Backlog",
+  "In Progress",
+  "Dev Review",
+  "Deployed in QA",
+  "Test In Progress",
+  "QA Sign Off",
+  "Deployment Stage",
+  "Pilot Test",
+  "Completed",
+  "Paused",
+];
 
 const TasksPage: React.FC = () => {
   const router = useRouter();
@@ -110,7 +122,6 @@ const TasksPage: React.FC = () => {
     } catch (err) {}
   };
 
-  // 🔹 NEW: trigger due-date Slack reminders (2 days before + overdue)
   const triggerDueDateNotifications = async () => {
     try {
       const url = getApiUrl("/api/tasks/reminders");
@@ -147,7 +158,6 @@ const TasksPage: React.FC = () => {
       setLoading(true);
       setError("");
       await Promise.all([fetchTasks(), fetchEmployees()]);
-      // 🔹 After tasks are loaded, trigger due date notifications
       await triggerDueDateNotifications();
       setLoading(false);
     };
@@ -350,6 +360,41 @@ const TasksPage: React.FC = () => {
       }
     },
     []
+  );
+
+  const onSubtaskStatusChange = useCallback(
+    async (taskId: string, subtaskId: string, newStatus: string) => {
+      try {
+        const taskToUpdate = tasks.find(t => t._id === taskId);
+        if (!taskToUpdate) return;
+
+        const updatedSubtasks = (taskToUpdate.subtasks || []).map(sub => 
+          sub.id === subtaskId ? { ...sub, status: newStatus } : sub
+        );
+
+        const url = getApiUrl(`/api/tasks/${taskId}`);
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subtasks: updatedSubtasks }),
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+          fetchTasks();
+          alert("✅ Subtask status updated successfully!");
+        } else {
+          alert(
+            `❌ Failed to update subtask status: ${
+              data.error || "Unknown error"
+            }`
+          );
+        }
+      } catch (err) {
+        alert("A server error occurred during subtask status update.");
+      }
+    },
+    [tasks]
   );
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -693,6 +738,7 @@ const TasksPage: React.FC = () => {
               subtasks={subtasks}
               employees={employees}
               currentProjectPrefix={currentProjectPrefix}
+              allTaskStatuses={allTaskStatuses} 
               handleEdit={handleEdit}
               handleDelete={handleDelete}
               handleUpdate={handleUpdate}
@@ -702,6 +748,8 @@ const TasksPage: React.FC = () => {
               addSubtask={addSubtask}
               removeSubtask={removeSubtask}
               handleStartSprint={handleStartSprint}
+              onTaskStatusChange={onTaskStatusChange}
+              onSubtaskStatusChange={onSubtaskStatusChange}
             />
           )}
         </div>
