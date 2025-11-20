@@ -1,17 +1,24 @@
 // app/api/assets/[id]/route.ts
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Asset from "@/models/Asset";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+// Use RouteContext<'/api/assets/[id]'> so TypeScript knows the params shape.
+// Note: await ctx.params because params may be a Promise in Next 15.
+export async function PUT(
+  req: NextRequest,
+  ctx: RouteContext<'/api/assets/[id]'>
+) {
+  const { id } = await ctx.params; // id is the dynamic segment
+
   try {
     await connectDB();
 
     const body = await req.json();
 
     // Basic validation - adjust to your needs
-    const updateData: Partial<any> = {};
+    const updateData: Partial<Record<string, unknown>> = {};
     const allowed = [
       "name",
       "empId",
@@ -28,9 +35,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       "antivirus",
       "purchaseDate",
       "allAccessories",
-    ];
+    ] as const;
+
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(body, key)) {
+        // TS: index signature via bracket
         updateData[key] = body[key];
       }
     }
@@ -51,7 +60,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   } catch (err: any) {
     console.error("PUT /api/assets/[id] error:", err);
     return NextResponse.json(
-      { success: false, error: err.message || "Server error" },
+      { success: false, error: err?.message ?? "Server error" },
       { status: 500 }
     );
   }
