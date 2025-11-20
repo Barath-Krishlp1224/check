@@ -31,13 +31,10 @@ function escapeHtml(unsafe?: string) {
     .replaceAll("'", "&#039;");
 }
 
-/**
- * Helper to get the current date in DD-MM-YYYY format
- */
 function getFormattedDate(): string {
   const today = new Date();
   const day = String(today.getDate()).padStart(2, '0');
-  const month = String(today.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+  const month = String(today.getMonth() + 1).padStart(2, '0');
   const year = today.getFullYear();
   return `${day}-${month}-${year}`;
 }
@@ -47,7 +44,6 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
   const addressLine1 = "No. 303, Kamaraj Salai, Pillaithottam, Pondicherry - 605 013";
   const addressLine2 = "CIN: U62099PY2023PTC009018";
 
-  // Get today's date for the acknowledgment section
   const todayDate = getFormattedDate();
 
   const styles = `
@@ -168,7 +164,7 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
       font-size: 12px;
       margin-bottom: 3px;
       padding: 1px 0; 
-      border-bottom: 1px dotted #eee; 
+      border-bottom: 1px solid #eee;
     }
     .data-label {
       font-weight: 600;
@@ -190,8 +186,6 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
     }
     .signature-column {
       width: 45%;
-      /* --- REMOVED THE BORDER LINE BELOW --- */
-      /* border-top: 1px solid #333; */ 
       padding-top: 5px;
       font-size: 12px;
       font-weight: bold;
@@ -329,7 +323,7 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
   const html = `
   <html>
     <head>
-      <title>${forPrint ? "Print" : "Preview"} — ${escapeHtml(asset.name ?? "Asset")}</title>
+      <title>${forPrint ? "Laptop & Asset Policy" : "Preview"} — ${escapeHtml(asset.name ?? "Asset")}</title>
       <meta name="viewport" content="width=device-width,initial-scale=1" />
       <style>${styles}</style>
     </head>
