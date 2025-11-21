@@ -85,7 +85,7 @@ export default function LoginPage() {
               case "HR": router.push("/components/hr"); break;
               case "Accounts": router.push("/components/view-task"); break;
               case "Admin & Operations": router.push("/components/admin-operations"); break;
-              case "Tech": router.push("/components/employees"); break;
+              case "Tech": router.push("/components/view-task"); break;
               case "IT Admin": router.push("/components/it-admin"); break;
               case "Founders": router.push("/components/founders"); break;
               case "Manager": router.push("/components/manager"); break;

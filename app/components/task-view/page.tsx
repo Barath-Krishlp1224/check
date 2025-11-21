@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut, BarChart2 } from "lucide-react";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -28,7 +28,18 @@ export interface Task {
   endDate?: string;
   dueDate: string;
   completion: number;
-  status: "Backlog" | "In Progress" | "Dev Review" | "Deployed in QA" | "Test In Progress" | "QA Sign Off" | "Deployment Stage" | "Pilot Test" | "Completed" | "Paused" | string;
+  status:
+    | "Backlog"
+    | "In Progress"
+    | "Dev Review"
+    | "Deployed in QA"
+    | "Test In Progress"
+    | "QA Sign Off"
+    | "Deployment Stage"
+    | "Pilot Test"
+    | "Completed"
+    | "Paused"
+    | string;
   remarks?: string;
   subtasks?: Subtask[];
 }
@@ -92,11 +103,12 @@ const TasksPage: React.FC = () => {
   };
 
   useEffect(() => {
-    import('xlsx').then(XLSX => {
+    import("xlsx")
+      .then((XLSX) => {
         (window as any).XLSX = XLSX;
         setXlsxLoaded(true);
-    }).catch(err => {
-    });
+      })
+      .catch((err) => {});
 
     const init = async () => {
       setLoading(true);
@@ -108,33 +120,33 @@ const TasksPage: React.FC = () => {
   }, []);
 
   const uniqueProjects = useMemo(() => {
-    const projectNames = tasks.map(task => task.project).filter(Boolean);
+    const projectNames = tasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(projectNames));
   }, [tasks]);
 
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     let value = downloadFilterValue.trim().toLowerCase();
-    
+
     let primaryFilterValue = value;
-    let fromDateString = '';
-    let toDateString = '';
+    let fromDateString = "";
+    let toDateString = "";
 
     if (value.includes("|")) {
-        const parts = value.split('|');
-        primaryFilterValue = parts[0];
-        fromDateString = parts[1];
-        toDateString = parts[2];
-        value = primaryFilterValue;
+      const parts = value.split("|");
+      primaryFilterValue = parts[0];
+      fromDateString = parts[1];
+      toDateString = parts[2];
+      value = primaryFilterValue;
     }
 
     if (filter === "all" && !primaryFilterValue && !fromDateString && !toDateString) {
       return tasks;
     }
 
-    return tasks.filter(task => {
+    return tasks.filter((task) => {
       let isPrimaryMatch = true;
-      
+
       switch (filter) {
         case "project":
           isPrimaryMatch = primaryFilterValue === "" || task.project.toLowerCase() === primaryFilterValue;
@@ -149,14 +161,18 @@ const TasksPage: React.FC = () => {
           break;
 
         case "date":
-          return task.startDate === downloadFilterValue ||
-                 task.dueDate === downloadFilterValue ||
-                 (task.endDate && task.endDate === downloadFilterValue);
+          return (
+            task.startDate === downloadFilterValue ||
+            task.dueDate === downloadFilterValue ||
+            (task.endDate && task.endDate === downloadFilterValue)
+          );
 
         case "month":
-          return task.startDate.startsWith(downloadFilterValue) ||
-                 task.dueDate.startsWith(downloadFilterValue) ||
-                 (task.endDate && task.endDate.startsWith(downloadFilterValue));
+          return (
+            task.startDate.startsWith(downloadFilterValue) ||
+            task.dueDate.startsWith(downloadFilterValue) ||
+            (task.endDate && task.endDate.startsWith(downloadFilterValue))
+          );
 
         case "all":
           isPrimaryMatch = true;
@@ -165,9 +181,9 @@ const TasksPage: React.FC = () => {
         default:
           isPrimaryMatch = true;
       }
-      
+
       if (!isPrimaryMatch) {
-          return false;
+        return false;
       }
 
       if (!fromDateString && !toDateString) {
@@ -177,31 +193,26 @@ const TasksPage: React.FC = () => {
       const fromDate = fromDateString ? new Date(fromDateString) : null;
       const toDate = toDateString ? new Date(toDateString) : null;
 
-      const taskDates = [
-          task.startDate,
-          task.dueDate,
-          task.endDate
-      ].filter(d => d).map(d => new Date(d as string));
+      const taskDates = [task.startDate, task.dueDate, task.endDate].filter((d) => d).map((d) => new Date(d as string));
 
-      return taskDates.some(taskDate => {
-          let isAfterFrom = true;
-          let isBeforeTo = true;
+      return taskDates.some((taskDate) => {
+        let isAfterFrom = true;
+        let isBeforeTo = true;
 
-          if (fromDate) {
-              fromDate.setHours(0, 0, 0, 0); 
-              taskDate.setHours(0, 0, 0, 0);
-              isAfterFrom = taskDate >= fromDate;
-          }
+        if (fromDate) {
+          fromDate.setHours(0, 0, 0, 0);
+          taskDate.setHours(0, 0, 0, 0);
+          isAfterFrom = taskDate >= fromDate;
+        }
 
-          if (toDate) {
-              const endOfDayToDate = new Date(toDateString as string);
-              endOfDayToDate.setDate(endOfDayToDate.getDate() + 1);
-              endOfDayToDate.setHours(0, 0, 0, 0); 
-              
-              isBeforeTo = taskDate < endOfDayToDate;
-          }
+        if (toDate) {
+          const endOfDayToDate = new Date(toDateString as string);
+          endOfDayToDate.setDate(endOfDayToDate.getDate() + 1);
+          endOfDayToDate.setHours(0, 0, 0, 0);
+          isBeforeTo = taskDate < endOfDayToDate;
+        }
 
-          return isAfterFrom && isBeforeTo;
+        return isAfterFrom && isBeforeTo;
       });
     });
   }, [tasks, downloadFilterType, downloadFilterValue]);
@@ -231,8 +242,8 @@ const TasksPage: React.FC = () => {
   const closeTaskModal = () => {
     setIsModalOpen(false);
     setTimeout(() => {
-        setSelectedTaskForModal(null);
-        cancelEdit();
+      setSelectedTaskForModal(null);
+      cancelEdit();
     }, 300);
   };
 
@@ -268,14 +279,9 @@ const TasksPage: React.FC = () => {
     }));
   };
 
-  const handleSubtaskChange = (
-    index: number,
-    field: keyof Subtask,
-    value: string | number
-  ) => {
+  const handleSubtaskChange = (index: number, field: keyof Subtask, value: string | number) => {
     const updated = [...subtasks];
-    (updated[index] as any)[field] =
-      field === "completion" ? Number(value) : value;
+    (updated[index] as any)[field] = field === "completion" ? Number(value) : value;
     setSubtasks(updated);
   };
 
@@ -308,19 +314,13 @@ const TasksPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setTasks(prevTasks =>
-          prevTasks.map(task =>
-            task._id === taskId ? { ...task, status: newStatus as Task['status'] } : task
-          )
-        );
+        setTasks((prevTasks) => prevTasks.map((task) => (task._id === taskId ? { ...task, status: newStatus as Task["status"] } : task)));
         fetchTasks();
 
         const statusesToNotify = ["Backlog", "In Progress", "Paused", "Completed"];
-
         if (statusesToNotify.includes(newStatus)) {
-            console.log(`Slack Notification Triggered for Task ${taskId}: Status changed to ${newStatus}`);
+          console.log(`Slack Notification Triggered for Task ${taskId}: Status changed to ${newStatus}`);
         }
-
       } else {
         alert(`❌ Failed to update task status: ${data.error || "Unknown error"}`);
       }
@@ -363,22 +363,22 @@ const TasksPage: React.FC = () => {
   const handleStartSprint = async (taskId: string) => {
     if (!window.confirm("Do you want to start the sprint for this task? Status will change to 'In Progress'.")) return;
     try {
-        const url = getApiUrl(`/api/tasks/${taskId}`);
-        const res = await fetch(url, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "In Progress" }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            alert("🚀 Sprint started! Task status is now 'In Progress'.");
-            closeTaskModal();
-            fetchTasks();
-        } else {
-            alert(`❌ Failed to start sprint: ${data.error || "Unknown error"}`);
-        }
+      const url = getApiUrl(`/api/tasks/${taskId}`);
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "In Progress" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("🚀 Sprint started! Task status is now 'In Progress'.");
+        closeTaskModal();
+        fetchTasks();
+      } else {
+        alert(`❌ Failed to start sprint: ${data.error || "Unknown error"}`);
+      }
     } catch (err) {
-        alert("Server error during status update.");
+      alert("Server error during status update.");
     }
   };
 
@@ -400,135 +400,127 @@ const TasksPage: React.FC = () => {
 
   const handleExcelDownload = () => {
     if (typeof window === "undefined" || !(window as any).XLSX) {
-        alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
-        return;
-      }
+      alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
+      return;
+    }
 
-      let tasksForExport: Task[] = [];
-      const filter = downloadFilterType;
-      const value = downloadFilterValue.trim();
+    let tasksForExport: Task[] = [];
+    const filter = downloadFilterType;
+    const value = downloadFilterValue.trim();
 
-      if (filter === "all" || !value) {
-        tasksForExport = tasks;
-      } else {
-        tasksForExport = tasks.filter(task => {
-            switch (filter) {
-                case "project":
-                    return task.project === value;
+    if (filter === "all" || !value) {
+      tasksForExport = tasks;
+    } else {
+      tasksForExport = tasks.filter((task) => {
+        switch (filter) {
+          case "project":
+            return task.project === value;
 
-                case "assignee":
-                    if (value.toLowerCase() === "all") return true;
-                    return task.assigneeName.toLowerCase() === value.toLowerCase();
+          case "assignee":
+            if (value.toLowerCase() === "all") return true;
+            return task.assigneeName.toLowerCase() === value.toLowerCase();
 
-                case "status":
-                    return task.status === value;
+          case "status":
+            return task.status === value;
 
-                case "date":
-                    return (
-                      task.startDate === value ||
-                      task.dueDate === value ||
-                      (task.endDate && task.endDate === value)
-                    );
+          case "date":
+            return task.startDate === value || task.dueDate === value || (task.endDate && task.endDate === value);
 
-                case "month":
-                    return (
-                        task.startDate.startsWith(value) ||
-                        task.dueDate.startsWith(value) ||
-                        (task.endDate && task.endDate.startsWith(value))
-                    );
+          case "month":
+            return task.startDate.startsWith(value) || task.dueDate.startsWith(value) || (task.endDate && task.endDate.startsWith(value));
 
-                default:
-                    return true;
-            }
-        });
-      }
-
-      if (tasksForExport.length === 0) {
-          alert(`No tasks found for the current filter: ${filter} = ${value || "N/A"}`);
-          return;
-      }
-
-      const dataForExport = tasksForExport.flatMap(task => {
-          const mainRow = {
-              'Task ID': task.projectId,
-              'Item Type': 'Task',
-              'Task Name': task.project,
-              'Main Assignee': task.assigneeName,
-              'Start Date': task.startDate,
-              'End Date': task.endDate || 'N/A',
-              'Due Date': task.dueDate,
-              'Task Progress (%)': task.completion,
-              'Task Status': task.status,
-              'Task Remarks': task.remarks || '-',
-              'Subtask ID': 'N/A',
-              'Subtask Title': 'N/A',
-              'Subtask Assignee': 'N/A',
-              'Subtask Progress (%)': 'N/A',
-              'Subtask Status': 'N/A',
-              'Subtask Remarks': 'N/A',
-          };
-
-          if (!task.subtasks || task.subtasks.length === 0) {
-              return [mainRow];
-          }
-
-          const subtaskRows = task.subtasks.map(sub => ({
-              'Task ID': '',
-              'Item Type': 'Subtask',
-              'Task Name': `— ${task.project}`,
-              'Main Assignee': '',
-              'Start Date': '',
-              'End Date': '',
-              'Due Date': '',
-              'Task Progress (%)': '',
-              'Task Status': '',
-              'Task Remarks': '',
-              'Subtask ID': sub.id || 'N/A',
-              'Subtask Title': sub.title,
-              'Subtask Assignee': sub.assigneeName || 'Unassigned',
-              'Subtask Progress (%)': sub.completion,
-              'Subtask Status': sub.status,
-              'Subtask Remarks': sub.remarks || '-',
-          }));
-
-          return [mainRow, ...subtaskRows];
+          default:
+            return true;
+        }
       });
+    }
 
-      const XLSX = (window as any).XLSX;
-      const ws = XLSX.utils.json_to_sheet(dataForExport);
+    if (tasksForExport.length === 0) {
+      alert(`No tasks found for the current filter: ${filter} = ${value || "N/A"}`);
+      return;
+    }
 
-      const objectKeys = Object.keys(dataForExport[0] || {});
-      const wscols = objectKeys.map(key => {
-          let max_width = key.length;
-          dataForExport.forEach(row => {
-              const cellValue = String((row as any)[key] || '');
-              max_width = Math.max(max_width, cellValue.length);
-          });
-          const finalWidth = Math.min(max_width + 2, 60);
-          return { wch: finalWidth };
+    const dataForExport = tasksForExport.flatMap((task) => {
+      const mainRow = {
+        TaskID: task.projectId,
+        ItemType: "Task",
+        TaskName: task.project,
+        MainAssignee: task.assigneeName,
+        StartDate: task.startDate,
+        EndDate: task.endDate || "N/A",
+        DueDate: task.dueDate,
+        TaskProgress: task.completion,
+        TaskStatus: task.status,
+        TaskRemarks: task.remarks || "-",
+        SubtaskID: "N/A",
+        SubtaskTitle: "N/A",
+        SubtaskAssignee: "N/A",
+        SubtaskProgress: "N/A",
+        SubtaskStatus: "N/A",
+        SubtaskRemarks: "N/A",
+      };
+
+      if (!task.subtasks || task.subtasks.length === 0) {
+        return [mainRow];
+      }
+
+      const subtaskRows = task.subtasks.map((sub) => ({
+        TaskID: "",
+        ItemType: "Subtask",
+        TaskName: `— ${task.project}`,
+        MainAssignee: "",
+        StartDate: "",
+        EndDate: "",
+        DueDate: "",
+        TaskProgress: "",
+        TaskStatus: "",
+        TaskRemarks: "",
+        SubtaskID: sub.id || "N/A",
+        SubtaskTitle: sub.title,
+        SubtaskAssignee: sub.assigneeName || "Unassigned",
+        SubtaskProgress: sub.completion,
+        SubtaskStatus: sub.status,
+        SubtaskRemarks: sub.remarks || "-",
+      }));
+
+      return [mainRow, ...subtaskRows];
+    });
+
+    const XLSX = (window as any).XLSX;
+    const ws = XLSX.utils.json_to_sheet(dataForExport);
+
+    const objectKeys = Object.keys(dataForExport[0] || {});
+    const wscols = objectKeys.map((key) => {
+      let max_width = key.length;
+      dataForExport.forEach((row) => {
+        const cellValue = String((row as any)[key] || "");
+        max_width = Math.max(max_width, cellValue.length);
       });
+      const finalWidth = Math.min(max_width + 2, 60);
+      return { wch: finalWidth };
+    });
 
-      ws['!cols'] = wscols;
+    ws["!cols"] = wscols;
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
 
-      const safeValue = value.replace(/[^a-z0-9]/gi, '_');
-      const fileName = filter === "all" ? "All_Tasks_Report.xlsx" : `${filter}_${safeValue}_Tasks_Report.xlsx`;
+    const safeValue = value.replace(/[^a-z0-9]/gi, "_");
+    const fileName = filter === "all" ? "All_Tasks_Report.xlsx" : `${filter}_${safeValue}_Tasks_Report.xlsx`;
 
-      XLSX.writeFile(wb, fileName);
-      alert(`✅ Task report downloaded as ${fileName}`);
+    XLSX.writeFile(wb, fileName);
+    alert(`✅ Task report downloaded as ${fileName}`);
   };
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
-        router.push('/');
+      router.push("/");
     }
   };
 
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen ">
+      <div className="flex justify-center items-center min-h-screen bg-white">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
           <p className="text-slate-600 font-medium">Loading tasks and employees...</p>
@@ -538,7 +530,7 @@ const TasksPage: React.FC = () => {
 
   if (error)
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="min-h-screen flex items-center justify-center p-8 bg-white">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full border border-red-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-red-100 rounded-full">
@@ -552,57 +544,37 @@ const TasksPage: React.FC = () => {
     );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-white">
       <aside className="fixed left-0 top-0 h-full w-20 bg-white shadow-xl pt-28 flex flex-col items-center space-y-4 z-20">
         <button
           onClick={() => setViewType("card")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "card"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
+          className={`p-3 rounded-xl transition-all duration-200 ${viewType === "card" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"}`}
           title="Card View (3 in a row)"
         >
           <LayoutGrid className="w-6 h-6" />
         </button>
         <button
           onClick={() => setViewType("board")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "board"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
+          className={`p-3 rounded-xl transition-all duration-200 ${viewType === "board" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"}`}
           title="Board View (Kanban)"
         >
           <ListTodo className="w-6 h-6" />
         </button>
         <button
           onClick={() => setViewType("chart")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "chart"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
+          className={`p-3 rounded-xl transition-all duration-200 ${viewType === "chart" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"}`}
           title="Chart View (Analytics)"
         >
           <BarChart2 className="w-6 h-6" />
         </button>
-        <div className="flex-grow"></div> 
-        <button
-          onClick={handleLogout}
-          className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-          title="Logout"
-        >
+        <div className="flex-grow" />
+        <button onClick={handleLogout} className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600" title="Logout">
           <LogOut className="w-6 h-6" />
         </button>
       </aside>
 
-      <div
-        className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8"
-        style={{ marginLeft: '5rem' }}
-      >
+      <div className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8" style={{ marginLeft: "5rem", backgroundColor: "#ffffff" }}>
         <div className="max-w-[1800px] mx-auto">
-
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
             employees={employees}
@@ -615,66 +587,52 @@ const TasksPage: React.FC = () => {
           />
 
           {filteredTasks.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                  <div className="text-center py-16">
-                      <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-                          <AlertCircle className="w-8 h-8 text-slate-400" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
-                      <p className="text-slate-500">The current filter returned no matching tasks.</p>
-                  </div>
+            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
+                  <AlertCircle className="w-8 h-8 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
+                <p className="text-slate-500">The current filter returned no matching tasks.</p>
               </div>
+            </div>
           ) : (
             <>
               {viewType === "card" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredTasks.map((task) => (
-                        <TaskCard
-                            key={task._id}
-                            task={task}
-                            onViewDetails={openTaskModal}
-                        />
-                    ))}
+                  {filteredTasks.map((task) => (
+                    <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
+                  ))}
                 </div>
               )}
 
-              {viewType === "board" && (
-                  <TaskBoardView
-                      tasks={filteredTasks}
-                      openTaskModal={openTaskModal}
-                      onTaskStatusChange={onTaskStatusChange}
-                  />
-              )}
-              {viewType === "chart" && (
-                  <TaskChartView 
-                      tasks={filteredTasks}
-                  />
-              )}
+              {viewType === "board" && <TaskBoardView tasks={filteredTasks} openTaskModal={openTaskModal} onTaskStatusChange={onTaskStatusChange} />}
+
+              {viewType === "chart" && <TaskChartView tasks={filteredTasks} />}
             </>
           )}
 
           {selectedTaskForModal && (
-              <TaskModal
-                  task={selectedTaskForModal}
-                  isOpen={isModalOpen}
-                  onClose={closeTaskModal}
-                  isEditing={isEditing}
-                  draftTask={draftTask}
-                  subtasks={subtasks}
-                  employees={employees}
-                  currentProjectPrefix={currentProjectPrefix}
-                  handleEdit={handleEdit}
-                  handleDelete={handleDelete}
-                  handleUpdate={handleUpdate}
-                  cancelEdit={cancelEdit}
-                  handleDraftChange={handleDraftChange}
-                  handleSubtaskChange={handleSubtaskChange}
-                  addSubtask={addSubtask}
-                  removeSubtask={removeSubtask}
-                  handleStartSprint={handleStartSprint}
-              />
+            <TaskModal
+              task={selectedTaskForModal}
+              isOpen={isModalOpen}
+              onClose={closeTaskModal}
+              isEditing={isEditing}
+              draftTask={draftTask}
+              subtasks={subtasks}
+              employees={employees}
+              currentProjectPrefix={currentProjectPrefix}
+              handleEdit={handleEdit}
+              handleDelete={handleDelete}
+              handleUpdate={handleUpdate}
+              cancelEdit={cancelEdit}
+              handleDraftChange={handleDraftChange}
+              handleSubtaskChange={handleSubtaskChange}
+              addSubtask={addSubtask}
+              removeSubtask={removeSubtask}
+              handleStartSprint={handleStartSprint}
+            />
           )}
-
         </div>
       </div>
     </div>

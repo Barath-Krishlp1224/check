@@ -28,7 +28,7 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
     <div className="mb-8">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Project Tasks</h1> 
+          <h1 className="text-4xl font-bold text-black mb-2">Project Tasks</h1> 
           <div className="w-24 h-1 bg-blue-600 rounded-full"></div>
         </div>
         <div className="flex items-center gap-4 bg-white rounded-xl shadow-lg border border-slate-200 p-4">

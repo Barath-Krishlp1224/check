@@ -10,12 +10,15 @@ const EmployeesPage: React.FC = () => {
     "bg-white border-2 border-black text-black px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 shadow-lg";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center ">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       {/* Header */}
       <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-white mb-2">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">
           Employee Task Creation Portal
         </h1>
+        <p className="text-gray-600 text-lg">
+          Manage your tasks effortlessly — Create, View, and Track.
+        </p>
       </div>
 
       {/* Buttons */}
@@ -33,7 +36,7 @@ const EmployeesPage: React.FC = () => {
           onClick={() => router.push("/components/task-view")}
           className={buttonClasses}
         >
-          View Task
+          View All Tasks
         </button>
 
         <button

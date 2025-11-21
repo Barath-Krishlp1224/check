@@ -53,8 +53,6 @@ export type ViewType = "card" | "board";
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 
-// ❌ FIXED: removed `export`
-// Next.js doesn't allow exporting custom fields in pages  
 const allTaskStatuses = [
   "Backlog",
   "In Progress",
@@ -166,9 +164,7 @@ const TasksPage: React.FC = () => {
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
-      return tasks.filter(
-        (task) => task.assigneeName?.toLowerCase() === nameLower
-      );
+      return tasks.filter((task) => task.assigneeName?.toLowerCase() === nameLower);
     }
     return tasks;
   }, [tasks, currentUserRole, currentUserName]);
@@ -197,13 +193,13 @@ const TasksPage: React.FC = () => {
           return (
             task.startDate === downloadFilterValue ||
             task.dueDate === downloadFilterValue ||
-            task.endDate === downloadFilterValue
+            (task.endDate && task.endDate === downloadFilterValue)
           );
         case "month":
           return (
             task.startDate.startsWith(downloadFilterValue) ||
             task.dueDate.startsWith(downloadFilterValue) ||
-            task.endDate?.startsWith(downloadFilterValue)
+            (task.endDate && task.endDate.startsWith(downloadFilterValue))
           );
         default:
           return true;
@@ -264,9 +260,7 @@ const TasksPage: React.FC = () => {
     setCurrentProjectPrefix("");
   };
 
-  const handleDraftChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
+  const handleDraftChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDraftTask((prev) => ({
       ...prev,
@@ -311,9 +305,7 @@ const TasksPage: React.FC = () => {
 
       if (res.ok && data.success) {
         setTasks((prev) =>
-          prev.map((t) =>
-            t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t
-          )
+          prev.map((t) => (t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t))
         );
         fetchTasks();
       } else {
@@ -387,12 +379,7 @@ const TasksPage: React.FC = () => {
   };
 
   const handleStartSprint = async (taskId: string) => {
-    if (
-      !window.confirm(
-        "Start sprint for this task? Status will change to 'In Progress'."
-      )
-    )
-      return;
+    if (!window.confirm("Start sprint for this task? Status will change to 'In Progress'.")) return;
 
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
@@ -441,17 +428,17 @@ const TasksPage: React.FC = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen ">
+      <div className="flex justify-center items-center min-h-screen bg-white">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-          <p className="text-slate-600 font-medium">Loading tasks...</p>
+          <p className="text-slate-700 font-medium">Loading tasks...</p>
         </div>
       </div>
     );
 
   if (error)
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="min-h-screen flex items-center justify-center bg-white p-8">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full border border-red-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-red-100 rounded-full">
@@ -465,7 +452,7 @@ const TasksPage: React.FC = () => {
     );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-white">
       <aside className="fixed left-0 top-0 h-full w-20 bg-white shadow-xl pt-28 flex flex-col items-center space-y-4 z-20">
         <button
           onClick={() => setViewType("card")}
@@ -474,6 +461,7 @@ const TasksPage: React.FC = () => {
               ? "bg-indigo-600 text-white shadow-lg"
               : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
           }`}
+          title="Card View (3 in a row)"
         >
           <LayoutGrid className="w-6 h-6" />
         </button>
@@ -485,6 +473,7 @@ const TasksPage: React.FC = () => {
               ? "bg-indigo-600 text-white shadow-lg"
               : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
           }`}
+          title="Board View (Kanban)"
         >
           <ListTodo className="w-6 h-6" />
         </button>
@@ -494,16 +483,14 @@ const TasksPage: React.FC = () => {
         <button
           onClick={handleLogout}
           className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
+          title="Logout"
         >
           <LogOut className="w-6 h-6" />
         </button>
       </aside>
 
-      <div
-        className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8"
-        style={{ marginLeft: "5rem" }}
-      >
-        <div className="max-w-[1800px] mx-auto">
+      <div className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8 bg-white" style={{ marginLeft: "5rem" }}>
+        <div className="max-w-[1800px] mx-auto bg-white">
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
             employees={employees}
@@ -521,9 +508,7 @@ const TasksPage: React.FC = () => {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
                   <AlertCircle className="w-8 h-8 text-slate-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                  No tasks found
-                </h3>
+                <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
                 <p className="text-slate-500">Try adjusting filters.</p>
               </div>
             </div>
@@ -538,11 +523,7 @@ const TasksPage: React.FC = () => {
               )}
 
               {viewType === "board" && (
-                <TaskBoardView
-                  tasks={filteredTasks}
-                  openTaskModal={openTaskModal}
-                  onTaskStatusChange={onTaskStatusChange}
-                />
+                <TaskBoardView tasks={filteredTasks} openTaskModal={openTaskModal} onTaskStatusChange={onTaskStatusChange} />
               )}
             </>
           )}
