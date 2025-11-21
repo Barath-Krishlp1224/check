@@ -18,7 +18,7 @@ const getStatusBadge = (status: string) => {
   } else if (status === "In Progress") {
     colorClasses = "bg-blue-100 text-black";
     icon = <Clock className="w-3 h-3" />;
-  } else if (status === "Backlog") { // ADDED: Backlog status
+  } else if (status === "Backlog") { 
     colorClasses = "bg-gray-100 text-black";
     icon = <AlertCircle className="w-3 h-3" />;
   } else if (status === "On Hold" || status === "Paused" || status === "Pending") {

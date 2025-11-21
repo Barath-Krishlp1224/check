@@ -1,4 +1,3 @@
-// components/TaskChartView.tsx
 import React, { useMemo } from 'react';
 import { Task } from '../page';
 import { BarChart2, Users, ListTodo, CheckCircle } from 'lucide-react';

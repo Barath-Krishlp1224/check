@@ -3,7 +3,6 @@ import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play }
 import { Task, Subtask, Employee } from "../page";
 import TaskSubtaskEditor from "./TaskSubtaskEditor"; 
 
-// --- HELPER FUNCTION (Updated for Backlog status) ---
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
@@ -15,7 +14,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   } else if (status === "In Progress") {
     colorClasses = isSubtask ? "bg-blue-100 text-blue-800" : "bg-blue-50 text-blue-700 border border-blue-200";
     icon = <Clock className="w-3 h-3" />;
-  } else if (status === "Backlog") { // ADDED: Backlog status
+  } else if (status === "Backlog") { 
     colorClasses = isSubtask ? "bg-slate-100 text-slate-800" : "bg-slate-50 text-slate-700 border border-slate-200";
     icon = <AlertCircle className="w-3 h-3" />;
   } else if (status === "On Hold" || status === "Paused" || status === "Pending") {
@@ -35,7 +34,6 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
 };
 
 
-// --- PROP INTERFACES ---
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
@@ -56,7 +54,6 @@ interface TaskModalProps {
   handleStartSprint: (taskId: string) => void; 
 }
 
-// --- COMPONENT ---
 const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
     task, isOpen, onClose, isEditing, draftTask, subtasks, employees, currentProjectPrefix,
@@ -139,7 +136,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         className="bg-white rounded-4xl shadow-2xl w-full max-w-5xl mt-12 mb-8 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
-        {/* Modal Header */}
         <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-900">
             {isEditing ? `Edit Task: ${task.projectId}` : `Task Details: ${task.projectId}`}
@@ -152,9 +148,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
           </button>
         </div>
 
-        {/* Modal Body */}
         <div className="p-6 max-h-[70vh] overflow-y-auto">
-          {/* Main Task Section */}
           <div className="mb-8 border-b pb-6">
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">Task Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -175,10 +169,15 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     onChange={handleDraftChange} 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
                   >
-                    <option>Backlog</option> {/* ADDED: Backlog option */}
+                    <option>Backlog</option> 
                     <option>In Progress</option>
+                    <option>Dev Review</option>
+                    <option>Deployed in QA</option>
+                    <option>Test In Progress</option>
+                    <option>QA Sign Off</option>
+                    <option>Deployment Stage</option>
+                    <option>Pilot Test</option>
                     <option>Completed</option>
-                    <option>On Hold</option>
                     <option>Paused</option>
                   </select>
                 ) : (
@@ -204,11 +203,9 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             </div>
           </div>
 
-          {/* Subtask Section */}
           <h3 className="text-xl font-semibold text-indigo-700 mb-4">Subtasks</h3>
           
           {isEditing ? (
-            /* Editing Subtasks using the reused editor */
             <TaskSubtaskEditor
               subtasks={subtasks}
               employees={employees}
@@ -218,7 +215,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               removeSubtask={removeSubtask}
             />
           ) : (
-            /* Viewing Subtasks */
             hasSubtasks ? (
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-sm">
@@ -265,10 +261,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
         </div>
 
-        {/* Modal Footer */}
         <div className="p-6 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white z-10">
           
-          {/* Conditional Start Sprint Button */}
           {task.status === "Backlog" && !isEditing && (
             <button 
                 onClick={() => handleStartSprint(task._id)} 

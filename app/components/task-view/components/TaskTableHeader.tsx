@@ -1,4 +1,3 @@
-// components/TaskTableHeader.tsx
 import React, { useMemo } from "react";
 import { Download, AlertCircle } from "lucide-react";
 import { Employee } from "../page";
@@ -130,7 +129,6 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
 
   return (
     <div className="mb-8">
-      {/* White card wrapper */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
         <div className="flex items-end justify-between">
           <div>
@@ -140,7 +138,6 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
             <div className="w-24 h-1 bg-blue-600 rounded-full"></div>
           </div>
 
-          {/* Controls */}
           <div className="flex items-center gap-4 bg-white rounded-xl shadow-lg border border-slate-200 p-4">
             <label className="text-sm font-medium text-slate-700">Filter By:</label>
 

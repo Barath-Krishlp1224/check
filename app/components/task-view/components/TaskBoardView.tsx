@@ -14,8 +14,8 @@ interface TaskBoardViewProps {
 }
 
 const statusColumns = [
-    { title: "To Do (Backlog)", status: "Backlog" },
-    { title: "In Progress (Sprint)", status: "In Progress" },
+    { title: "Backlog", status: "Backlog" },
+    { title: "In Progress", status: "In Progress" },
     { title: "Paused", status: "Paused" },
     { title: "Dev Review", status: "Dev Review" },
     { title: "Deployed in QA", status: "Deployed in QA" },
@@ -23,7 +23,7 @@ const statusColumns = [
     { title: "QA Sign Off", status: "QA Sign Off" },
     { title: "Deployment Stage", status: "Deployment Stage" },
     { title: "Pilot Test", status: "Pilot Test" },
-    { title: "Done", status: "Completed" },
+    { title: "Completed", status: "Completed" },
 ];
 
 const getProgressBarColor = (completion: number) => {
@@ -101,7 +101,6 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
                                 className="flex-shrink-0 w-80"
                             >
 
-                                {/* Column Header (1px grey outline) */}
                                 <div className="bg-white text-slate-900 p-4 rounded-t-xl border border-gray-300 shadow-sm">
                                     <div className="flex items-center justify-between">
                                         <h3 className="font-semibold text-base">{column.title}</h3>
@@ -111,7 +110,6 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
                                     </div>
                                 </div>
 
-                                {/* Column body (1px grey outline) */}
                                 <div 
                                     className={`space-y-3 p-4 min-h-[500px] rounded-b-xl border border-gray-300 transition-all duration-200
                                         ${snapshot.isDraggingOver ? 'bg-white shadow-md' : 'bg-white'}`}
