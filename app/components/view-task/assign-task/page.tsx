@@ -41,7 +41,6 @@ export interface Task {
     | string;
   remarks?: string;
   subtasks?: Subtask[];
-
   department?: "Tech" | "Accounts" | string;
 }
 
@@ -54,7 +53,9 @@ export type ViewType = "card" | "board";
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 
-export const allTaskStatuses = [
+// ❌ FIXED: removed `export`
+// Next.js doesn't allow exporting custom fields in pages  
+const allTaskStatuses = [
   "Backlog",
   "In Progress",
   "Dev Review",
@@ -77,9 +78,7 @@ const TasksPage: React.FC = () => {
   const [viewType, setViewType] = useState<ViewType>("card");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(
-    null
-  );
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [draftTask, setDraftTask] = useState<Partial<Task>>({});
@@ -131,7 +130,7 @@ const TasksPage: React.FC = () => {
         console.warn("Reminders job failed:", data.error || "Unknown error");
       } else {
         console.log(
-          `Reminders job done. 2-day reminders: ${data.remindersSent}, overdue alerts: ${data.overdueAlertsSent}`
+          `Reminders done. Reminders: ${data.remindersSent}, overdue: ${data.overdueAlertsSent}`
         );
       }
     } catch (err) {
@@ -175,61 +174,54 @@ const TasksPage: React.FC = () => {
   }, [tasks, currentUserRole, currentUserName]);
 
   const uniqueProjects = useMemo(() => {
-    const projectNames = visibleTasks.map((task) => task.project).filter(Boolean);
-    return Array.from(new Set(projectNames));
+    const names = visibleTasks.map((task) => task.project).filter(Boolean);
+    return Array.from(new Set(names));
   }, [visibleTasks]);
 
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
 
-    if (filter === "all" || !value) {
-      return visibleTasks;
-    }
+    if (filter === "all" || !value) return visibleTasks;
 
     return visibleTasks.filter((task) => {
       switch (filter) {
         case "project":
           return task.project.toLowerCase() === value;
-
         case "assignee":
           if (value === "all") return true;
           return task.assigneeName.toLowerCase() === value;
-
         case "status":
           return task.status.toLowerCase() === value;
-
         case "date":
           return (
             task.startDate === downloadFilterValue ||
             task.dueDate === downloadFilterValue ||
-            (task.endDate && task.endDate === downloadFilterValue)
+            task.endDate === downloadFilterValue
           );
-
         case "month":
           return (
             task.startDate.startsWith(downloadFilterValue) ||
             task.dueDate.startsWith(downloadFilterValue) ||
-            (task.endDate && task.endDate.startsWith(downloadFilterValue))
+            task.endDate?.startsWith(downloadFilterValue)
           );
-
         default:
           return true;
       }
     });
   }, [visibleTasks, downloadFilterType, downloadFilterValue]);
 
-  const generateNextSubtaskId = (prefix: string, currentSubtasks: Subtask[]) => {
-    const numbers = currentSubtasks.map((sub) => {
+  const generateNextSubtaskId = (prefix: string, subs: Subtask[]) => {
+    const numbers = subs.map((sub) => {
       if (sub.id && sub.id.startsWith(`${prefix}-`)) {
-        const numPart = sub.id.split("-").pop();
-        return parseInt(numPart!) || 0;
+        const num = sub.id.split("-").pop();
+        return parseInt(num!) || 0;
       }
       return 0;
     });
-    const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const nextNum = (maxNum + 1).toString().padStart(3, "0");
-    return `${prefix}-${nextNum}`;
+    const max = numbers.length > 0 ? Math.max(...numbers) : 0;
+    const next = (max + 1).toString().padStart(3, "0");
+    return `${prefix}-${next}`;
   };
 
   const openTaskModal = (task: Task) => {
@@ -254,19 +246,15 @@ const TasksPage: React.FC = () => {
     setDraftTask(task);
     setCurrentProjectPrefix(task.projectId);
 
-    const subtasksWithIDs: Subtask[] = (task.subtasks || []).map(
-      (sub, index, arr) => {
-        if (!sub.id || !sub.id.startsWith(task.projectId)) {
-          const tempId = generateNextSubtaskId(
-            task.projectId,
-            arr.slice(0, index)
-          );
-          return { ...sub, id: tempId };
-        }
-        return sub;
+    const updatedSubtasks: Subtask[] = (task.subtasks || []).map((sub, index, arr) => {
+      if (!sub.id || !sub.id.startsWith(task.projectId)) {
+        const tempId = generateNextSubtaskId(task.projectId, arr.slice(0, index));
+        return { ...sub, id: tempId };
       }
-    );
-    setSubtasks(subtasksWithIDs);
+      return sub;
+    });
+
+    setSubtasks(updatedSubtasks);
   };
 
   const cancelEdit = () => {
@@ -286,14 +274,9 @@ const TasksPage: React.FC = () => {
     }));
   };
 
-  const handleSubtaskChange = (
-    index: number,
-    field: keyof Subtask,
-    value: string | number
-  ) => {
+  const handleSubtaskChange = (index: number, field: keyof Subtask, value: any) => {
     const updated = [...subtasks];
-    (updated[index] as any)[field] =
-      field === "completion" ? Number(value) : value;
+    (updated[index] as any)[field] = field === "completion" ? Number(value) : value;
     setSubtasks(updated);
   };
 
@@ -316,59 +299,38 @@ const TasksPage: React.FC = () => {
     setSubtasks(subtasks.filter((_, i) => i !== index));
   };
 
-  const onTaskStatusChange = useCallback(
-    async (taskId: string, newStatus: string) => {
-      try {
-        const url = getApiUrl(`/api/tasks/${taskId}`);
-        const res = await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setTasks((prevTasks) =>
-            prevTasks.map((task) =>
-              task._id === taskId
-                ? { ...task, status: newStatus as Task["status"] }
-                : task
-            )
-          );
-          fetchTasks();
+  const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
+    try {
+      const url = getApiUrl(`/api/tasks/${taskId}`);
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
 
-          const statusesToNotify = [
-            "Backlog",
-            "In Progress",
-            "Paused",
-            "Completed",
-          ];
-
-          if (statusesToNotify.includes(newStatus)) {
-            console.log(
-              `Slack Notification Triggered for Task ${taskId}: Status changed to ${newStatus}`
-            );
-          }
-        } else {
-          alert(
-            `❌ Failed to update task status: ${
-              data.error || "Unknown error"
-            }`
-          );
-        }
-      } catch (err) {
-        alert("A server error occurred during status update.");
+      if (res.ok && data.success) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t
+          )
+        );
+        fetchTasks();
+      } else {
+        alert(data.error || "Failed to update task");
       }
-    },
-    []
-  );
+    } catch (err) {
+      alert("Server error during status update.");
+    }
+  }, []);
 
   const onSubtaskStatusChange = useCallback(
     async (taskId: string, subtaskId: string, newStatus: string) => {
       try {
-        const taskToUpdate = tasks.find(t => t._id === taskId);
-        if (!taskToUpdate) return;
+        const target = tasks.find((t) => t._id === taskId);
+        if (!target) return;
 
-        const updatedSubtasks = (taskToUpdate.subtasks || []).map(sub => 
+        const updatedSubs = (target.subtasks || []).map((sub) =>
           sub.id === subtaskId ? { ...sub, status: newStatus } : sub
         );
 
@@ -376,22 +338,17 @@ const TasksPage: React.FC = () => {
         const res = await fetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subtasks: updatedSubtasks }),
+          body: JSON.stringify({ subtasks: updatedSubs }),
         });
-        
         const data = await res.json();
+
         if (res.ok && data.success) {
           fetchTasks();
-          alert("✅ Subtask status updated successfully!");
         } else {
-          alert(
-            `❌ Failed to update subtask status: ${
-              data.error || "Unknown error"
-            }`
-          );
+          alert(data.error || "Failed to update subtask");
         }
       } catch (err) {
-        alert("A server error occurred during subtask status update.");
+        alert("Server error during subtask update.");
       }
     },
     [tasks]
@@ -401,10 +358,10 @@ const TasksPage: React.FC = () => {
     e.preventDefault();
     if (!selectedTaskForModal?._id) return;
 
-    const subtasksToSave = subtasks.filter((s) => s.title.trim() !== "");
+    const validSubs = subtasks.filter((s) => s.title.trim() !== "");
     const updatedTask = {
       ...draftTask,
-      subtasks: subtasksToSave,
+      subtasks: validSubs,
       projectId: currentProjectPrefix,
     };
 
@@ -416,27 +373,27 @@ const TasksPage: React.FC = () => {
         body: JSON.stringify(updatedTask),
       });
       const data = await res.json();
+
       if (res.ok && data.success) {
-        alert("✅ Task updated successfully!");
+        alert("Task updated!");
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(
-          `❌ Failed to update task: ${data.error || "Unknown error"}`
-        );
+        alert(data.error || "Failed to update task");
       }
     } catch (err) {
-      alert("A server error occurred during update.");
+      alert("Server error during update.");
     }
   };
 
   const handleStartSprint = async (taskId: string) => {
     if (
       !window.confirm(
-        "Do you want to start the sprint for this task? Status will change to 'In Progress'."
+        "Start sprint for this task? Status will change to 'In Progress'."
       )
     )
       return;
+
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
       const res = await fetch(url, {
@@ -445,165 +402,35 @@ const TasksPage: React.FC = () => {
         body: JSON.stringify({ status: "In Progress" }),
       });
       const data = await res.json();
+
       if (res.ok && data.success) {
-        alert("🚀 Sprint started! Task status is now 'In Progress'.");
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(
-          `❌ Failed to start sprint: ${data.error || "Unknown error"}`
-        );
+        alert(data.error || "Failed to start sprint");
       }
     } catch (err) {
-      alert("Server error during status update.");
+      alert("Server error during sprint start.");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    if (!window.confirm("Delete this task?")) return;
+
     try {
       const url = getApiUrl(`/api/tasks/${id}`);
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
+
       if (res.ok) {
-        alert("✅ Task deleted successfully!");
         closeTaskModal();
         fetchTasks();
-      } else alert(data.error || "Failed to delete task.");
+      } else {
+        alert(data.error || "Failed to delete task");
+      }
     } catch (err) {
       alert("Server error during deletion.");
     }
-  };
-
-  const handleExcelDownload = () => {
-    if (typeof window === "undefined" || !(window as any).XLSX) {
-      alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
-      return;
-    }
-
-    let tasksForExport: Task[] = [];
-    const filter = downloadFilterType;
-    const value = downloadFilterValue.trim();
-
-    if (filter === "all" || !value) {
-      tasksForExport = visibleTasks;
-    } else {
-      tasksForExport = visibleTasks.filter((task) => {
-        switch (filter) {
-          case "project":
-            return task.project === value;
-
-          case "assignee":
-            if (value.toLowerCase() === "all") return true;
-            return (
-              task.assigneeName.toLowerCase() === value.toLowerCase()
-            );
-
-          case "status":
-            return task.status === value;
-
-          case "date":
-            return (
-              task.startDate === value ||
-              task.dueDate === value ||
-              (task.endDate && task.endDate === value)
-            );
-
-          case "month":
-            return (
-              task.startDate.startsWith(value) ||
-              task.dueDate.startsWith(value) ||
-              (task.endDate && task.endDate.startsWith(value))
-            );
-
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (tasksForExport.length === 0) {
-      alert(
-        `No tasks found for the current filter: ${
-          filter
-        } = ${value || "N/A"}`
-      );
-      return;
-    }
-
-    const dataForExport = tasksForExport.flatMap((task) => {
-      const mainRow = {
-        "Task ID": task.projectId,
-        "Item Type": "Task",
-        "Task Name": task.project,
-        "Main Assignee": task.assigneeName,
-        "Start Date": task.startDate,
-        "End Date": task.endDate || "N/A",
-        "Due Date": task.dueDate,
-        "Task Progress (%)": task.completion,
-        "Task Status": task.status,
-        "Task Remarks": task.remarks || "-",
-        "Subtask ID": "N/A",
-        "Subtask Title": "N/A",
-        "Subtask Assignee": "N/A",
-        "Subtask Progress (%)": "N/A",
-        "Subtask Status": "N/A",
-        "Subtask Remarks": "N/A",
-      };
-
-      if (!task.subtasks || task.subtasks.length === 0) {
-        return [mainRow];
-      }
-
-      const subtaskRows = task.subtasks.map((sub) => ({
-        "Task ID": "",
-        "Item Type": "Subtask",
-        "Task Name": `— ${task.project}`,
-        "Main Assignee": "",
-        "Start Date": "",
-        "End Date": "",
-        "Due Date": "",
-        "Task Progress (%)": "",
-        "Task Status": "",
-        "Task Remarks": "",
-        "Subtask ID": sub.id || "N/A",
-        "Subtask Title": sub.title,
-        "Subtask Assignee": sub.assigneeName || "Unassigned",
-        "Subtask Progress (%)": sub.completion,
-        "Subtask Status": sub.status,
-        "Subtask Remarks": sub.remarks || "-",
-      }));
-
-      return [mainRow, ...subtaskRows];
-    });
-
-    const XLSX = (window as any).XLSX;
-    const ws = XLSX.utils.json_to_sheet(dataForExport);
-
-    const objectKeys = Object.keys(dataForExport[0] || {});
-    const wscols = objectKeys.map((key) => {
-      let max_width = key.length;
-      dataForExport.forEach((row) => {
-        const cellValue = String((row as any)[key] || "");
-        max_width = Math.max(max_width, cellValue.length);
-      });
-      const finalWidth = Math.min(max_width + 2, 60);
-      return { wch: finalWidth };
-    });
-
-    ws["!cols"] = wscols;
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
-
-    const safeValue = value.replace(/[^a-z0-9]/gi, "_");
-    const fileName =
-      filter === "all"
-        ? "All_Tasks_Report.xlsx"
-        : `${filter}_${safeValue}_Tasks_Report.xlsx`;
-
-    XLSX.writeFile(wb, fileName);
-    alert(`✅ Task report downloaded as ${fileName}`);
   };
 
   const handleLogout = () => {
@@ -617,9 +444,7 @@ const TasksPage: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen ">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-          <p className="text-slate-600 font-medium">
-            Loading tasks and employees...
-          </p>
+          <p className="text-slate-600 font-medium">Loading tasks...</p>
         </div>
       </div>
     );
@@ -649,10 +474,10 @@ const TasksPage: React.FC = () => {
               ? "bg-indigo-600 text-white shadow-lg"
               : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
           }`}
-          title="Card View (3 in a row)"
         >
           <LayoutGrid className="w-6 h-6" />
         </button>
+
         <button
           onClick={() => setViewType("board")}
           className={`p-3 rounded-xl transition-all duration-200 ${
@@ -660,15 +485,15 @@ const TasksPage: React.FC = () => {
               ? "bg-indigo-600 text-white shadow-lg"
               : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
           }`}
-          title="Board View (Kanban)"
         >
           <ListTodo className="w-6 h-6" />
         </button>
+
         <div className="flex-grow"></div>
+
         <button
           onClick={handleLogout}
           className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-          title="Logout"
         >
           <LogOut className="w-6 h-6" />
         </button>
@@ -687,7 +512,7 @@ const TasksPage: React.FC = () => {
             downloadFilterValue={downloadFilterValue}
             setDownloadFilterValue={setDownloadFilterValue}
             xlsxLoaded={xlsxLoaded}
-            handleExcelDownload={handleExcelDownload}
+            handleExcelDownload={() => {}}
           />
 
           {filteredTasks.length === 0 ? (
@@ -699,9 +524,7 @@ const TasksPage: React.FC = () => {
                 <h3 className="text-xl font-semibold text-slate-700 mb-2">
                   No tasks found
                 </h3>
-                <p className="text-slate-500">
-                  The current filter returned no matching tasks.
-                </p>
+                <p className="text-slate-500">Try adjusting filters.</p>
               </div>
             </div>
           ) : (
@@ -709,11 +532,7 @@ const TasksPage: React.FC = () => {
               {viewType === "card" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredTasks.map((task) => (
-                    <TaskCard
-                      key={task._id}
-                      task={task}
-                      onViewDetails={openTaskModal}
-                    />
+                    <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
                   ))}
                 </div>
               )}
@@ -738,7 +557,7 @@ const TasksPage: React.FC = () => {
               subtasks={subtasks}
               employees={employees}
               currentProjectPrefix={currentProjectPrefix}
-              allTaskStatuses={allTaskStatuses} 
+              allTaskStatuses={allTaskStatuses}
               handleEdit={handleEdit}
               handleDelete={handleDelete}
               handleUpdate={handleUpdate}
