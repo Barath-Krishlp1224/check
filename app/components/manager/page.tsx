@@ -19,6 +19,7 @@ interface EmployeeStats {
   accountsTeamCount: number;
   hrTeamCount: number;
   adminOpsTeamCount: number;
+  housekeepingTeamCount: number; // <-- added
 }
 
 const ManagerDashboard: React.FC = () => {
@@ -34,6 +35,7 @@ const ManagerDashboard: React.FC = () => {
     accountsTeamCount: 0,
     hrTeamCount: 0,
     adminOpsTeamCount: 0,
+    housekeepingTeamCount: 0, // <-- added
   });
 
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
@@ -50,7 +52,21 @@ const ManagerDashboard: React.FC = () => {
         const data: EmployeeStats | { error: string } = await res.json();
 
         if (!("error" in data)) {
-          setStats(data);
+          // If backend doesn't send housekeepingTeamCount yet, fallback to 0
+          setStats({
+            totalEmployees: (data as EmployeeStats).totalEmployees ?? 0,
+            foundersTeamCount: (data as EmployeeStats).foundersTeamCount ?? 0,
+            managerTeamCount: (data as EmployeeStats).managerTeamCount ?? 0,
+            tlReportingManagerTeamCount:
+              (data as EmployeeStats).tlReportingManagerTeamCount ?? 0,
+            itAdminTeamCount: (data as EmployeeStats).itAdminTeamCount ?? 0,
+            techTeamCount: (data as EmployeeStats).techTeamCount ?? 0,
+            accountsTeamCount: (data as EmployeeStats).accountsTeamCount ?? 0,
+            hrTeamCount: (data as EmployeeStats).hrTeamCount ?? 0,
+            adminOpsTeamCount: (data as EmployeeStats).adminOpsTeamCount ?? 0,
+            housekeepingTeamCount:
+              (data as EmployeeStats).housekeepingTeamCount ?? 0,
+          });
         } else {
           console.error("Error fetching stats:", data.error);
         }
@@ -118,11 +134,18 @@ const ManagerDashboard: React.FC = () => {
       icon: Users,
       color: "from-yellow-400 to-green-500",
     },
+    {
+      label: "Housekeeping Team", // <-- added
+      value: stats.housekeepingTeamCount,
+      icon: Users,
+      color: "from-yellow-400 to-green-500",
+    },
   ];
 
   // Action Handlers
   const handleViewEmployees = () => router.push("/components/manager/view-emp");
-  // const handleAddEmployee = () => router.push("/components/manager/new-emp"); // REMOVED
+  const handleViewHousekeeping = () =>
+    router.push("/components/manager/view-emp?team=Housekeeping"); // optional: filter by team
   const handleViewEmployeeTasks = () => router.push("/components/task-view");
   const handleMyTasks = () => router.push("/components/view-task");
 
@@ -133,6 +156,12 @@ const ManagerDashboard: React.FC = () => {
       title: "View Employee List",
       icon: Users,
       onClick: handleViewEmployees,
+    },
+    {
+      id: "housekeeping",
+      title: "View Housekeeping",
+      icon: Users,
+      onClick: handleViewHousekeeping,
     },
     // The "Add New Employee" card was here and is now removed.
     {
@@ -211,7 +240,7 @@ const ManagerDashboard: React.FC = () => {
         <h2 className="text-2xl font-semibold text-white mb-4">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Updated to lg:grid-cols-3 since one card was removed */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {actionCards.map((card, index) => {
             const Icon = card.icon;
             const isHovered = hoveredCard === card.id;

@@ -16,6 +16,7 @@ export async function GET() {
       accountsTeamCount,
       adminOpsTeamCount,
       hrTeamCount,
+      housekeepingTeamCount, // <-- added
     ] = await Promise.all([
       Employee.countDocuments(),                              // total
       Employee.countDocuments({ team: "Founders" }),          // Founders
@@ -26,6 +27,7 @@ export async function GET() {
       Employee.countDocuments({ team: "Accounts" }),          // Accounts
       Employee.countDocuments({ team: "Admin & Operations" }),// Admin & Ops
       Employee.countDocuments({ team: "HR" }),                // HR
+      Employee.countDocuments({ team: "Housekeeping" }),      // Housekeeping (new)
     ]);
 
     return NextResponse.json({
@@ -38,6 +40,7 @@ export async function GET() {
       accountsTeamCount,
       adminOpsTeamCount,
       hrTeamCount,
+      housekeepingTeamCount, // <-- returned
     });
   } catch (error: any) {
     console.error("Error fetching employee stats:", error);

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, LogOut } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
+import HolidaysModal, { Holiday, staticHolidays } from "./components/HolidaysModal";
 
 export interface Subtask {
   id?: string;
@@ -89,6 +90,8 @@ const TasksPage: React.FC = () => {
 
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
+
+  const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
 
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
@@ -478,6 +481,14 @@ const TasksPage: React.FC = () => {
           <ListTodo className="w-6 h-6" />
         </button>
 
+        <button
+          onClick={() => setIsHolidaysOpen(true)}
+          className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+          title="National Holidays"
+        >
+          <Calendar className="w-6 h-6" />
+        </button>
+
         <div className="flex-grow"></div>
 
         <button
@@ -554,6 +565,8 @@ const TasksPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
     </div>
   );
 };

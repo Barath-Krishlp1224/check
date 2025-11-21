@@ -16,7 +16,8 @@ export interface IEmployee extends Document {
     | "Tech"
     | "Accounts"
     | "HR"
-    | "Admin & Operations";
+    | "Admin & Operations"
+    | "Housekeeping";
   category?: string;
   subCategory?: string;
   department: string;
@@ -27,7 +28,7 @@ export interface IEmployee extends Document {
   ifscCode: string;
   password: string;
 
-  // 🔹 NEW FIELDS
+  // NEW FIELDS
   employmentType: "Fresher" | "Experienced";
   aadharNumber: string;
   panNumber: string;
@@ -63,6 +64,7 @@ const EmployeeSchema = new Schema<IEmployee>(
         "Accounts",
         "HR",
         "Admin & Operations",
+        "Housekeeping",
       ],
       trim: true,
     },

@@ -1,3 +1,6 @@
+// FILE: AddEmployeePage.tsx
+// Updated to include "Housekeeping" team. Keep this file as the Next.js client component.
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -28,7 +31,7 @@ interface IFormValues {
   password?: string;
   confirmPassword?: string;
 
-  // 🔹 NEW FIELDS
+  // NEW FIELDS
   employmentType: "Fresher" | "Experienced" | "";
   aadharNumber: string;
   panNumber: string;
@@ -79,7 +82,7 @@ const InputField: React.FC<InputFieldProps> = ({
     </label>
     <input
       type={type}
-      name={name}
+      name={String(name)}
       placeholder={placeholder}
       value={value || ""}
       onChange={onChange}
@@ -105,7 +108,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
       {label} *
     </label>
     <select
-      name={name}
+      name={String(name)}
       value={value || ""}
       onChange={onChange}
       className={getInputClass(name)}
@@ -122,7 +125,8 @@ const SelectField: React.FC<SelectFieldProps> = ({
   </div>
 );
 
-// 🔧 Team → Category → SubCategory/Department structure
+// Team → Category → SubCategory/Department structure
+// ADDED: "Housekeeping" team is added here with a single Category/Department.
 const structure: Structure = {
   Founders: {
     Founders: ["Founder", "Co-Founder"],
@@ -159,6 +163,10 @@ const structure: Structure = {
   },
   "Admin & Operations": {
     "Admin & Operations": ["Admin & Operations"],
+  },
+  // Housekeeping team added
+  Housekeeping: {
+    Housekeeping: ["Housekeeper", "Senior Housekeeper"],
   },
 };
 
@@ -207,19 +215,16 @@ const AddEmployeePage: React.FC = () => {
 
   const validationSchema = Yup.object({
     empId: Yup.string()
-      .matches(
-        /^[A-Z0-9]+$/,
-        "Employee ID must contain only uppercase letters and numbers"
-      )
+      .matches(/^[A-Z0-9]+$/,
+        "Employee ID must contain only uppercase letters and numbers")
       .required("Employee ID is required"),
     name: Yup.string()
-      .matches(/^[A-Z][a-zA-Z\s]*$/, "Name must start with a capital letter")
+      .matches(/^[A-Z][a-zA-Z\s]*$/,
+        "Name must start with a capital letter")
       .required("Name is required"),
     fatherName: Yup.string()
-      .matches(
-        /^[A-Z][a-zA-Z\s]*$/,
-        "Father's name must start with a capital letter"
-      )
+      .matches(/^[A-Z][a-zA-Z\s]*$/,
+        "Father's name must start with a capital letter")
       .required("Father's name is required"),
     dateOfBirth: Yup.string().required("Date of birth is required"),
     joiningDate: Yup.string().required("Joining date is required"),
@@ -240,26 +245,18 @@ const AddEmployeePage: React.FC = () => {
       .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code (e.g., SBIN0001234)")
       .required("IFSC code is required"),
 
-    password: Yup.string()
-      .min(8, "Password must be at least 8 characters")
-      .required("Password is required"),
-    confirmPassword: Yup.string()
-      .oneOf([Yup.ref("password")], "Passwords must match")
-      .required("Confirm Password is required"),
+    password: Yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
+    confirmPassword: Yup.string().oneOf([Yup.ref("password")], "Passwords must match").required("Confirm Password is required"),
 
     employmentType: Yup.mixed<"Fresher" | "Experienced">()
-      .oneOf(["Fresher", "Experienced"])
-      .required("Employment type is required"),
+      .oneOf(["Fresher", "Experienced"]) .required("Employment type is required"),
 
     aadharNumber: Yup.string()
       .matches(/^[0-9]{12}$/, "Aadhar number must be 12 digits")
       .required("Aadhar number is required"),
 
     panNumber: Yup.string()
-      .matches(
-        /^[A-Z]{5}[0-9]{4}[A-Z]$/,
-        "Invalid PAN format (e.g., ABCDE1234F)"
-      )
+      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Invalid PAN format (e.g., ABCDE1234F)")
       .required("PAN number is required"),
 
     photo: Yup.mixed<File>()
@@ -303,19 +300,13 @@ const AddEmployeePage: React.FC = () => {
 
     provisionalCertificate: Yup.mixed<File>()
       .nullable()
-      .test(
-        "provisionalRequired",
-        "Provisional certificate is required for fresher",
-        function (value) {
-          const { employmentType } = this.parent as IFormValues;
-          if (employmentType === "Fresher" && !value) {
-            return this.createError({
-              message: "Provisional certificate is required for fresher",
-            });
-          }
-          return true;
+      .test("provisionalRequired", "Provisional certificate is required for fresher", function (value) {
+        const { employmentType } = this.parent as IFormValues;
+        if (employmentType === "Fresher" && !value) {
+          return this.createError({ message: "Provisional certificate is required for fresher" });
         }
-      )
+        return true;
+      })
       .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
         if (!value) return true;
         return allowedDocTypes.includes(value.type);
@@ -323,20 +314,13 @@ const AddEmployeePage: React.FC = () => {
 
     experienceCertificate: Yup.mixed<File>()
       .nullable()
-      .test(
-        "experienceRequired",
-        "Experience certificate is required for experienced candidates",
-        function (value) {
-          const { employmentType } = this.parent as IFormValues;
-          if (employmentType === "Experienced" && !value) {
-            return this.createError({
-              message:
-                "Experience certificate is required for experienced candidates",
-            });
-          }
-          return true;
+      .test("experienceRequired", "Experience certificate is required for experienced candidates", function (value) {
+        const { employmentType } = this.parent as IFormValues;
+        if (employmentType === "Experienced" && !value) {
+          return this.createError({ message: "Experience certificate is required for experienced candidates" });
         }
-      )
+        return true;
+      })
       .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
         if (!value) return true;
         return allowedDocTypes.includes(value.type);
@@ -419,8 +403,8 @@ const AddEmployeePage: React.FC = () => {
     formik.setFieldValue("subCategory", "");
     formik.setFieldValue("department", "");
 
-    if (team && structure[team]) {
-      setCategoryOptions(Object.keys(structure[team]));
+    if (team && (structure as any)[team]) {
+      setCategoryOptions(Object.keys((structure as any)[team]));
     } else {
       setCategoryOptions([]);
     }
@@ -434,8 +418,8 @@ const AddEmployeePage: React.FC = () => {
     formik.setFieldValue("subCategory", "");
     formik.setFieldValue("department", "");
 
-    if (team && category && structure[team]) {
-      const teamData = structure[team];
+    if (team && category && (structure as any)[team]) {
+      const teamData = (structure as any)[team];
       const categoryData = teamData[category];
 
       if (team === "Tech" && category === "Developer") {
@@ -462,7 +446,7 @@ const AddEmployeePage: React.FC = () => {
     formik.setFieldValue("department", "");
 
     if (team === "Tech" && category === "Developer" && subCategory) {
-      const teamData = structure[team];
+      const teamData = (structure as any)[team];
       const categoryData = teamData[category] as SubCategoryMap;
       setDepartmentOptions(categoryData[subCategory] || []);
     }
@@ -472,7 +456,7 @@ const AddEmployeePage: React.FC = () => {
     "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gray-400 text-gray-900";
   const getInputClass = (field: keyof IFormValues) =>
     `${inputBaseClass} ${
-      formik.touched[field] && formik.errors[field]
+      formik.touched[field] && (formik.errors as any)[field]
         ? "border-red-500"
         : "border-gray-300"
     }`;
@@ -481,7 +465,7 @@ const AddEmployeePage: React.FC = () => {
     const fieldsToValidate = steps[step].fields;
     const errors = await formik.validateForm();
     const stepErrors = fieldsToValidate.filter(
-      (field) => errors[field as keyof IFormValues]
+      (field) => (errors as any)[field as keyof IFormValues]
     );
 
     fieldsToValidate.forEach((field) => {
@@ -525,7 +509,7 @@ const AddEmployeePage: React.FC = () => {
               onChange={(e) =>
                 formik.setFieldValue("empId", e.target.value.toUpperCase())
               }
-              error={formik.errors.empId}
+              error={formik.errors.empId as string}
               touched={formik.touched.empId}
               getInputClass={getInputClass}
             />
@@ -537,7 +521,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="e.g., John Doe"
               value={formik.values.name}
               onChange={formik.handleChange}
-              error={formik.errors.name}
+              error={formik.errors.name as string}
               touched={formik.touched.name}
               getInputClass={getInputClass}
             />
@@ -549,7 +533,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="e.g., Michael Doe"
               value={formik.values.fatherName}
               onChange={formik.handleChange}
-              error={formik.errors.fatherName}
+              error={formik.errors.fatherName as string}
               touched={formik.touched.fatherName}
               getInputClass={getInputClass}
             />
@@ -560,7 +544,7 @@ const AddEmployeePage: React.FC = () => {
               type="date"
               value={formik.values.dateOfBirth}
               onChange={formik.handleChange}
-              error={formik.errors.dateOfBirth}
+              error={formik.errors.dateOfBirth as string}
               touched={formik.touched.dateOfBirth}
               getInputClass={getInputClass}
             />
@@ -575,7 +559,7 @@ const AddEmployeePage: React.FC = () => {
               type="date"
               value={formik.values.joiningDate}
               onChange={formik.handleChange}
-              error={formik.errors.joiningDate}
+              error={formik.errors.joiningDate as string}
               touched={formik.touched.joiningDate}
               getInputClass={getInputClass}
             />
@@ -586,7 +570,7 @@ const AddEmployeePage: React.FC = () => {
               options={Object.keys(structure)}
               value={formik.values.team as string}
               onChange={formik.handleChange}
-              error={formik.errors.team}
+              error={formik.errors.team as string}
               touched={formik.touched.team}
               getInputClass={getInputClass}
             />
@@ -598,7 +582,7 @@ const AddEmployeePage: React.FC = () => {
                 options={categoryOptions}
                 value={formik.values.category}
                 onChange={formik.handleChange}
-                error={formik.errors.category}
+                error={formik.errors.category as string}
                 touched={formik.touched.category}
                 getInputClass={getInputClass}
               />
@@ -613,7 +597,7 @@ const AddEmployeePage: React.FC = () => {
                   options={subCategoryOptions}
                   value={formik.values.subCategory}
                   onChange={formik.handleChange}
-                  error={formik.errors.subCategory}
+                  error={formik.errors.subCategory as string}
                   touched={formik.touched.subCategory}
                   getInputClass={getInputClass}
                 />
@@ -626,7 +610,7 @@ const AddEmployeePage: React.FC = () => {
                 options={departmentOptions}
                 value={formik.values.department}
                 onChange={formik.handleChange}
-                error={formik.errors.department}
+                error={formik.errors.department as string}
                 touched={formik.touched.department}
                 getInputClass={getInputClass}
               />
@@ -643,7 +627,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="9876543210"
               value={formik.values.phoneNumber}
               onChange={formik.handleChange}
-              error={formik.errors.phoneNumber}
+              error={formik.errors.phoneNumber as string}
               touched={formik.touched.phoneNumber}
               getInputClass={getInputClass}
             />
@@ -655,7 +639,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="john.doe@example.com"
               value={formik.values.mailId}
               onChange={formik.handleChange}
-              error={formik.errors.mailId}
+              error={formik.errors.mailId as string}
               touched={formik.touched.mailId}
               getInputClass={getInputClass}
             />
@@ -671,7 +655,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="123456789012"
               value={formik.values.accountNumber}
               onChange={formik.handleChange}
-              error={formik.errors.accountNumber}
+              error={formik.errors.accountNumber as string}
               touched={formik.touched.accountNumber}
               getInputClass={getInputClass}
             />
@@ -685,7 +669,7 @@ const AddEmployeePage: React.FC = () => {
               onChange={(e) =>
                 formik.setFieldValue("ifscCode", e.target.value.toUpperCase())
               }
-              error={formik.errors.ifscCode}
+              error={formik.errors.ifscCode as string}
               touched={formik.touched.ifscCode}
               getInputClass={getInputClass}
             />
@@ -702,7 +686,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="Enter password"
               value={formik.values.password || ""}
               onChange={formik.handleChange}
-              error={formik.errors.password}
+              error={formik.errors.password as string}
               touched={formik.touched.password}
               getInputClass={getInputClass}
             />
@@ -714,7 +698,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="Confirm password"
               value={formik.values.confirmPassword || ""}
               onChange={formik.handleChange}
-              error={formik.errors.confirmPassword}
+              error={formik.errors.confirmPassword as string}
               touched={formik.touched.confirmPassword}
               getInputClass={getInputClass}
             />
@@ -739,7 +723,7 @@ const AddEmployeePage: React.FC = () => {
               placeholder="12-digit Aadhar number"
               value={formik.values.aadharNumber}
               onChange={formik.handleChange}
-              error={formik.errors.aadharNumber}
+              error={formik.errors.aadharNumber as string}
               touched={formik.touched.aadharNumber}
               getInputClass={getInputClass}
             />
@@ -753,7 +737,7 @@ const AddEmployeePage: React.FC = () => {
               onChange={(e) =>
                 formik.setFieldValue("panNumber", e.target.value.toUpperCase())
               }
-              error={formik.errors.panNumber}
+              error={formik.errors.panNumber as string}
               touched={formik.touched.panNumber}
               getInputClass={getInputClass}
             />
@@ -776,9 +760,7 @@ const AddEmployeePage: React.FC = () => {
                 className={getInputClass("photo")}
               />
               {formik.touched.photo && formik.errors.photo && (
-                <p className="mt-1 text-sm text-red-500">
-                  {formik.errors.photo as string}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{formik.errors.photo as string}</p>
               )}
             </div>
 
@@ -800,9 +782,7 @@ const AddEmployeePage: React.FC = () => {
                 className={getInputClass("aadharFile")}
               />
               {formik.touched.aadharFile && formik.errors.aadharFile && (
-                <p className="mt-1 text-sm text-red-500">
-                  {formik.errors.aadharFile as string}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{formik.errors.aadharFile as string}</p>
               )}
             </div>
 
@@ -824,9 +804,7 @@ const AddEmployeePage: React.FC = () => {
                 className={getInputClass("panFile")}
               />
               {formik.touched.panFile && formik.errors.panFile && (
-                <p className="mt-1 text-sm text-red-500">
-                  {formik.errors.panFile as string}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{formik.errors.panFile as string}</p>
               )}
             </div>
 
@@ -848,12 +826,9 @@ const AddEmployeePage: React.FC = () => {
                   }
                   className={getInputClass("tenthMarksheet")}
                 />
-                {formik.touched.tenthMarksheet &&
-                  formik.errors.tenthMarksheet && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {formik.errors.tenthMarksheet as string}
-                    </p>
-                  )}
+                {formik.touched.tenthMarksheet && formik.errors.tenthMarksheet && (
+                  <p className="mt-1 text-sm text-red-500">{formik.errors.tenthMarksheet as string}</p>
+                )}
               </div>
 
               <div>
@@ -872,12 +847,9 @@ const AddEmployeePage: React.FC = () => {
                   }
                   className={getInputClass("twelfthMarksheet")}
                 />
-                {formik.touched.twelfthMarksheet &&
-                  formik.errors.twelfthMarksheet && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {formik.errors.twelfthMarksheet as string}
-                    </p>
-                  )}
+                {formik.touched.twelfthMarksheet && formik.errors.twelfthMarksheet && (
+                  <p className="mt-1 text-sm text-red-500">{formik.errors.twelfthMarksheet as string}</p>
+                )}
               </div>
             </div>
 
@@ -899,12 +871,9 @@ const AddEmployeePage: React.FC = () => {
                   }
                   className={getInputClass("provisionalCertificate")}
                 />
-                {formik.touched.provisionalCertificate &&
-                  formik.errors.provisionalCertificate && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {formik.errors.provisionalCertificate as string}
-                    </p>
-                  )}
+                {formik.touched.provisionalCertificate && formik.errors.provisionalCertificate && (
+                  <p className="mt-1 text-sm text-red-500">{formik.errors.provisionalCertificate as string}</p>
+                )}
               </div>
 
               <div>
@@ -923,12 +892,9 @@ const AddEmployeePage: React.FC = () => {
                   }
                   className={getInputClass("experienceCertificate")}
                 />
-                {formik.touched.experienceCertificate &&
-                  formik.errors.experienceCertificate && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {formik.errors.experienceCertificate as string}
-                    </p>
-                  )}
+                {formik.touched.experienceCertificate && formik.errors.experienceCertificate && (
+                  <p className="mt-1 text-sm text-red-500">{formik.errors.experienceCertificate as string}</p>
+                )}
               </div>
             </div>
           </div>
@@ -944,9 +910,7 @@ const AddEmployeePage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gray-800 px-8 py-6 text-white">
             <h2 className="text-3xl font-bold">Add New Employee</h2>
-            <p className="text-sm opacity-90">
-              Fill in the details to register a new employee
-            </p>
+            <p className="text-sm opacity-90">Fill in the details to register a new employee</p>
           </div>
 
           <div className="px-8 py-6 border-b border-gray-200">
@@ -965,20 +929,12 @@ const AddEmployeePage: React.FC = () => {
                     >
                       {index < currentStep ? <Check size={20} /> : index + 1}
                     </div>
-                    <span
-                      className={`mt-2 text-xs font-medium ${
-                        index <= currentStep ? "text-gray-800" : "text-gray-400"
-                      }`}
-                    >
+                    <span className={`mt-2 text-xs font-medium ${index <= currentStep ? "text-gray-800" : "text-gray-400"}`}>
                       {step.title}
                     </span>
                   </div>
                   {index < steps.length - 1 && (
-                    <div
-                      className={`flex-1 h-1 mx-2 rounded ${
-                        index < currentStep ? "bg-gray-800" : "bg-gray-200"
-                      }`}
-                    />
+                    <div className={`flex-1 h-1 mx-2 rounded ${index < currentStep ? "bg-gray-800" : "bg-gray-200"}`} />
                   )}
                 </React.Fragment>
               ))}
@@ -1041,3 +997,4 @@ const AddEmployeePage: React.FC = () => {
 };
 
 export default AddEmployeePage;
+

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, CheckSquare, Plus, Minus, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Users, CheckSquare, Plus, Minus, TrendingUp } from "lucide-react";
 
 interface EmployeeStats {
   totalEmployees: number;
@@ -14,6 +14,7 @@ interface EmployeeStats {
   accountsTeamCount: number;
   hrTeamCount: number;
   adminOpsTeamCount: number;
+  housekeepingTeamCount: number; // <-- now included
 }
 
 export default function AdminPage() {
@@ -28,6 +29,7 @@ export default function AdminPage() {
     accountsTeamCount: 0,
     hrTeamCount: 0,
     adminOpsTeamCount: 0,
+    housekeepingTeamCount: 0,
   });
 
   const [hoveredStat, setHoveredStat] = useState<string | null>(null);
@@ -39,18 +41,38 @@ export default function AdminPage() {
   useEffect(() => {
     setLoaded(true);
 
-    // mock data for example
-    setStats({
-      totalEmployees: 120,
-      foundersTeamCount: 3,
-      managerTeamCount: 8,
-      tlReportingManagerTeamCount: 15,
-      itAdminTeamCount: 5,
-      techTeamCount: 50,
-      accountsTeamCount: 12,
-      hrTeamCount: 7,
-      adminOpsTeamCount: 20,
-    });
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/employees/stats");
+        const data = await res.json();
+
+        console.log("employee stats response (admin):", data);
+
+        if (!data || data.error) {
+          console.error("Error fetching stats:", data?.error ?? data);
+          return;
+        }
+
+        // Defensive mapping so missing fields won't break the UI
+        setStats({
+          totalEmployees: data.totalEmployees ?? 0,
+          foundersTeamCount: data.foundersTeamCount ?? 0,
+          managerTeamCount: data.managerTeamCount ?? 0,
+          tlReportingManagerTeamCount:
+            data.tlReportingManagerTeamCount ?? 0,
+          itAdminTeamCount: data.itAdminTeamCount ?? 0,
+          techTeamCount: data.techTeamCount ?? 0,
+          accountsTeamCount: data.accountsTeamCount ?? 0,
+          hrTeamCount: data.hrTeamCount ?? 0,
+          adminOpsTeamCount: data.adminOpsTeamCount ?? 0,
+          housekeepingTeamCount: data.housekeepingTeamCount ?? 0,
+        });
+      } catch (err) {
+        console.error("Error fetching employee stats:", err);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   const statsCards = [
@@ -63,6 +85,7 @@ export default function AdminPage() {
     { label: "Accounts Team", value: stats.accountsTeamCount, icon: "/7.png" },
     { label: "HR Team", value: stats.hrTeamCount, icon: "/8.png" },
     { label: "Admin & Ops Team", value: stats.adminOpsTeamCount, icon: "/9.png" },
+    { label: "Housekeeping Team", value: stats.housekeepingTeamCount, icon: "/10.png" }, // <-- added
   ];
 
   const toggleStaffCount = () => setIsStaffCountOpen((s) => !s);
@@ -70,6 +93,11 @@ export default function AdminPage() {
 
   const goToEmployeeList = () => {
     router.push("/components/founders/view-emp");
+  };
+
+  const goToHousekeepingList = () => {
+    // navigate to the same view page but with a query param for filtering if supported
+    router.push("/components/founders/view-emp?team=Housekeeping");
   };
 
   return (
@@ -162,6 +190,25 @@ export default function AdminPage() {
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 text-sm mb-0.5">View Employee List</h3>
                           <p className="text-gray-600 text-xs">Access complete directory</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      role="button"
+                      onClick={goToHousekeepingList}
+                      className={`group w-full md:w-[calc(50%-0.375rem)] xl:w-full relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"} ${hoveredButton === "house" ? "scale-105" : "scale-100"}`}
+                      style={{ transitionDelay: isQuickActionsOpen ? "75ms" : "0ms" }}
+                      onMouseEnter={() => setHoveredButton("house")}
+                      onMouseLeave={() => setHoveredButton(null)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
+                          <Users className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 text-sm mb-0.5">View Housekeeping</h3>
+                          <p className="text-gray-600 text-xs">Filter by housekeeping team</p>
                         </div>
                       </div>
                     </div>

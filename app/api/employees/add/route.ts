@@ -83,6 +83,19 @@ export async function POST(req: Request) {
       "experienceCertificate"
     ) as File | null;
 
+    // Allowed teams — include Housekeeping
+    const allowedTeams = [
+      "Founders",
+      "Manager",
+      "TL-Reporting Manager",
+      "IT Admin",
+      "Tech",
+      "Accounts",
+      "HR",
+      "Admin & Operations",
+      "Housekeeping",
+    ];
+
     const requiredFields: Record<string, string> = {
       empId,
       name,
@@ -110,6 +123,13 @@ export async function POST(req: Request) {
       }
     }
 
+    if (!allowedTeams.includes(team)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid team." },
+        { status: 400 }
+      );
+    }
+
     if (!["Fresher", "Experienced"].includes(employmentType)) {
       return NextResponse.json(
         { success: false, message: "Invalid employment type." },
@@ -117,6 +137,8 @@ export async function POST(req: Request) {
       );
     }
 
+    // If you still want to require category for certain teams, keep the check.
+    // For Housekeeping and most non-Tech teams, category can be optional (handled by front-end).
     if (!category) {
       return NextResponse.json(
         { success: false, message: "category is required." },
