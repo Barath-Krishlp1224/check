@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { AlertCircle, LayoutGrid, LogOut, BarChart2, User, Clock, CheckCircle2, Pause } from "lucide-react";
+import { AlertCircle, LayoutGrid, LogOut, BarChart2, User, Eye, Download } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskModal from "./components/TaskModal";
-// import TaskBoardView from "./components/TaskBoardView"; // REMOVED
 import TaskChartView from "./components/TaskChartView";
+import TaskOverallView, { TaskTableView } from "./components/TaskTableView";
 
 export interface Subtask {
   id?: string;
@@ -37,95 +37,36 @@ export interface Employee {
   name: string;
 }
 
-export type ViewType = "table" | "chart";
+export type ViewType = "table" | "chart" | "overall";
 
-interface EmployeeSummary {
+export interface EmployeeSummary {
   employeeName: string;
   totalTasks: number;
   completed: number;
   inProgress: number;
   paused: number;
   completionRate: number;
+  dueDateAdherenceScore: number;
+  subtaskCompletionRate: number;
 }
 
 const getStatusCount = (tasks: Task[]) => {
-    const counts = {
-        completed: tasks.filter(t => t.status === "Completed").length,
-        inProgress: tasks.filter(t => t.status === "In Progress").length,
-        paused: tasks.filter(t => t.status === "Paused" || t.status === "On Hold" || t.status === "Pending").length,
-    };
-    return counts;
+  const counts = {
+    completed: tasks.filter(t => t.status === "Completed").length,
+    inProgress: tasks.filter(t => t.status === "In Progress").length,
+    paused: tasks.filter(t => t.status === "Paused" || t.status === "On Hold" || t.status === "Pending").length,
+  };
+  return counts;
 };
 
-const TaskTableView: React.FC<{ employeeSummaries: EmployeeSummary[] }> = ({ employeeSummaries }) => {
-    if (employeeSummaries.length === 0) {
-        return (
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                <div className="text-center py-16">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-                        <AlertCircle className="w-8 h-8 text-slate-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-slate-700 mb-2">No employee data found</h3>
-                    <p className="text-slate-500">Adjust the current filter or ensure tasks are assigned to employees.</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-            <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                    <tr>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider sticky top-0 bg-slate-50 z-10">Employee Name</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider sticky top-0 bg-slate-50 z-10">Total Tasks</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider sticky top-0 bg-slate-50 z-10">Completed</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider sticky top-0 bg-slate-50 z-10">In Progress</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider sticky top-0 bg-slate-50 z-10">On Hold/Paused</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider sticky top-0 bg-slate-50 z-10">Completion %</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                    {employeeSummaries.map((summary) => (
-                        <tr 
-                            key={summary.employeeName} 
-                            className="hover:bg-indigo-50 transition-colors"
-                        >
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                <div className="flex items-center">
-                                    <User className="w-4 h-4 mr-2 text-indigo-600" />
-                                    {summary.employeeName}
-                                </div>
-                            </td>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-center font-bold text-indigo-600">
-                                {summary.totalTasks}
-                            </td>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-center text-emerald-600 font-semibold">
-                                {summary.completed}
-                            </td>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-center text-blue-600 font-semibold">
-                                {summary.inProgress}
-                            </td>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-center text-amber-600 font-semibold">
-                                {summary.paused}
-                            </td>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                                <div className="flex items-center justify-center">
-                                    <div className="w-20 bg-slate-200 rounded-full h-2 mr-2">
-                                        <div 
-                                            className="h-2 rounded-full bg-emerald-500 transition-all duration-500"
-                                            style={{ width: `${summary.completionRate}%` }}
-                                        />
-                                    </div>
-                                    <span className="font-semibold text-gray-900">{summary.completionRate}%</span>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+const calculateIncentivePercentage = (overallScore: number): number => {
+  if (overallScore >= 95) return 20;
+  if (overallScore >= 80) return 15;
+  if (overallScore >= 75) return 10;
+  if (overallScore >= 70) return 8;
+  if (overallScore >= 60) return 5;
+  if (overallScore >= 50) return 3;
+  return 0;
 };
 
 const TasksPage: React.FC = () => {
@@ -238,13 +179,13 @@ const TasksPage: React.FC = () => {
 
         case "date":
           return task.startDate === downloadFilterValue ||
-                 task.dueDate === downloadFilterValue ||
-                 (task.endDate && task.endDate === downloadFilterValue);
+             task.dueDate === downloadFilterValue ||
+             (task.endDate && task.endDate === downloadFilterValue);
 
         case "month":
           return task.startDate.startsWith(downloadFilterValue) ||
-                 task.dueDate.startsWith(downloadFilterValue) ||
-                 (task.endDate && task.endDate.startsWith(downloadFilterValue));
+             task.dueDate.startsWith(downloadFilterValue) ||
+             (task.endDate && task.endDate.startsWith(downloadFilterValue));
 
         case "all":
         case "duration": 
@@ -313,6 +254,21 @@ const TasksPage: React.FC = () => {
         const totalCompleted = counts.completed;
         const completionRate = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
         
+        const adheredTasks = tasks.filter(t => 
+            t.status === "Completed" && t.endDate && t.endDate <= t.dueDate
+        ).length;
+        const totalCompletedForAdherence = tasks.filter(t => t.status === "Completed").length;
+        const dueDateAdherenceScore = totalCompletedForAdherence > 0 
+            ? Math.round((adheredTasks / totalCompletedForAdherence) * 100)
+            : 100;
+
+        const allSubtasks = tasks.flatMap(t => t.subtasks || []);
+        const completedSubtasks = allSubtasks.filter(st => st.completion === 100).length;
+        const totalSubtasks = allSubtasks.length;
+        const subtaskCompletionRate = totalSubtasks > 0 
+            ? Math.round((completedSubtasks / totalSubtasks) * 100)
+            : 100;
+
         summaries.push({
             employeeName: name,
             totalTasks,
@@ -320,6 +276,8 @@ const TasksPage: React.FC = () => {
             inProgress: counts.inProgress,
             paused: counts.paused,
             completionRate,
+            dueDateAdherenceScore,
+            subtaskCompletionRate,
         });
     });
 
@@ -518,19 +476,94 @@ const TasksPage: React.FC = () => {
     }
   };
 
-  const handleExcelDownload = () => {
+  const handleExcelDownload = (employeeName: string = 'all') => {
     if (typeof window === "undefined" || !(window as any).XLSX) {
         alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
         return;
       }
 
-      const tasksForExport: Task[] = rawFilteredTasks; 
+      const XLSX = (window as any).XLSX;
+      const wb = XLSX.utils.book_new();
+      const valuePart = downloadFilterValue.split("|")[0] || 'all';
+      const safeValue = valuePart.replace(/[^a-z0-9]/gi, '_');
+      
+      const isEmployeeDownload = employeeName !== 'all';
 
+      // 1. Filter tasks based on employee name if provided
+      const tasksForExport: Task[] = isEmployeeDownload
+        ? tasks.filter(task => task.assigneeName === employeeName)
+        : rawFilteredTasks;
+      
       if (tasksForExport.length === 0) {
-          alert(`No tasks found for the current filter.`);
+          alert(`No tasks found for the filter: ${isEmployeeDownload ? employeeName : 'All'}.`);
           return;
       }
 
+      // Helper to calculate Employee Summary/Score for a single employee report
+      const getEmployeeScore = (name: string, summary: EmployeeSummary) => {
+        const attendanceData = new Map<string, number>([
+            ["john doe", 98],
+            ["jane smith", 95],
+            ["unassigned", 100],
+        ]);
+        const WEIGHTS = {
+            taskCompletion: 0.50, 
+            inProgressLoad: 0.10, 
+            attendance: 0.10,      
+            dueDateAdherence: 0.20,
+            subtaskCompletion: 0.10, 
+        };
+        
+        const lowerName = name.toLowerCase();
+        const attendance = attendanceData.get(lowerName) || 85;
+        const inProgressLoadScore = Math.max(0, 100 - (summary.inProgress * 5)); 
+
+        const overallScore = Math.round(
+            (summary.completionRate * WEIGHTS.taskCompletion) +
+            (inProgressLoadScore * WEIGHTS.inProgressLoad) +
+            (attendance * WEIGHTS.attendance) +
+            (summary.dueDateAdherenceScore * WEIGHTS.dueDateAdherence) +
+            (summary.subtaskCompletionRate * WEIGHTS.subtaskCompletion)
+        );
+
+        return {
+            overallScore,
+            incentiveHike: calculateIncentivePercentage(overallScore),
+        };
+      };
+
+
+      // 2. Overall Performance Sheet (Created when downloading for a specific employee OR when doing an "all" download while in the overall view)
+      if (isEmployeeDownload || (employeeName === 'all' && viewType === "overall")) {
+        
+        const summariesToExport = isEmployeeDownload
+            ? employeeSummaries.filter(s => s.employeeName === employeeName)
+            : employeeSummaries;
+            
+        const performanceDataForExport = summariesToExport.map(summary => {
+            const { overallScore, incentiveHike } = getEmployeeScore(summary.employeeName, summary);
+    
+            return {
+                'Employee Name': summary.employeeName,
+                'Total Tasks': summary.totalTasks,
+                'Completed Tasks': summary.completed,
+                'In Progress Tasks': summary.inProgress,
+                'Paused Tasks': summary.paused,
+                'Task Completion Rate (%)': summary.completionRate,
+                'Due Date Adherence (%)': summary.dueDateAdherenceScore,
+                'Subtask Completion (%)': summary.subtaskCompletionRate,
+                'Overall Performance Score': overallScore,
+                'Incentive Hike (%)': incentiveHike,
+            };
+        });
+
+        const wsPerformance = XLSX.utils.json_to_sheet(performanceDataForExport);
+        const sheetName = isEmployeeDownload ? `${employeeName} Score` : "Overall Performance";
+        XLSX.utils.book_append_sheet(wb, wsPerformance, sheetName);
+      }
+
+
+      // 3. Detailed Tasks Sheet
       const dataForExport = tasksForExport.flatMap(task => {
           const mainRow = {
               'Task ID': task.projectId,
@@ -577,9 +610,7 @@ const TasksPage: React.FC = () => {
           return [mainRow, ...subtaskRows];
       });
 
-      const XLSX = (window as any).XLSX;
-      const ws = XLSX.utils.json_to_sheet(dataForExport);
-
+      const wsTasks = XLSX.utils.json_to_sheet(dataForExport);
       const objectKeys = Object.keys(dataForExport[0] || {});
       const wscols = objectKeys.map(key => {
           let max_width = key.length;
@@ -591,29 +622,28 @@ const TasksPage: React.FC = () => {
           return { wch: finalWidth };
       });
 
-      ws['!cols'] = wscols;
+      wsTasks['!cols'] = wscols;
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
+      const detailSheetName = isEmployeeDownload ? `${employeeName} Tasks Detail` : "Tasks Detail Report";
+      XLSX.utils.book_append_sheet(wb, wsTasks, detailSheetName);
 
-      const valuePart = downloadFilterValue.split("|")[0] || 'all';
-      const safeValue = valuePart.replace(/[^a-z0-9]/gi, '_');
-      const fileName = downloadFilterType === "all" ? "All_Tasks_Report.xlsx" : `${downloadFilterType}_${safeValue}_Tasks_Report.xlsx`;
+      const fileName = isEmployeeDownload
+        ? `${employeeName.replace(/[^a-z0-9]/gi, '_')}_Performance_Report.xlsx`
+        : (downloadFilterType === "all" ? "All_Tasks_Report.xlsx" : `${downloadFilterType}_${safeValue}_Tasks_Report.xlsx`);
 
       XLSX.writeFile(wb, fileName);
-      alert(`✅ Task report downloaded as ${fileName}`);
+      alert(`✅ Report downloaded as ${fileName}`);
   };
+
+  const handleDownloadEmployeeReport = useCallback((employeeName: string) => {
+    handleExcelDownload(employeeName);
+  }, [rawFilteredTasks, employeeSummaries, handleExcelDownload]);
+
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
         router.push('/');
     }
-  };
-
-  const handleEmployeeRowClick = (employeeName: string) => {
-      setDownloadFilterType("assignee");
-      setDownloadFilterValue(employeeName.toLowerCase());
-      // Removed setViewType("board");
   };
 
   if (loading)
@@ -655,7 +685,17 @@ const TasksPage: React.FC = () => {
         >
           <LayoutGrid className="w-6 h-6" />
         </button>
-        {/* Removed Board View Button */}
+        <button
+          onClick={() => setViewType("overall")}
+          className={`p-3 rounded-xl transition-all duration-200 ${
+            viewType === "overall"
+              ? "bg-indigo-600 text-white shadow-lg"
+              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+          }`}
+          title="Overall Performance View (5 Factor Score)"
+        >
+          <Eye className="w-6 h-6" />
+        </button>
         <button
           onClick={() => setViewType("chart")}
           className={`p-3 rounded-xl transition-all duration-200 ${
@@ -691,18 +731,25 @@ const TasksPage: React.FC = () => {
             downloadFilterValue={downloadFilterValue}
             setDownloadFilterValue={setDownloadFilterValue}
             xlsxLoaded={xlsxLoaded}
-            handleExcelDownload={handleExcelDownload}
+            handleExcelDownload={() => handleExcelDownload('all')}
           />
 
           {viewType === "table" && (
             <TaskTableView 
                 employeeSummaries={employeeSummaries} 
-                // Removed onRowClick prop as it's no longer used to navigate
+                onDownloadEmployeeReport={handleDownloadEmployeeReport}
+            />
+          )}
+
+          {viewType === "overall" && (
+            <TaskOverallView 
+                employeeSummaries={employeeSummaries} 
+                onDownloadEmployeeReport={handleDownloadEmployeeReport}
             />
           )}
 
           {viewType === "chart" && rawFilteredTasks.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mt-6">
                   <div className="text-center py-16">
                       <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
                           <AlertCircle className="w-8 h-8 text-slate-400" />
@@ -742,6 +789,23 @@ const TasksPage: React.FC = () => {
                   handleStartSprint={handleStartSprint}
               />
           )}
+          
+          {/* NEW FULL DOWNLOAD BUTTON */}
+          <div className="mt-8 mb-8 text-center">
+            <button
+                onClick={() => handleExcelDownload('all')}
+                disabled={!xlsxLoaded || rawFilteredTasks.length === 0}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+                title="Download all filtered tasks and summaries into a multi-sheet Excel file."
+            >
+                <Download className="w-5 h-5 mr-2" />
+                Download Full Report ({rawFilteredTasks.length} items)
+            </button>
+            {!xlsxLoaded && (
+                <p className="text-sm text-red-500 mt-2">XLSX library loading...</p>
+            )}
+          </div>
+          {/* END NEW FULL DOWNLOAD BUTTON */}
 
         </div>
       </div>

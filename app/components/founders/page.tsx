@@ -14,7 +14,7 @@ interface EmployeeStats {
   accountsTeamCount: number;
   hrTeamCount: number;
   adminOpsTeamCount: number;
-  housekeepingTeamCount: number; // <-- now included
+  housekeepingTeamCount: number; 
 }
 
 export default function AdminPage() {
