@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, CheckSquare, Plus, Minus, TrendingUp } from "lucide-react";
+import { Users, CheckSquare, Plus, Minus, TrendingUp } from "lucide-react"; // Imported TrendingUp for the new button
 
 interface EmployeeStats {
   totalEmployees: number;
@@ -93,8 +93,13 @@ export default function AdminPage() {
   };
 
   const goToBillsPage = () => {
-    // Assuming the bills page is located at /components/bills-view or similar
+    // Assuming the bills page is located at /components/founders/bills or similar
     router.push("/components/founders/bills"); 
+  };
+
+  const goToExpensesPage = () => {
+    // Assuming the expenses page is located at /components/founders/expenses or similar
+    router.push("/components/founders/expenses"); 
   };
 
   const goToHousekeepingList = () => {
@@ -177,6 +182,7 @@ export default function AdminPage() {
 
                 <div className={`overflow-hidden transition-all duration-700 ease-in-out ${isQuickActionsOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"}`}>
                   <div className="flex flex-row flex-wrap gap-3">
+                    
                     {/* View Employee List Button */}
                     <div
                       role="button"
@@ -217,23 +223,42 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* NEW: View Bills Button */}
+                    {/* View Bills Button */}
                     <div
                       role="button"
                       onClick={goToBillsPage}
                       className={`group w-full md:w-[calc(50%-0.375rem)] xl:w-full relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"} ${hoveredButton === "bills" ? "scale-105" : "scale-100"}`}
-                      style={{ transitionDelay: isQuickActionsOpen ? "300ms" : "0ms" }} // Increased delay for sequential animation
+                      style={{ transitionDelay: isQuickActionsOpen ? "300ms" : "0ms" }} 
                       onMouseEnter={() => setHoveredButton("bills")}
                       onMouseLeave={() => setHoveredButton(null)}
                     >
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          {/* Using the Users icon for bills as a placeholder, you might want to use a relevant icon like 'DollarSign' or 'FileText' if you have it */}
                           <Users className="w-5 h-5 text-white" /> 
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 text-sm mb-0.5">View Bills</h3>
                           <p className="text-gray-600 text-xs">Access financial bill records</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NEW: View Expenses Button */}
+                    <div
+                      role="button"
+                      onClick={goToExpensesPage}
+                      className={`group w-full md:w-[calc(50%-0.375rem)] xl:w-full relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"} ${hoveredButton === "expenses" ? "scale-105" : "scale-100"}`}
+                      style={{ transitionDelay: isQuickActionsOpen ? "450ms" : "0ms" }} // Increased delay for sequential animation
+                      onMouseEnter={() => setHoveredButton("expenses")}
+                      onMouseLeave={() => setHoveredButton(null)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
+                          <TrendingUp className="w-5 h-5 text-white" /> {/* Using TrendingUp icon */}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 text-sm mb-0.5">View Expenses</h3>
+                          <p className="text-gray-600 text-xs">Review organization expense reports</p>
                         </div>
                       </div>
                     </div>
