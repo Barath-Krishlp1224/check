@@ -157,12 +157,7 @@ const ManagerDashboard: React.FC = () => {
       icon: Users,
       onClick: handleViewEmployees,
     },
-    {
-      id: "housekeeping",
-      title: "View Housekeeping",
-      icon: Users,
-      onClick: handleViewHousekeeping,
-    },
+   
     // The "Add New Employee" card was here and is now removed.
     {
       id: "tasks",

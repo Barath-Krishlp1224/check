@@ -46,14 +46,11 @@ export default function AdminPage() {
         const res = await fetch("/api/employees/stats");
         const data = await res.json();
 
-        console.log("employee stats response (admin):", data);
-
         if (!data || data.error) {
           console.error("Error fetching stats:", data?.error ?? data);
           return;
         }
 
-        // Defensive mapping so missing fields won't break the UI
         setStats({
           totalEmployees: data.totalEmployees ?? 0,
           foundersTeamCount: data.foundersTeamCount ?? 0,
@@ -85,7 +82,7 @@ export default function AdminPage() {
     { label: "Accounts Team", value: stats.accountsTeamCount, icon: "/7.png" },
     { label: "HR Team", value: stats.hrTeamCount, icon: "/8.png" },
     { label: "Admin & Ops Team", value: stats.adminOpsTeamCount, icon: "/9.png" },
-    { label: "Housekeeping Team", value: stats.housekeepingTeamCount, icon: "/10.png" }, // <-- added
+    { label: "Housekeeping Team", value: stats.housekeepingTeamCount, icon: "/10.png" },
   ];
 
   const toggleStaffCount = () => setIsStaffCountOpen((s) => !s);
@@ -93,6 +90,11 @@ export default function AdminPage() {
 
   const goToEmployeeList = () => {
     router.push("/components/founders/view-emp");
+  };
+
+  const goToBillsPage = () => {
+    // Assuming the bills page is located at /components/bills-view or similar
+    router.push("/components/founders/bills"); 
   };
 
   const goToHousekeepingList = () => {
@@ -175,6 +177,7 @@ export default function AdminPage() {
 
                 <div className={`overflow-hidden transition-all duration-700 ease-in-out ${isQuickActionsOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"}`}>
                   <div className="flex flex-row flex-wrap gap-3">
+                    {/* View Employee List Button */}
                     <div
                       role="button"
                       onClick={goToEmployeeList}
@@ -193,26 +196,8 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
-
-                    <div
-                      role="button"
-                      onClick={goToHousekeepingList}
-                      className={`group w-full md:w-[calc(50%-0.375rem)] xl:w-full relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"} ${hoveredButton === "house" ? "scale-105" : "scale-100"}`}
-                      style={{ transitionDelay: isQuickActionsOpen ? "75ms" : "0ms" }}
-                      onMouseEnter={() => setHoveredButton("house")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <Users className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5">View Housekeeping</h3>
-                          <p className="text-gray-600 text-xs">Filter by housekeeping team</p>
-                        </div>
-                      </div>
-                    </div>
-
+                    
+                    {/* Tasks & Performance Button */}
                     <div
                       role="button"
                       onClick={() => router.push("/components/task-view")}
@@ -231,6 +216,29 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* NEW: View Bills Button */}
+                    <div
+                      role="button"
+                      onClick={goToBillsPage}
+                      className={`group w-full md:w-[calc(50%-0.375rem)] xl:w-full relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"} ${hoveredButton === "bills" ? "scale-105" : "scale-100"}`}
+                      style={{ transitionDelay: isQuickActionsOpen ? "300ms" : "0ms" }} // Increased delay for sequential animation
+                      onMouseEnter={() => setHoveredButton("bills")}
+                      onMouseLeave={() => setHoveredButton(null)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
+                          {/* Using the Users icon for bills as a placeholder, you might want to use a relevant icon like 'DollarSign' or 'FileText' if you have it */}
+                          <Users className="w-5 h-5 text-white" /> 
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 text-sm mb-0.5">View Bills</h3>
+                          <p className="text-gray-600 text-xs">Access financial bill records</p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* END NEW BUTTON */}
+
                   </div>
                 </div>
               </div>

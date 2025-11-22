@@ -13,7 +13,7 @@ export default function EmptyPage() {
   // 🆕 New buttons
   const handleLaptopPolicy = () => router.push("/components/it-admin/laptop-policy");
   const handleAssetManagement = () => router.push("/components/it-admin/asset-management");
-  const handleHRInduction = () => router.push("/components/hr/induction");
+  const handleBills = () => router.push("/components/it-admin/bills");
   const handleCreateTask = () => router.push("/components/team-lead/create-task");
 
   return (
@@ -62,10 +62,10 @@ export default function EmptyPage() {
           </button>
 
           <button
-            onClick={handleHRInduction}
+            onClick={handleBills}
             className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold transition-all duration-300 shadow-md hover:scale-[1.02]"
           >
-            🧑‍🏫 HR Induction
+            🧾 Bill Payments
           </button>
 
           <button
