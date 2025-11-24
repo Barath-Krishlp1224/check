@@ -1,8 +1,22 @@
-// app/api/tasks/add/route.ts
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
 import Employee from "@/models/Employee";
+
+// Define the recursive Subtask structure for TypeScript on the server side
+interface Subtask {
+  id?: string | null;
+  title: string;
+  status: string;
+  completion: number;
+  remarks?: string;
+  startDate?: string;
+  dueDate?: string;
+  endDate?: string;
+  timeSpent?: string;
+  assigneeName?: string;
+  subtasks?: Subtask[]; // Recursive definition
+}
 
 type ReqBody = {
   projectId: string;
@@ -15,6 +29,7 @@ type ReqBody = {
   completion?: string | number;
   status?: string;
   remarks?: string;
+  subtasks?: Subtask[]; // Added for nested structure
 };
 
 const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
@@ -65,6 +80,7 @@ export async function POST(req: Request) {
       completion,
       status,
       remarks,
+      subtasks, // Destructure subtasks from the request body
     } = body || {};
 
     // Basic validation
@@ -86,7 +102,7 @@ export async function POST(req: Request) {
       completion !== "" && completion !== undefined ? Number(completion) : 0;
     const taskStatus = status || "Backlog";
 
-    // Create and save task
+    // Create and save task, including the nested subtasks array
     const newTask = new Task({
       assigneeName,
       projectId,
@@ -98,6 +114,7 @@ export async function POST(req: Request) {
       completion: completionValue,
       status: taskStatus,
       remarks,
+      subtasks, // Save the recursive subtasks array directly
     });
 
     const savedTask = await newTask.save();
@@ -120,6 +137,9 @@ export async function POST(req: Request) {
       console.warn("⚠️ No Slack webhook configured for department:", department);
     } else {
       try {
+        const subtaskCount = subtasks?.length || 0;
+        const subtaskNote = subtaskCount > 0 ? ` (+${subtaskCount} Subtask${subtaskCount > 1 ? 's' : ''})` : '';
+        
         const headline = `📌 New Task — ${department}`;
         const blocks: any[] = [
           { type: "section", text: { type: "mrkdwn", text: `*${headline}*` } },
@@ -127,7 +147,7 @@ export async function POST(req: Request) {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*Project:* ${project} (${projectId})\n*Assignee:* ${assigneeLabel}\n*Department:* ${department}\n*Status:* ${taskStatus}${dueDate ? `\n*Due:* ${dueDate}` : ""}`,
+              text: `*Project:* ${project} (${projectId})${subtaskNote}\n*Assignee:* ${assigneeLabel}\n*Department:* ${department}\n*Status:* ${taskStatus}${dueDate ? `\n*Due:* ${dueDate}` : ""}`,
             },
           },
           ...(remarks ? [{ type: "section", text: { type: "mrkdwn", text: `*Remarks:* ${remarks}` } }] : []),
