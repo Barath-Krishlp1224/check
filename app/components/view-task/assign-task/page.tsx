@@ -1,4 +1,4 @@
-// ./TasksPage.tsx (Original file updated with SubtaskModal state and handlers)
+// ./TasksPage.tsx (Corrected to use assigneeNames array)
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
@@ -156,28 +156,51 @@ const TasksPage: React.FC = () => {
     };
     init();
   }, []);
+  
+  // =========================================================
+  // 🔥 FIX: Update visibleTasks to check assigneeNames array
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
-      return tasks.filter((task) => task.assigneeName?.toLowerCase() === nameLower);
+      
+      return tasks.filter((task) => {
+        // Check if the current user's name is included in the assigneeNames array
+        if (task.assigneeNames && Array.isArray(task.assigneeNames)) {
+          return task.assigneeNames.some(
+            (assignee) => assignee.toLowerCase() === nameLower
+          );
+        }
+        // Fallback or legacy check (optional, but safer to remove singular assigneeName if model is updated)
+        return false; 
+      });
     }
     return tasks;
   }, [tasks, currentUserRole, currentUserName]);
+  // =========================================================
+  
   const uniqueProjects = useMemo(() => {
     const names = visibleTasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(names));
   }, [visibleTasks]);
+  
+  // =========================================================
+  // 🔥 FIX: Update filteredTasks to use assigneeNames for filtering
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
+    
     if (filter === "all" || !value) return visibleTasks;
+    
     return visibleTasks.filter((task) => {
       switch (filter) {
         case "project":
           return task.project.toLowerCase() === value;
         case "assignee":
           if (value === "all") return true;
-          return task.assigneeName.toLowerCase() === value;
+          // Check if any assignee name matches the filter value
+          return (task.assigneeNames || []).some(
+            (assignee) => assignee.toLowerCase() === value
+          );
         case "status":
           return task.status.toLowerCase() === value;
         case "date":
@@ -197,6 +220,8 @@ const TasksPage: React.FC = () => {
       }
     });
   }, [visibleTasks, downloadFilterType, downloadFilterValue]);
+  // =========================================================
+  
   const openTaskModal = (task: Task) => {
     setSelectedTaskForModal(task);
     setIsModalOpen(true);

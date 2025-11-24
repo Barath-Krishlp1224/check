@@ -1,9 +1,10 @@
+// ./api/tasks/add (POST function)
+
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
 import Employee from "@/models/Employee";
 
-// Define the recursive Subtask structure for TypeScript on the server side
 interface Subtask {
   id?: string | null;
   title: string;
@@ -15,12 +16,12 @@ interface Subtask {
   endDate?: string;
   timeSpent?: string;
   assigneeName?: string;
-  subtasks?: Subtask[]; // Recursive definition
+  subtasks?: Subtask[];
 }
 
 type ReqBody = {
   projectId: string;
-  assigneeName: string;
+  assigneeNames: string[]; 
   project: string;
   department: string;
   startDate?: string;
@@ -29,7 +30,7 @@ type ReqBody = {
   completion?: string | number;
   status?: string;
   remarks?: string;
-  subtasks?: Subtask[]; // Added for nested structure
+  subtasks?: Subtask[]; 
 };
 
 const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
 
     const {
       projectId,
-      assigneeName,
+      assigneeNames, 
       project,
       department,
       startDate,
@@ -80,13 +81,13 @@ export async function POST(req: Request) {
       completion,
       status,
       remarks,
-      subtasks, // Destructure subtasks from the request body
+      subtasks, 
     } = body || {};
 
     // Basic validation
-    if (!assigneeName || !projectId || !project) {
+    if (!projectId || !project || !assigneeNames || assigneeNames.length === 0) { 
       return NextResponse.json(
-        { success: false, error: "Missing required fields: assigneeName, projectId, project" },
+        { success: false, error: "Missing required fields: projectId, project, or at least one assignee." },
         { status: 400 }
       );
     }
@@ -102,9 +103,9 @@ export async function POST(req: Request) {
       completion !== "" && completion !== undefined ? Number(completion) : 0;
     const taskStatus = status || "Backlog";
 
-    // Create and save task, including the nested subtasks array
+    // Create and save task, using assigneeNames
     const newTask = new Task({
-      assigneeName,
+      assigneeNames, 
       projectId,
       project,
       department,
@@ -114,21 +115,29 @@ export async function POST(req: Request) {
       completion: completionValue,
       status: taskStatus,
       remarks,
-      subtasks, // Save the recursive subtasks array directly
+      subtasks, 
     });
 
     const savedTask = await newTask.save();
     console.log("✅ Task saved successfully:", savedTask._id ?? savedTask);
 
-    // Enrich assignee label with empId if exists
-    let assigneeLabel = assigneeName;
+    // Prepare Slack notification
+    const primaryAssignee = assigneeNames[0];
+    let assigneeLabel = primaryAssignee;
+    
+    // Enrich primary assignee label with empId if exists
     try {
-      const emp = await Employee.findOne({ name: new RegExp(`^${assigneeName}$`, "i") }, "empId name").lean();
+      const emp = await Employee.findOne({ name: new RegExp(`^${primaryAssignee}$`, "i") }, "empId name").lean();
       if (emp) assigneeLabel = `${emp.name}${emp.empId ? ` (${emp.empId})` : ""}`;
     } catch (err) {
-      console.warn("Assignee lookup failed:", err);
+      console.warn("Primary assignee lookup failed:", err);
     }
 
+    const totalAssignees = assigneeNames.length;
+    const assigneeDisplay = totalAssignees > 1 
+      ? `${assigneeLabel} (+${totalAssignees - 1} others)`
+      : assigneeLabel;
+    
     // Determine webhook
     const deptKey = normalizeDeptKey(department);
     const webhookUrl = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
@@ -147,14 +156,13 @@ export async function POST(req: Request) {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*Project:* ${project} (${projectId})${subtaskNote}\n*Assignee:* ${assigneeLabel}\n*Department:* ${department}\n*Status:* ${taskStatus}${dueDate ? `\n*Due:* ${dueDate}` : ""}`,
+              text: `*Project:* ${project} (${projectId})${subtaskNote}\n*Assignee(s):* ${assigneeDisplay}\n*Department:* ${department}\n*Status:* ${taskStatus}${dueDate ? `\n*Due:* ${dueDate}` : ""}`, 
             },
           },
           ...(remarks ? [{ type: "section", text: { type: "mrkdwn", text: `*Remarks:* ${remarks}` } }] : []),
           { type: "context", elements: [{ type: "mrkdwn", text: `Task saved: ${savedTask._id}` }] },
         ];
 
-        // Attempt to send blocks first (better formatting). Slack ignores unknown block fields, so OK.
         await postToSlack(webhookUrl, { blocks });
 
         console.log(`✅ Slack notification sent to webhook for department="${deptKey}"`);

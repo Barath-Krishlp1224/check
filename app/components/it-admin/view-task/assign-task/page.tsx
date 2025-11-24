@@ -1,59 +1,17 @@
+// ./TasksPage.tsx (Corrected to use assigneeNames array)
 "use client";
-
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
-
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
-import HolidaysModal, { Holiday, staticHolidays } from "./components/HolidaysModal";
-
-export interface Subtask {
-  id?: string;
-  title: string;
-  assigneeName?: string;
-  status: string;
-  completion: number;
-  remarks?: string;
-}
-
-export interface Task {
-  _id: string;
-  projectId: string;
-  project: string;
-  assigneeName: string;
-  startDate: string;
-  endDate?: string;
-  dueDate: string;
-  completion: number;
-  status:
-    | "Backlog"
-    | "In Progress"
-    | "Dev Review"
-    | "Deployed in QA"
-    | "Test In Progress"
-    | "QA Sign Off"
-    | "Deployment Stage"
-    | "Pilot Test"
-    | "Completed"
-    | "Paused"
-    | string;
-  remarks?: string;
-  subtasks?: Subtask[];
-  department?: "Tech" | "Accounts" | string;
-}
-
-export interface Employee {
-  _id: string;
-  name: string;
-}
-
+import HolidaysModal from "./components/HolidaysModal";
+import SubtaskModal from "./components/SubtaskModal";
+import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 export type ViewType = "card" | "board";
-
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
-
 const allTaskStatuses = [
   "Backlog",
   "In Progress",
@@ -66,33 +24,74 @@ const allTaskStatuses = [
   "Completed",
   "Paused",
 ];
-
 const TasksPage: React.FC = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [viewType, setViewType] = useState<ViewType>("card");
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
-
   const [isEditing, setIsEditing] = useState(false);
   const [draftTask, setDraftTask] = useState<Partial<Task>>({});
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [currentProjectPrefix, setCurrentProjectPrefix] = useState<string>("");
-
   const [downloadFilterType, setDownloadFilterType] = useState<string>("all");
   const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
-
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
-
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
-
+  const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
+      id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
+      title: "",
+      assigneeName: "",
+      status: "Pending",
+      completion: 0,
+      remarks: "",
+      subtasks: [],
+      isEditing: true,
+      isExpanded: true,
+  });
+  const updateSubtaskState = (
+    currentSubs: Subtask[],
+    path: number[],
+    updater: (sub: Subtask, index: number) => Subtask | null,
+    action: 'update' | 'remove' | 'add' = 'update'
+  ): Subtask[] => {
+    let newSubs = [...currentSubs];
+    let currentLevel: Subtask[] = newSubs;
+    for (let i = 0; i < path.length; i++) {
+        const index = path[i];
+        if (!currentLevel) return currentSubs;
+        if (i === path.length - 1) {
+            if (action === 'remove') {
+                currentLevel.splice(index, 1);
+            } else if (action === 'add') {
+                const parent = currentLevel[index];
+                if (!parent.subtasks) parent.subtasks = [];
+                const nextSubIndex = parent.subtasks.length;
+                const newPath = [...path, nextSubIndex];
+                const newNestedId = (parent.id || currentProjectPrefix) + `.${nextSubIndex + 1}`;
+                parent.subtasks.push({
+                    ...getNewSubtask(currentProjectPrefix, newPath),
+                    id: newNestedId,
+                });
+            } else {
+                const updatedSub = updater(currentLevel[index], index);
+                if (updatedSub) {
+                    currentLevel[index] = updatedSub;
+                }
+            }
+        } else {
+            const sub: Subtask = currentLevel[index];
+            if (!sub || !sub.subtasks) return currentSubs;
+            currentLevel = sub.subtasks;
+        }
+    }
+    return newSubs;
+  };
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
       return `${window.location.origin}${path}`;
@@ -100,7 +99,6 @@ const TasksPage: React.FC = () => {
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "";
     return `${base}${path}`;
   };
-
   const fetchTasks = async () => {
     try {
       const url = getApiUrl("/api/tasks");
@@ -112,7 +110,6 @@ const TasksPage: React.FC = () => {
       setError("Server connection error while fetching tasks.");
     }
   };
-
   const fetchEmployees = async () => {
     try {
       const url = getApiUrl("/api/employees");
@@ -121,7 +118,6 @@ const TasksPage: React.FC = () => {
       if (res.ok && data.success) setEmployees(data.employees);
     } catch (err) {}
   };
-
   const triggerDueDateNotifications = async () => {
     try {
       const url = getApiUrl("/api/tasks/reminders");
@@ -138,7 +134,6 @@ const TasksPage: React.FC = () => {
       console.warn("Error calling reminders API:", err);
     }
   };
-
   useEffect(() => {
     import("xlsx")
       .then((XLSX) => {
@@ -146,14 +141,12 @@ const TasksPage: React.FC = () => {
         setXlsxLoaded(true);
       })
       .catch(() => {});
-
     if (typeof window !== "undefined") {
       const role = (localStorage.getItem("userRole") || "") as Role;
       const name = localStorage.getItem("userName") || "";
       setCurrentUserRole(role || null);
       setCurrentUserName(name);
     }
-
     const init = async () => {
       setLoading(true);
       setError("");
@@ -163,33 +156,51 @@ const TasksPage: React.FC = () => {
     };
     init();
   }, []);
-
+  
+  // =========================================================
+  // 🔥 FIX: Update visibleTasks to check assigneeNames array
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
-      return tasks.filter((task) => task.assigneeName?.toLowerCase() === nameLower);
+      
+      return tasks.filter((task) => {
+        // Check if the current user's name is included in the assigneeNames array
+        if (task.assigneeNames && Array.isArray(task.assigneeNames)) {
+          return task.assigneeNames.some(
+            (assignee) => assignee.toLowerCase() === nameLower
+          );
+        }
+        // Fallback or legacy check (optional, but safer to remove singular assigneeName if model is updated)
+        return false; 
+      });
     }
     return tasks;
   }, [tasks, currentUserRole, currentUserName]);
-
+  // =========================================================
+  
   const uniqueProjects = useMemo(() => {
     const names = visibleTasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(names));
   }, [visibleTasks]);
-
+  
+  // =========================================================
+  // 🔥 FIX: Update filteredTasks to use assigneeNames for filtering
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
-
+    
     if (filter === "all" || !value) return visibleTasks;
-
+    
     return visibleTasks.filter((task) => {
       switch (filter) {
         case "project":
           return task.project.toLowerCase() === value;
         case "assignee":
           if (value === "all") return true;
-          return task.assigneeName.toLowerCase() === value;
+          // Check if any assignee name matches the filter value
+          return (task.assigneeNames || []).some(
+            (assignee) => assignee.toLowerCase() === value
+          );
         case "status":
           return task.status.toLowerCase() === value;
         case "date":
@@ -209,29 +220,16 @@ const TasksPage: React.FC = () => {
       }
     });
   }, [visibleTasks, downloadFilterType, downloadFilterValue]);
-
-  const generateNextSubtaskId = (prefix: string, subs: Subtask[]) => {
-    const numbers = subs.map((sub) => {
-      if (sub.id && sub.id.startsWith(`${prefix}-`)) {
-        const num = sub.id.split("-").pop();
-        return parseInt(num!) || 0;
-      }
-      return 0;
-    });
-    const max = numbers.length > 0 ? Math.max(...numbers) : 0;
-    const next = (max + 1).toString().padStart(3, "0");
-    return `${prefix}-${next}`;
-  };
-
+  // =========================================================
+  
   const openTaskModal = (task: Task) => {
     setSelectedTaskForModal(task);
     setIsModalOpen(true);
     setIsEditing(false);
     setDraftTask({});
-    setSubtasks([]);
-    setCurrentProjectPrefix("");
+    setSubtasks(task.subtasks || []);
+    setCurrentProjectPrefix(task.projectId);
   };
-
   const closeTaskModal = () => {
     setIsModalOpen(false);
     setTimeout(() => {
@@ -239,30 +237,18 @@ const TasksPage: React.FC = () => {
       cancelEdit();
     }, 300);
   };
-
   const handleEdit = (task: Task) => {
     setIsEditing(true);
     setDraftTask(task);
     setCurrentProjectPrefix(task.projectId);
-
-    const updatedSubtasks: Subtask[] = (task.subtasks || []).map((sub, index, arr) => {
-      if (!sub.id || !sub.id.startsWith(task.projectId)) {
-        const tempId = generateNextSubtaskId(task.projectId, arr.slice(0, index));
-        return { ...sub, id: tempId };
-      }
-      return sub;
-    });
-
-    setSubtasks(updatedSubtasks);
+    setSubtasks(JSON.parse(JSON.stringify(task.subtasks || [])));
   };
-
   const cancelEdit = () => {
     setIsEditing(false);
     setDraftTask({});
     setSubtasks([]);
     setCurrentProjectPrefix("");
   };
-
   const handleDraftChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDraftTask((prev) => ({
@@ -270,32 +256,51 @@ const TasksPage: React.FC = () => {
       [name]: name === "completion" ? Number(value) : value,
     }));
   };
-
-  const handleSubtaskChange = (index: number, field: keyof Subtask, value: any) => {
-    const updated = [...subtasks];
-    (updated[index] as any)[field] = field === "completion" ? Number(value) : value;
-    setSubtasks(updated);
+  const handleSubtaskChange: SubtaskChangeHandler = (path, field, value) => {
+    setSubtasks((prevSubs) =>
+        updateSubtaskState(prevSubs, path, (sub) => ({
+            ...sub,
+            [field]: value
+        }))
+    );
   };
-
-  const addSubtask = () => {
-    const newId = generateNextSubtaskId(currentProjectPrefix, subtasks);
-    setSubtasks([
-      ...subtasks,
-      {
-        id: newId,
-        title: "",
-        assigneeName: "",
-        status: "Pending",
-        completion: 0,
-        remarks: "",
-      },
-    ]);
+  const handleToggleEdit: SubtaskPathHandler = (path) => {
+    setSubtasks((prevSubs) =>
+        updateSubtaskState(prevSubs, path, (sub) => ({
+            ...sub,
+            isEditing: !(sub.isEditing ?? false)
+        }))
+    );
   };
-
-  const removeSubtask = (index: number) => {
-    setSubtasks(subtasks.filter((_, i) => i !== index));
+  const handleToggleExpansion: SubtaskPathHandler = (path) => {
+    setSubtasks((prevSubs) =>
+        updateSubtaskState(prevSubs, path, (sub) => ({
+            ...sub,
+            isExpanded: !(sub.isExpanded ?? false)
+        }))
+    );
   };
-
+  const addSubtask: SubtaskPathHandler = (path) => {
+    if (!currentProjectPrefix) return;
+    if (path.length === 0) {
+        setSubtasks((prevSubs) => [
+            ...prevSubs,
+            {
+                ...getNewSubtask(currentProjectPrefix, [prevSubs.length]),
+                id: `${currentProjectPrefix}-S${prevSubs.length + 1}`
+            }
+        ]);
+        return;
+    }
+    setSubtasks((prevSubs) =>
+        updateSubtaskState(prevSubs, path, () => null, 'add')
+    );
+  };
+  const removeSubtask: SubtaskPathHandler = (path) => {
+    setSubtasks((prevSubs) =>
+        updateSubtaskState(prevSubs, path, () => null, 'remove')
+    );
+  };
   const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
@@ -305,7 +310,6 @@ const TasksPage: React.FC = () => {
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
-
       if (res.ok && data.success) {
         setTasks((prev) =>
           prev.map((t) => (t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t))
@@ -318,17 +322,23 @@ const TasksPage: React.FC = () => {
       alert("Server error during status update.");
     }
   }, []);
-
+  const findAndMapSubtasks = (subs: Subtask[], subtaskId: string, newStatus: string): Subtask[] => {
+    return subs.map(sub => {
+        if (sub.id === subtaskId) {
+            return { ...sub, status: newStatus };
+        }
+        if (sub.subtasks) {
+            return { ...sub, subtasks: findAndMapSubtasks(sub.subtasks, subtaskId, newStatus) };
+        }
+        return sub;
+    });
+  };
   const onSubtaskStatusChange = useCallback(
     async (taskId: string, subtaskId: string, newStatus: string) => {
       try {
         const target = tasks.find((t) => t._id === taskId);
         if (!target) return;
-
-        const updatedSubs = (target.subtasks || []).map((sub) =>
-          sub.id === subtaskId ? { ...sub, status: newStatus } : sub
-        );
-
+        const updatedSubs = findAndMapSubtasks(target.subtasks || [], subtaskId, newStatus);
         const url = getApiUrl(`/api/tasks/${taskId}`);
         const res = await fetch(url, {
           method: "PUT",
@@ -336,7 +346,6 @@ const TasksPage: React.FC = () => {
           body: JSON.stringify({ subtasks: updatedSubs }),
         });
         const data = await res.json();
-
         if (res.ok && data.success) {
           fetchTasks();
         } else {
@@ -348,18 +357,22 @@ const TasksPage: React.FC = () => {
     },
     [tasks]
   );
-
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskForModal?._id) return;
-
-    const validSubs = subtasks.filter((s) => s.title.trim() !== "");
+    const filterEmptySubs = (subs: Subtask[]): Subtask[] => {
+        return subs.filter(s => {
+            if (s.title.trim() === "") return false;
+            if (s.subtasks) s.subtasks = filterEmptySubs(s.subtasks);
+            return true;
+        });
+    }
+    const validSubs = filterEmptySubs(subtasks);
     const updatedTask = {
       ...draftTask,
       subtasks: validSubs,
       projectId: currentProjectPrefix,
     };
-
     try {
       const url = getApiUrl(`/api/tasks/${selectedTaskForModal._id}`);
       const res = await fetch(url, {
@@ -368,7 +381,6 @@ const TasksPage: React.FC = () => {
         body: JSON.stringify(updatedTask),
       });
       const data = await res.json();
-
       if (res.ok && data.success) {
         alert("Task updated!");
         closeTaskModal();
@@ -380,10 +392,8 @@ const TasksPage: React.FC = () => {
       alert("Server error during update.");
     }
   };
-
   const handleStartSprint = async (taskId: string) => {
     if (!window.confirm("Start sprint for this task? Status will change to 'In Progress'.")) return;
-
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
       const res = await fetch(url, {
@@ -392,7 +402,6 @@ const TasksPage: React.FC = () => {
         body: JSON.stringify({ status: "In Progress" }),
       });
       const data = await res.json();
-
       if (res.ok && data.success) {
         closeTaskModal();
         fetchTasks();
@@ -403,15 +412,12 @@ const TasksPage: React.FC = () => {
       alert("Server error during sprint start.");
     }
   };
-
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this task?")) return;
-
     try {
       const url = getApiUrl(`/api/tasks/${id}`);
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
-
       if (res.ok) {
         closeTaskModal();
         fetchTasks();
@@ -422,13 +428,11 @@ const TasksPage: React.FC = () => {
       alert("Server error during deletion.");
     }
   };
-
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       router.push("/");
     }
   };
-
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
@@ -438,7 +442,6 @@ const TasksPage: React.FC = () => {
         </div>
       </div>
     );
-
   if (error)
     return (
       <div className="min-h-screen flex items-center justify-center bg-white p-8">
@@ -453,7 +456,6 @@ const TasksPage: React.FC = () => {
         </div>
       </div>
     );
-
   return (
     <div className="flex min-h-screen bg-white">
       <aside className="fixed left-0 top-0 h-full w-20 bg-white shadow-xl pt-28 flex flex-col items-center space-y-4 z-20">
@@ -468,7 +470,6 @@ const TasksPage: React.FC = () => {
         >
           <LayoutGrid className="w-6 h-6" />
         </button>
-
         <button
           onClick={() => setViewType("board")}
           className={`p-3 rounded-xl transition-all duration-200 ${
@@ -480,7 +481,6 @@ const TasksPage: React.FC = () => {
         >
           <ListTodo className="w-6 h-6" />
         </button>
-
         <button
           onClick={() => setIsHolidaysOpen(true)}
           className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
@@ -488,9 +488,7 @@ const TasksPage: React.FC = () => {
         >
           <Calendar className="w-6 h-6" />
         </button>
-
         <div className="flex-grow"></div>
-
         <button
           onClick={handleLogout}
           className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
@@ -499,7 +497,6 @@ const TasksPage: React.FC = () => {
           <LogOut className="w-6 h-6" />
         </button>
       </aside>
-
       <div className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8 bg-white" style={{ marginLeft: "5rem" }}>
         <div className="max-w-[1800px] mx-auto bg-white">
           <TaskTableHeader
@@ -512,7 +509,6 @@ const TasksPage: React.FC = () => {
             xlsxLoaded={xlsxLoaded}
             handleExcelDownload={() => {}}
           />
-
           {filteredTasks.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
               <div className="text-center py-16">
@@ -532,13 +528,11 @@ const TasksPage: React.FC = () => {
                   ))}
                 </div>
               )}
-
               {viewType === "board" && (
                 <TaskBoardView tasks={filteredTasks} openTaskModal={openTaskModal} onTaskStatusChange={onTaskStatusChange} />
               )}
             </>
           )}
-
           {selectedTaskForModal && (
             <TaskModal
               task={selectedTaskForModal}
@@ -558,6 +552,8 @@ const TasksPage: React.FC = () => {
               handleSubtaskChange={handleSubtaskChange}
               addSubtask={addSubtask}
               removeSubtask={removeSubtask}
+              onToggleEdit={handleToggleEdit}
+              onToggleExpansion={handleToggleExpansion}
               handleStartSprint={handleStartSprint}
               onTaskStatusChange={onTaskStatusChange}
               onSubtaskStatusChange={onSubtaskStatusChange}
@@ -565,10 +561,8 @@ const TasksPage: React.FC = () => {
           )}
         </div>
       </div>
-
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
     </div>
   );
 };
-
 export default TasksPage;

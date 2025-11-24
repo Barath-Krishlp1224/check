@@ -1,3 +1,5 @@
+// ./api/employees (GET function)
+
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";

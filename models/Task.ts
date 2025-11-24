@@ -1,8 +1,7 @@
+// ./models/Task.js (or .ts)
+
 import { Schema, model, models } from "mongoose";
 
-// --- Recursive Subtask Schema Definition ---
-
-// 1. Define the schema without the recursive part first, using a temporary name.
 const BaseSubtaskSchema = new Schema({
   id: { type: String },
   title: { type: String, required: true },
@@ -16,22 +15,18 @@ const BaseSubtaskSchema = new Schema({
   assigneeName: { type: String },
 }, { _id: false });
 
-// 2. Add the recursive reference. This is generally defined outside the constructor
-// to avoid circular dependency issues during compilation.
-// We use the same schema object reference to enable nesting.
 BaseSubtaskSchema.add({
-  subtasks: [BaseSubtaskSchema] // This allows subtasks to contain an array of subtasks
+  subtasks: [BaseSubtaskSchema]
 });
 
-// Rename for export clarity
 const SubtaskSchema = BaseSubtaskSchema; 
-// ------------------------------------------
-
 
 const TaskSchema = new Schema(
   {
     projectId: { type: String, required: true, unique: true },
-    assigneeName: { type: String, required: true },
+    
+    assigneeNames: { type: [String], required: true }, 
+
     project: { type: String, required: true },
 
     department: {
@@ -57,7 +52,7 @@ const TaskSchema = new Schema(
     status: { type: String, default: "Backlog" },
     completion: { type: Number, default: 0, min: 0, max: 100 },
 
-    subtasks: [SubtaskSchema], // Already recursive through the schema definition
+    subtasks: [SubtaskSchema], 
 
     dueReminderSent: { type: Boolean, default: false },
     overdueNotified: { type: Boolean, default: false },
