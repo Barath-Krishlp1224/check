@@ -15,8 +15,15 @@ const useChartData = (tasks: Task[]) => {
         }, {} as { [key: string]: number });
 
         const tasksByAssignee = tasks.reduce((acc, task) => {
-            const assignee = task.assigneeName || 'Unassigned';
-            acc[assignee] = (acc[assignee] || 0) + 1;
+            // 🔥 FIX 1: Iterate over the assigneeNames array to count for ALL assignees
+            const assignees = task.assigneeNames && task.assigneeNames.length > 0 ? task.assigneeNames : ['Unassigned'];
+            
+            assignees.forEach(assignee => {
+                // Ensure assignee name is normalized (e.g., proper casing for display)
+                const displayAssignee = assignee.trim() || 'Unassigned'; 
+                acc[displayAssignee] = (acc[displayAssignee] || 0) + 1;
+            });
+            
             return acc;
         }, {} as { [key: string]: number });
 
@@ -189,16 +196,21 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
                 </div>
 
                 <div className="space-y-4 pt-2">
+                    {/* Note: Total assignees counted will be >= totalTasks since one task can have multiple assignees */}
                     {Object.entries(tasksByAssignee).sort(([, a], [, b]) => b - a).map(([assignee, count]) => (
                         <div key={assignee} className="flex items-center">
                             <span className="text-sm font-medium text-slate-700 w-32">{assignee}</span>
                             <div className="flex-1 ml-4 bg-slate-200 rounded-full h-8 overflow-hidden relative">
+                                {/* The bar width here reflects the count relative to the total number of tasks, 
+                                    which is a common way to visualize but note that total percentage can exceed 100%. 
+                                    We cap the visualization bar at 100% width for display purposes. 
+                                */}
                                 <div 
                                     className={`bg-green-500 h-full transition-all duration-500`}
-                                    style={{ width: `${(count / totalTasks) * 100}%` }}
+                                    style={{ width: `${Math.min((count / totalTasks) * 100, 100)}%` }} 
                                 ></div>
                                 <span className="absolute inset-0 flex items-center justify-end pr-3 text-sm font-bold text-white shadow-text">
-                                    {count} ({Math.round((count / totalTasks) * 100)}%)
+                                    {count} ({(count / totalTasks * 100).toFixed(1)}%)
                                 
                                 </span>
                             </div>

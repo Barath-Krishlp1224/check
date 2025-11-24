@@ -8,10 +8,9 @@ interface TaskCardProps {
 }
 
 const getStatusBadge = (status: string) => {
-  const baseClasses = "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full";
+  const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
   let icon = null;
-
   if (status === "Completed") {
     colorClasses = "bg-emerald-100 text-black";
     icon = <CheckCircle2 className="w-3 h-3" />;
@@ -28,7 +27,6 @@ const getStatusBadge = (status: string) => {
     colorClasses = "bg-gray-100 text-black";
     icon = <AlertCircle className="w-3 h-3" />;
   }
-
   return (
     <span className={`${baseClasses} ${colorClasses}`}>
       {icon}
@@ -39,6 +37,11 @@ const getStatusBadge = (status: string) => {
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  
+  // 🔥 FIX 1: Access the assigneeNames array
+  const assignees = task.assigneeNames || [];
+  const primaryAssignee = assignees[0];
+  const otherAssigneesCount = assignees.length > 1 ? assignees.length - 1 : 0;
 
   return (
     <div
@@ -49,14 +52,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
         {getStatusBadge(task.status)}
         <span className="text-xs font-medium text-black bg-indigo-50 px-2 py-1 rounded-lg">{task.projectId}</span>
       </div>
-
       <h3 className="text-lg font-bold text-black mb-1 truncate">{task.project}</h3>
       
       <div className="flex items-center text-sm text-black mb-3">
         <User className="w-4 h-4 mr-2 text-black" />
-        <span className="font-medium">{task.assigneeName}</span>
+        {/* 🔥 FIX 2: Display primary assignee and count */}
+        <span className="font-medium">
+          {primaryAssignee || 'Unassigned'}
+          {otherAssigneesCount > 0 && 
+            <span className="ml-1 text-slate-500 font-normal"> (+{otherAssigneesCount})</span>
+          }
+        </span>
       </div>
-
       <div className="flex justify-between items-center text-sm text-black mb-3">
         <span>Due: <span className="font-semibold text-black">{task.dueDate}</span></span>
         <span>{task.completion}% Complete</span>

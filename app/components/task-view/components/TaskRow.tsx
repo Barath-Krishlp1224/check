@@ -1,19 +1,30 @@
-// app/team-lead/assign-task/components/TaskRow.tsx
-
 import React from "react";
-import { 
-  ChevronRight, Edit2, Trash2, Save, X, CheckCircle2, 
-  Clock, Pause, AlertCircle 
+import {
+  ChevronRight,
+  Edit2,
+  Trash2,
+  Save,
+  X,
+  CheckCircle2,
+  Clock,
+  Pause,
+  AlertCircle,
+  User,
 } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; 
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
+import type { RecursiveSubtaskChangeHandler, RecursiveSubtaskPathHandler, Task, Subtask, Employee } from "./types";
 
-// --- HELPER FUNCTION (Copied from original page.tsx) ---
+/**
+ * This file expects the same `types` as TaskTable.tsx (imported from ./types).
+ *
+ * If you have a real TaskSubtaskEditor component, remove the `as any` cast in the usage.
+ * I cast to any because I don't have its exact prop types in this reply.
+ */
+
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
-  let icon = null;
-
+  let icon: React.ReactNode = null;
   if (status === "Completed") {
     colorClasses = isSubtask ? "bg-emerald-100 text-emerald-800" : "bg-emerald-50 text-emerald-700 border border-emerald-200";
     icon = <CheckCircle2 className="w-3 h-3" />;
@@ -27,7 +38,6 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
     colorClasses = isSubtask ? "bg-gray-100 text-gray-800" : "bg-gray-50 text-gray-700 border border-gray-200";
     icon = <AlertCircle className="w-3 h-3" />;
   }
-
   return (
     <span className={`${baseClasses} ${colorClasses}`}>
       {icon}
@@ -36,8 +46,21 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   );
 };
 
+const mainTaskEditStatuses = [
+  "Backlog",
+  "In Progress",
+  "Dev Review",
+  "Deployed in QA",
+  "Test In Progress",
+  "QA Sign Off",
+  "Deployment Stage",
+  "Pilot Test",
+  "Completed",
+  "Paused",
+];
 
-// --- PROP INTERFACES ---
+const subtaskStatuses = ["Pending", "In Progress", "Completed", "Paused"];
+
 interface TaskRowProps {
   task: Task;
   idx: number;
@@ -53,12 +76,13 @@ interface TaskRowProps {
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
-  addSubtask: () => void;
-  removeSubtask: (index: number) => void;
+
+  // recursive path-based handlers
+  handleSubtaskChange: RecursiveSubtaskChangeHandler;
+  addSubtask: RecursiveSubtaskPathHandler;
+  removeSubtask: RecursiveSubtaskPathHandler;
 }
 
-// --- COMPONENT ---
 const TaskRow: React.FC<TaskRowProps> = ({
   task,
   idx,
@@ -79,111 +103,104 @@ const TaskRow: React.FC<TaskRowProps> = ({
   removeSubtask,
 }) => {
   const current = isEditing ? draftTask : task;
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  const hasSubtasks = !!task.subtasks && task.subtasks.length > 0;
+
+  // Display names
+  const assignees = task.assigneeNames || [];
+  const assigneeDisplay = assignees.length > 0 ? assignees.join(", ") : "Unassigned";
+  const draftAssignees = (current as any).assigneeNames?.join(", ") || "Select Assignees in Modal";
 
   return (
     <React.Fragment>
-      {/* MAIN TASK ROW */}
-      <tr className={`transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50`}>
-        {/* Toggle Button */}
+      <tr className={`transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"} hover:bg-indigo-50`}>
         <td className="px-4 py-4">
           {hasSubtasks && (
-            <button 
+            <button
               onClick={() => toggleSubtasks(task._id)}
               className="p-1 rounded-lg hover:bg-indigo-100 transition-all duration-200"
             >
-              <ChevronRight className={`w-5 h-5 text-slate-600 transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+              <ChevronRight
+                className={`w-5 h-5 text-slate-600 transform transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+              />
             </button>
           )}
         </td>
-        {/* Task ID */}
         <td className="px-4 py-4 text-sm font-semibold text-indigo-600">{task.projectId}</td>
-        {/* Type */}
         <td className="px-4 py-4">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-            Task
-          </span>
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Task</span>
         </td>
-        {/* Project */}
         <td className="px-4 py-4 text-sm font-medium text-gray-900">
           {isEditing ? (
-            <input 
-              name="project" 
-              value={current.project || ""} 
-              onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black" 
+            <input
+              name="project"
+              value={(current as any).project || ""}
+              onChange={handleDraftChange}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             />
           ) : (
             task.project
           )}
         </td>
-        {/* Assignee */}
-        <td className="px-4 py-4 text-sm text-gray-900">
+
+        <td className="px-4 py-4 text-sm text-gray-900 max-w-[150px]">
           {isEditing ? (
-            <select 
-              name="assigneeName" 
-              value={current.assigneeName || ""} 
-              onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
-            >
-              <option value="">Select Assignee</option>
-              {employees.map(employee => (
-                <option key={employee._id} value={employee.name}>{employee.name}</option>
-              ))}
-            </select>
+            <span className="text-gray-500 text-xs italic bg-slate-100 p-2 rounded block">{draftAssignees}</span>
           ) : (
-            <span className="font-medium">{task.assigneeName}</span>
+            <div className="font-medium max-h-12 overflow-y-auto custom-scrollbar flex items-center gap-1">
+              <User className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              {assigneeDisplay}
+            </div>
           )}
         </td>
-        {/* Start Date */}
+
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
-            <input 
-              type="date" 
-              name="startDate" 
-              value={current.startDate || ""} 
-              onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black" 
+            <input
+              type="date"
+              name="startDate"
+              value={(current as any).startDate || ""}
+              onChange={handleDraftChange}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             />
           ) : (
             task.startDate
           )}
         </td>
-        {/* End Date */}
+
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
-            <input 
-              type="date" 
-              name="endDate" 
-              value={current.endDate || ""} 
-              onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black" 
+            <input
+              type="date"
+              name="endDate"
+              value={(current as any).endDate || ""}
+              onChange={handleDraftChange}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             />
           ) : (
             task.endDate || <span className="text-gray-500">N/A</span>
           )}
         </td>
-        {/* Due Date */}
+
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
-            <input 
-              type="date" 
-              name="dueDate" 
-              value={current.dueDate || ""} 
-              onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black" 
+            <input
+              type="date"
+              name="dueDate"
+              value={(current as any).dueDate || ""}
+              onChange={handleDraftChange}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             />
           ) : (
             task.dueDate
           )}
         </td>
-        {/* Progress */}
+
         <td className="px-4 py-4">
           {isEditing ? (
             <input
               type="number"
               name="completion"
-              value={current.completion || 0}
+              value={(current as any).completion ?? 0}
               onChange={handleDraftChange}
               min={0}
               max={100}
@@ -192,61 +209,60 @@ const TaskRow: React.FC<TaskRowProps> = ({
           ) : (
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-300"
                   style={{ width: `${task.completion}%` }}
-                ></div>
+                />
               </div>
               <span className="text-xs font-semibold text-gray-900 min-w-[3rem]">{task.completion}%</span>
             </div>
           )}
         </td>
-        {/* Status */}
+
         <td className="px-4 py-4">
           {isEditing ? (
-            <select 
-              name="status" 
-              value={current.status || ""} 
-              onChange={handleDraftChange} 
+            <select
+              name="status"
+              value={(current as any).status || ""}
+              onChange={handleDraftChange}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             >
-              <option>In Progress</option>
-              <option>Completed</option>
-              <option>On Hold</option>
-              <option>Paused</option>
+              {mainTaskEditStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
           ) : (
             getStatusBadge(task.status)
           )}
         </td>
-        {/* Remarks */}
+
         <td className="px-4 py-4 text-sm text-black max-w-[200px] whitespace-normal">
           {isEditing ? (
-            <input 
-              name="remarks" 
-              value={current.remarks || ""} 
-              onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black" 
+            <input
+              name="remarks"
+              value={(current as any).remarks || ""}
+              onChange={handleDraftChange}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
             />
           ) : (
-            <div className="max-h-12 overflow-y-auto text-gray-700 p-1 -m-1 custom-scrollbar">
-                {task.remarks || "-"}
-            </div>
+            <div className="max-h-12 overflow-y-auto text-gray-700 p-1 -m-1 custom-scrollbar">{task.remarks || "-"}</div>
           )}
         </td>
-        {/* Actions */}
+
         <td className="px-4 py-4 text-right">
           {isEditing ? (
             <div className="flex justify-end gap-2">
-              <button 
-                onClick={handleUpdate} 
+              <button
+                onClick={handleUpdate}
                 className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
               >
                 <Save className="w-4 h-4" />
                 Save
               </button>
-              <button 
-                onClick={cancelEdit} 
+              <button
+                onClick={cancelEdit}
                 className="inline-flex items-center gap-1 px-3 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -255,15 +271,15 @@ const TaskRow: React.FC<TaskRowProps> = ({
             </div>
           ) : (
             <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => handleEdit(task)} 
+              <button
+                onClick={() => handleEdit(task)}
                 className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
               >
                 <Edit2 className="w-4 h-4" />
                 Edit
               </button>
-              <button 
-                onClick={() => handleDelete(task._id)} 
+              <button
+                onClick={() => handleDelete(task._id)}
                 className="inline-flex items-center gap-1 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
               >
                 <Trash2 className="w-4 h-4" />
@@ -280,7 +296,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
           <td colSpan={12} className="px-8 py-6">
             <div className="ml-6 border-l-4 border-indigo-500 pl-6">
               <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full"></span>
+                <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full" />
                 Subtasks for {task.project}
               </h4>
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
@@ -310,16 +326,13 @@ const TaskRow: React.FC<TaskRowProps> = ({
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden max-w-[80px]">
-                              <div 
-                                className="h-full bg-gradient-to-r from-purple-500 to-purple-600"
-                                style={{ width: `${subtask.completion}%` }}
-                              ></div>
+                              <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600" style={{ width: `${subtask.completion}%` }} />
                             </div>
                             <span className="text-xs font-semibold text-gray-900">{subtask.completion}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-3">{getStatusBadge(subtask.status, true)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{subtask.remarks || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{subtask.remarks || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -334,13 +347,22 @@ const TaskRow: React.FC<TaskRowProps> = ({
       {isEditing && (
         <tr className="bg-slate-50">
           <td colSpan={12} className="px-8 py-6">
+            {/* NOTE: I cast TaskSubtaskEditor to any to avoid TS errors if its props don't match exactly.
+                Replace `as any` with the correct prop type when you have the editor's types. */}
             <TaskSubtaskEditor
-              subtasks={subtasks}
-              employees={employees}
-              currentProjectPrefix={currentProjectPrefix}
-              handleSubtaskChange={handleSubtaskChange}
-              addSubtask={addSubtask}
-              removeSubtask={removeSubtask}
+              {...({
+                subtasks,
+                employees,
+                currentProjectPrefix,
+                // pass path-based handlers directly (editor expects path[] signatures)
+                handleSubtaskChange: handleSubtaskChange,
+                addSubtask: addSubtask,
+                removeSubtask: removeSubtask,
+                onToggleEdit: null,
+                onToggleExpansion: null,
+                onViewSubtask: null,
+                allTaskStatuses: subtaskStatuses,
+              } as any)}
             />
           </td>
         </tr>

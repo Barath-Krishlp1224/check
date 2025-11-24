@@ -1,3 +1,4 @@
+// types.ts
 export interface Subtask {
   id: string | null;
   title: string;
@@ -14,7 +15,7 @@ export interface Task {
   _id: string;
   projectId: string;
   project: string;
-  assigneeNames: string[]; // UPDATED: Changed from singular string to plural array
+  assigneeNames: string[]; // multi-assignee support
   startDate: string;
   endDate?: string;
   dueDate: string;
@@ -39,9 +40,14 @@ export interface Task {
 export interface Employee {
   _id: string;
   name: string;
+  email?: string;
 }
 
 // Handler types based on recursive path structure
 export type SubtaskChangeHandler = (path: number[], field: keyof Subtask, value: string | number) => void;
 export type SubtaskPathHandler = (path: number[]) => void;
 export type SubtaskStatusChangeFunc = (subtaskId: string | null | undefined, newStatus: string) => void;
+
+// Backwards-compatible aliases (if some files expect these names)
+export type RecursiveSubtaskChangeHandler = SubtaskChangeHandler;
+export type RecursiveSubtaskPathHandler = SubtaskPathHandler;

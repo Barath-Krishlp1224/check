@@ -1,6 +1,7 @@
+// ./TasksPage.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut, BarChart2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -19,11 +20,12 @@ export interface Subtask {
   remarks?: string;
 }
 
+// FIX 1: Updated the Task interface to use assigneeNames (array)
 export interface Task {
   _id: string;
   projectId: string;
   project: string;
-  assigneeName: string;
+  assigneeNames: string[]; // Fixed: Use array for multiple assignees
   startDate: string;
   endDate?: string;
   dueDate: string;
@@ -64,7 +66,7 @@ const TasksPage: React.FC = () => {
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [draftTask, setDraftTask] = useState<Partial<Task>>({});
+  const [draftTask, setDraftTask] = useState<Partial<Task>>({}); // Source of setDraftTask
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [currentProjectPrefix, setCurrentProjectPrefix] = useState<string>("");
 
@@ -124,6 +126,7 @@ const TasksPage: React.FC = () => {
     return Array.from(new Set(projectNames));
   }, [tasks]);
 
+  // FIX 2: Corrected filtering logic for multi-select assignees
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     let value = downloadFilterValue.trim().toLowerCase();
@@ -153,7 +156,18 @@ const TasksPage: React.FC = () => {
           break;
 
         case "assignee":
-          isPrimaryMatch = primaryFilterValue === "" || primaryFilterValue === "all" || task.assigneeName.toLowerCase() === primaryFilterValue;
+          const assigneeFilterNames = primaryFilterValue.split('#').filter(name => name.trim() !== '');
+          
+          if (assigneeFilterNames.length === 0) {
+              isPrimaryMatch = true; // No specific assignee selected in filter
+          } else if (assigneeFilterNames.includes("all")) {
+              isPrimaryMatch = true; // 'All Employees' selected
+          } else {
+              // Check if ANY of the task's assignees are present in the filter list
+              isPrimaryMatch = task.assigneeNames.some(taskAssignee => 
+                  assigneeFilterNames.includes(taskAssignee.toLowerCase())
+              );
+          }
           break;
 
         case "status":
@@ -234,9 +248,15 @@ const TasksPage: React.FC = () => {
     setSelectedTaskForModal(task);
     setIsModalOpen(true);
     setIsEditing(false);
-    setDraftTask({});
-    setSubtasks([]);
-    setCurrentProjectPrefix("");
+    
+    // FIX 3: Initialize draftTask with assigneeNames
+    setDraftTask({
+        ...task,
+        assigneeNames: task.assigneeNames || [],
+    });
+    
+    setSubtasks(task.subtasks || []);
+    setCurrentProjectPrefix(task.projectId);
   };
 
   const closeTaskModal = () => {
@@ -249,7 +269,11 @@ const TasksPage: React.FC = () => {
 
   const handleEdit = (task: Task) => {
     setIsEditing(true);
-    setDraftTask(task);
+    // FIX 4: Initialize draftTask with assigneeNames when entering edit mode
+    setDraftTask({
+        ...task,
+        assigneeNames: task.assigneeNames || [],
+    });
     setCurrentProjectPrefix(task.projectId);
 
     const subtasksWithIDs: Subtask[] = (task.subtasks || []).map((sub, index, arr) => {
@@ -417,8 +441,14 @@ const TasksPage: React.FC = () => {
             return task.project === value;
 
           case "assignee":
-            if (value.toLowerCase() === "all") return true;
-            return task.assigneeName.toLowerCase() === value.toLowerCase();
+            // FIX 5: Handle assignee filtering using assigneeNames array for export
+            const assigneeNamesFilter = value.toLowerCase().split('#');
+
+            if (value.toLowerCase() === "all" || assigneeNamesFilter.length === 0) return true;
+            
+            return task.assigneeNames.some(taskAssignee => 
+                assigneeNamesFilter.includes(taskAssignee.toLowerCase())
+            );
 
           case "status":
             return task.status === value;
@@ -445,7 +475,8 @@ const TasksPage: React.FC = () => {
         TaskID: task.projectId,
         ItemType: "Task",
         TaskName: task.project,
-        MainAssignee: task.assigneeName,
+        // FIX 6: Export multiple assignees joined by a comma
+        MainAssignees: task.assigneeNames.join(', '), 
         StartDate: task.startDate,
         EndDate: task.endDate || "N/A",
         DueDate: task.dueDate,
@@ -468,7 +499,7 @@ const TasksPage: React.FC = () => {
         TaskID: "",
         ItemType: "Subtask",
         TaskName: `— ${task.project}`,
-        MainAssignee: "",
+        MainAssignees: "", 
         StartDate: "",
         EndDate: "",
         DueDate: "",
@@ -619,6 +650,7 @@ const TasksPage: React.FC = () => {
               onClose={closeTaskModal}
               isEditing={isEditing}
               draftTask={draftTask}
+              setDraftTask={setDraftTask} // Passing state setter
               subtasks={subtasks}
               employees={employees}
               currentProjectPrefix={currentProjectPrefix}
