@@ -31,9 +31,10 @@ if (BUCKET && REGION && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_
   console.warn("S3 not configured or missing envs; falling back to temp storage");
 }
 
-async function uploadToS3(buffer: Buffer, filename: string, contentType = "application/octet-stream") {
+async function uploadToS3(buffer: Buffer, empId: string, filename: string, contentType = "application/octet-stream") {
   if (!s3Client || !BUCKET) throw new Error("S3 not configured");
-  const key = `employees/${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${filename.replace(/\s+/g, "_")}`;
+  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${filename.replace(/\s+/g, "_")}`;
+  const key = `onboarding_documents/${encodeURIComponent(String(empId))}/documents/${safeName}`;
   const cmd = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
@@ -49,8 +50,8 @@ async function uploadToS3(buffer: Buffer, filename: string, contentType = "appli
   }
 }
 
-async function saveToTemp(buffer: Buffer, filename: string) {
-  const tmpDir = path.join(os.tmpdir(), "uploads", "employees");
+async function saveToTemp(buffer: Buffer, empId: string, filename: string) {
+  const tmpDir = path.join(os.tmpdir(), "uploads", "onboarding_documents", String(empId), "documents");
   await fs.mkdir(tmpDir, { recursive: true });
   const safe = `${Date.now()}-${Math.random().toString(36).slice(2)}-${filename.replace(/\s+/g, "_")}`;
   const full = path.join(tmpDir, safe);
@@ -58,18 +59,18 @@ async function saveToTemp(buffer: Buffer, filename: string) {
   return { path: full, url: `file://${full}` };
 }
 
-async function saveFile(file: File | null) {
+async function saveFile(file: File | null, empId: string) {
   if (!file) return { key: "", url: "" };
   const arr = await file.arrayBuffer();
   const buf = Buffer.from(arr);
   const name = file.name || `file-${Date.now()}`;
   try {
     if (s3Client && BUCKET) {
-      const res = await uploadToS3(buf, name, file.type || "application/octet-stream");
+      const res = await uploadToS3(buf, empId, name, file.type || "application/octet-stream");
       console.log("Uploaded to S3:", res.url);
       return res;
     } else {
-      const res = await saveToTemp(buf, name);
+      const res = await saveToTemp(buf, empId, name);
       console.log("Saved to temp:", res.path);
       return { key: "", url: res.url };
     }
@@ -77,7 +78,7 @@ async function saveFile(file: File | null) {
     console.error("saveFile error:", err?.message || err);
     if (s3Client && BUCKET) {
       try {
-        const fallback = await saveToTemp(buf, name);
+        const fallback = await saveToTemp(buf, empId, name);
         return { key: "", url: fallback.url };
       } catch (e) {
         throw e;
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
     const savedResults = await Promise.all(
       filesToSave.map(async (f, i) => {
         try {
-          const r = await saveFile(f);
+          const r = await saveFile(f, empId);
           return { ok: true, url: r.url || "", key: (r as any).key || "" };
         } catch (err: any) {
           return { ok: false, error: err?.message || String(err) };
