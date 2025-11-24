@@ -8,19 +8,27 @@ import Employee from "@/models/Employee";
 
 export const runtime = "nodejs";
 
-const REGION = String(process.env.AWS_REGION || "");
-const BUCKET = String(process.env.S3_BUCKET || "");
+const REGION = String(process.env.S3_REGION || "");
+const BUCKET = String(process.env.S3_BUCKET_NAME || "");
 const S3_PUBLIC = String(process.env.S3_PUBLIC || "false").toLowerCase() === "true";
 
 let s3Client: S3Client | null = null;
 if (BUCKET && REGION && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-  s3Client = new S3Client({
-    region: REGION,
-    credentials: {
-      accessKeyId: String(process.env.AWS_ACCESS_KEY_ID),
-      secretAccessKey: String(process.env.AWS_SECRET_ACCESS_KEY),
-    },
-  });
+  try {
+    s3Client = new S3Client({
+      region: REGION,
+      credentials: {
+        accessKeyId: String(process.env.AWS_ACCESS_KEY_ID),
+        secretAccessKey: String(process.env.AWS_SECRET_ACCESS_KEY),
+      },
+    });
+    console.log("S3 client initialized");
+  } catch (e) {
+    console.error("S3 init error:", (e as Error).message);
+    s3Client = null;
+  }
+} else {
+  console.warn("S3 not configured or missing envs; falling back to temp storage");
 }
 
 async function uploadToS3(buffer: Buffer, filename: string, contentType = "application/octet-stream") {
@@ -55,10 +63,27 @@ async function saveFile(file: File | null) {
   const arr = await file.arrayBuffer();
   const buf = Buffer.from(arr);
   const name = file.name || `file-${Date.now()}`;
-  if (s3Client && BUCKET && process.env.NODE_ENV === "production") {
-    return await uploadToS3(buf, name, file.type || "application/octet-stream");
-  } else {
-    return await saveToTemp(buf, name);
+  try {
+    if (s3Client && BUCKET) {
+      const res = await uploadToS3(buf, name, file.type || "application/octet-stream");
+      console.log("Uploaded to S3:", res.url);
+      return res;
+    } else {
+      const res = await saveToTemp(buf, name);
+      console.log("Saved to temp:", res.path);
+      return { key: "", url: res.url };
+    }
+  } catch (err: any) {
+    console.error("saveFile error:", err?.message || err);
+    if (s3Client && BUCKET) {
+      try {
+        const fallback = await saveToTemp(buf, name);
+        return { key: "", url: fallback.url };
+      } catch (e) {
+        throw e;
+      }
+    }
+    throw err;
   }
 }
 
@@ -92,7 +117,7 @@ export async function POST(req: Request) {
     const experienceCertificate = form.get("experienceCertificate") as unknown as File | null;
 
     if (!empId || !name || !mailId || !phoneNumber || !password) {
-      return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Missing required fields (empId, name, mailId, phoneNumber, password)" }, { status: 400 });
     }
 
     const exists = await Employee.findOne({ $or: [{ empId }, { mailId }] });
@@ -100,23 +125,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Employee with this ID or email already exists" }, { status: 409 });
     }
 
-    const [
-      photoSaved,
-      aadharSaved,
-      panSaved,
-      tenthSaved,
-      twelfthSaved,
-      provisionalSaved,
-      experienceSaved,
-    ] = await Promise.all([
-      saveFile(photo),
-      saveFile(aadharFile),
-      saveFile(panFile),
-      saveFile(tenthMarksheet),
-      saveFile(twelfthMarksheet),
-      saveFile(provisionalCertificate),
-      saveFile(experienceCertificate),
-    ]);
+    const filesToSave = [photo, aadharFile, panFile, tenthMarksheet, twelfthMarksheet, provisionalCertificate, experienceCertificate];
+
+    const savedResults = await Promise.all(
+      filesToSave.map(async (f, i) => {
+        try {
+          const r = await saveFile(f);
+          return { ok: true, url: r.url || "", key: (r as any).key || "" };
+        } catch (err: any) {
+          return { ok: false, error: err?.message || String(err) };
+        }
+      })
+    );
+
+    const [photoSaved, aadharSaved, panSaved, tenthSaved, twelfthSaved, provisionalSaved, experienceSaved] = savedResults;
 
     const employee = await Employee.create({
       empId,
@@ -144,8 +166,10 @@ export async function POST(req: Request) {
       role: "Employee",
     });
 
-    return NextResponse.json({ success: true, message: "Employee added", employee }, { status: 201 });
+    return NextResponse.json({ success: true, message: "Employee added", employee, fileStatus: savedResults }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ success: false, message: err?.message || "Server error" }, { status: 500 });
+    console.error("POST /employees/add error:", err?.stack || err?.message || err);
+    const message = err?.message || "Server error while adding employee";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
