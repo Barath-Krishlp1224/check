@@ -28,9 +28,7 @@ export interface IEmployee extends Document {
   ifscCode: string;
   password: string;
 
-  // NEW FIELDS
   employmentType: "Fresher" | "Experienced";
-  // aadharNumber and panNumber removed from interface
   aadharDoc?: string;
   panDoc?: string;
   tenthMarksheet?: string;
@@ -110,9 +108,6 @@ const EmployeeSchema = new Schema<IEmployee>(
       required: true,
     },
 
-    // Removed aadharNumber field from the schema
-    // Removed panNumber field from the schema
-
     aadharDoc: { type: String, default: "" },
     panDoc: { type: String, default: "" },
     tenthMarksheet: { type: String, default: "" },
@@ -130,7 +125,6 @@ const EmployeeSchema = new Schema<IEmployee>(
   { timestamps: true }
 );
 
-// avoid overwrite errors in dev
 delete (mongoose.models as any).Employee;
 
 const Employee: Model<IEmployee> =

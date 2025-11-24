@@ -1,4 +1,3 @@
-// EmployeesPage.tsx (Client Component)
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -234,7 +233,6 @@ const EmployeesPage: React.FC = () => {
           });
           setEmployees(normalized);
         } catch (err) {
-          // silent refresh failure doesn't block user
         } finally {
           setFetchingByDept(false);
         }

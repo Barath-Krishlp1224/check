@@ -1,4 +1,3 @@
-// models/Task.ts
 import { Schema, model, models } from "mongoose";
 
 const SubtaskSchema = new Schema({
@@ -20,11 +19,19 @@ const TaskSchema = new Schema(
     assigneeName: { type: String, required: true },
     project: { type: String, required: true },
 
-    // 🔹 Single, unique department field
     department: {
       type: String,
-      enum: ["Tech", "Accounts"],
-      required: false, // set true if all docs have it
+      enum: [
+        "Tech",
+        "Accounts",
+        "IT Admin",
+        "Manager",
+        "Admin & Operations",
+        "HR",
+        "Founders",
+        "TL-Reporting Manager",
+      ],
+      required: false,
     },
 
     remarks: { type: String },
@@ -37,7 +44,6 @@ const TaskSchema = new Schema(
 
     subtasks: [SubtaskSchema],
 
-    // 🔹 Notification flags (only defined once each)
     dueReminderSent: { type: Boolean, default: false },
     overdueNotified: { type: Boolean, default: false },
   },
