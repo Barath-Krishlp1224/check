@@ -8,7 +8,7 @@ export default function EmptyPage() {
 
   const handleEmployeeOnboard = () => router.push("/components/it-admin/new-emp");
   const handleSecondAction = () => router.push("/components/it-admin/view-emp");
-  const handleViewTasks = () => router.push("/components/view-task");
+  const handleViewTasks = () => router.push("/components/it-admin/view-task");
 
   // 🆕 New buttons
   const handleLaptopPolicy = () => router.push("/components/it-admin/laptop-policy");
