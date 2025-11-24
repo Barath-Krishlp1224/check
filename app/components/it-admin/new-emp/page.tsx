@@ -1,6 +1,3 @@
-// FILE: AddEmployeePage.tsx
-// Updated to include "Housekeeping" team. Keep this file as the Next.js client component.
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -33,8 +30,8 @@ interface IFormValues {
 
   // NEW FIELDS
   employmentType: "Fresher" | "Experienced" | "";
-  aadharNumber: string;
-  panNumber: string;
+  // aadharNumber: string; // Removed
+  // panNumber: string; // Removed
 
   aadharFile: File | null;
   panFile: File | null;
@@ -46,7 +43,7 @@ interface IFormValues {
 
 interface BaseFieldProps {
   label: string;
-  name: keyof IFormValues;
+  name: keyof Omit<IFormValues, 'aadharNumber' | 'panNumber'>;
   value: string;
   error?: string;
   touched?: boolean;
@@ -78,7 +75,7 @@ const InputField: React.FC<InputFieldProps> = ({
 }) => (
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">
-      {label} *
+      {label}
     </label>
     <input
       type={type}
@@ -105,7 +102,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 }) => (
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">
-      {label} *
+      {label}
     </label>
     <select
       name={String(name)}
@@ -125,8 +122,6 @@ const SelectField: React.FC<SelectFieldProps> = ({
   </div>
 );
 
-// Team → Category → SubCategory/Department structure
-// ADDED: "Housekeeping" team is added here with a single Category/Department.
 const structure: Structure = {
   Founders: {
     Founders: ["Founder", "Co-Founder"],
@@ -164,7 +159,6 @@ const structure: Structure = {
   "Admin & Operations": {
     "Admin & Operations": ["Admin & Operations"],
   },
-  // Housekeeping team added
   Housekeeping: {
     Housekeeping: ["Housekeeper", "Senior Housekeeper"],
   },
@@ -193,8 +187,8 @@ const AddEmployeePage: React.FC = () => {
         "password",
         "confirmPassword",
         "employmentType",
-        "aadharNumber",
-        "panNumber",
+        // "aadharNumber", // Removed from step
+        // "panNumber", // Removed from step
         "photo",
         "aadharFile",
         "panFile",
@@ -213,51 +207,51 @@ const AddEmployeePage: React.FC = () => {
     "image/jpg",
   ];
 
-  const validationSchema = Yup.object({
+  const validationSchema = Yup.object<IFormValues>().shape({
     empId: Yup.string()
       .matches(/^[A-Z0-9]+$/,
         "Employee ID must contain only uppercase letters and numbers")
-      .required("Employee ID is required"),
+      .nullable(),
     name: Yup.string()
       .matches(/^[A-Z][a-zA-Z\s]*$/,
         "Name must start with a capital letter")
-      .required("Name is required"),
+      .nullable(),
     fatherName: Yup.string()
       .matches(/^[A-Z][a-zA-Z\s]*$/,
         "Father's name must start with a capital letter")
-      .required("Father's name is required"),
-    dateOfBirth: Yup.string().required("Date of birth is required"),
-    joiningDate: Yup.string().required("Joining date is required"),
-    team: Yup.string().required("Team is required"),
-    category: Yup.string().required("Category is required"),
-    subCategory: Yup.string().required("Sub-category is required"),
-    department: Yup.string().required("Department is required"),
+      .nullable(),
+    dateOfBirth: Yup.string().nullable(),
+    joiningDate: Yup.string().nullable(),
+    team: Yup.string().nullable(),
+    category: Yup.string().nullable(),
+    subCategory: Yup.string().nullable(),
+    department: Yup.string().nullable(),
 
     phoneNumber: Yup.string()
       .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
-      .required("Phone number is required"),
-    mailId: Yup.string().email("Invalid email").required("Email is required"),
+      .nullable(),
+    mailId: Yup.string().email("Invalid email").nullable(),
 
     accountNumber: Yup.string()
       .matches(/^[0-9]{9,18}$/, "Account number must be between 9-18 digits")
-      .required("Account number is required"),
+      .nullable(),
     ifscCode: Yup.string()
       .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code (e.g., SBIN0001234)")
-      .required("IFSC code is required"),
+      .nullable(),
 
-    password: Yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
-    confirmPassword: Yup.string().oneOf([Yup.ref("password")], "Passwords must match").required("Confirm Password is required"),
+    password: Yup.string()
+      .min(8, "Password must be at least 8 characters")
+      .required("Password is required"),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref("password")], "Passwords must match")
+      .required("Confirm Password is required"),
 
     employmentType: Yup.mixed<"Fresher" | "Experienced">()
-      .oneOf(["Fresher", "Experienced"]) .required("Employment type is required"),
+      .oneOf(["Fresher", "Experienced"])
+      .nullable(),
 
-    aadharNumber: Yup.string()
-      .matches(/^[0-9]{12}$/, "Aadhar number must be 12 digits")
-      .required("Aadhar number is required"),
-
-    panNumber: Yup.string()
-      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Invalid PAN format (e.g., ABCDE1234F)")
-      .required("PAN number is required"),
+    // aadharNumber: Yup.string().nullable(), // Removed from schema
+    // panNumber: Yup.string().nullable(), // Removed from schema
 
     photo: Yup.mixed<File>()
       .nullable()
@@ -268,7 +262,6 @@ const AddEmployeePage: React.FC = () => {
 
     aadharFile: Yup.mixed<File>()
       .nullable()
-      .test("required", "Aadhar document is required", (value) => !!value)
       .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
         if (!value) return true;
         return allowedDocTypes.includes(value.type);
@@ -276,7 +269,6 @@ const AddEmployeePage: React.FC = () => {
 
     panFile: Yup.mixed<File>()
       .nullable()
-      .test("required", "PAN document is required", (value) => !!value)
       .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
         if (!value) return true;
         return allowedDocTypes.includes(value.type);
@@ -284,7 +276,6 @@ const AddEmployeePage: React.FC = () => {
 
     tenthMarksheet: Yup.mixed<File>()
       .nullable()
-      .test("required", "10th marksheet is required", (value) => !!value)
       .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
         if (!value) return true;
         return allowedDocTypes.includes(value.type);
@@ -292,7 +283,6 @@ const AddEmployeePage: React.FC = () => {
 
     twelfthMarksheet: Yup.mixed<File>()
       .nullable()
-      .test("required", "12th marksheet is required", (value) => !!value)
       .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
         if (!value) return true;
         return allowedDocTypes.includes(value.type);
@@ -347,8 +337,8 @@ const AddEmployeePage: React.FC = () => {
       confirmPassword: "",
 
       employmentType: "",
-      aadharNumber: "",
-      panNumber: "",
+      // aadharNumber: "", // Removed from initialValues
+      // panNumber: "", // Removed from initialValues
       aadharFile: null,
       panFile: null,
       tenthMarksheet: null,
@@ -396,7 +386,6 @@ const AddEmployeePage: React.FC = () => {
     },
   });
 
-  // When TEAM changes
   useEffect(() => {
     const { team } = formik.values;
     formik.setFieldValue("category", "");
@@ -412,7 +401,6 @@ const AddEmployeePage: React.FC = () => {
     setDepartmentOptions([]);
   }, [formik.values.team]);
 
-  // When CATEGORY changes
   useEffect(() => {
     const { team, category } = formik.values;
     formik.setFieldValue("subCategory", "");
@@ -440,7 +428,6 @@ const AddEmployeePage: React.FC = () => {
     }
   }, [formik.values.category, formik.values.team]);
 
-  // When SUBCATEGORY changes
   useEffect(() => {
     const { team, category, subCategory } = formik.values;
     formik.setFieldValue("department", "");
@@ -678,9 +665,9 @@ const AddEmployeePage: React.FC = () => {
       case 4:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Passwords */}
+            {/* Passwords (Mandatory) */}
             <InputField
-              label="Password"
+              label="Password *"
               name="password"
               type="password"
               placeholder="Enter password"
@@ -692,7 +679,7 @@ const AddEmployeePage: React.FC = () => {
             />
 
             <InputField
-              label="Confirm Password"
+              label="Confirm Password *"
               name="confirmPassword"
               type="password"
               placeholder="Confirm password"
@@ -703,7 +690,7 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
 
-            {/* Employment Type */}
+            {/* Employment Type (Optional) */}
             <SelectField
               label="Employment Type"
               name="employmentType"
@@ -715,34 +702,10 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
 
-            {/* Aadhar & PAN numbers */}
-            <InputField
-              label="Aadhar Number"
-              name="aadharNumber"
-              type="text"
-              placeholder="12-digit Aadhar number"
-              value={formik.values.aadharNumber}
-              onChange={formik.handleChange}
-              error={formik.errors.aadharNumber as string}
-              touched={formik.touched.aadharNumber}
-              getInputClass={getInputClass}
-            />
+            {/* Placeholder for removed Aadhar/PAN numbers to maintain grid structure */}
+            <div className="hidden md:block"></div> 
 
-            <InputField
-              label="PAN Number"
-              name="panNumber"
-              type="text"
-              placeholder="ABCDE1234F"
-              value={formik.values.panNumber}
-              onChange={(e) =>
-                formik.setFieldValue("panNumber", e.target.value.toUpperCase())
-              }
-              error={formik.errors.panNumber as string}
-              touched={formik.touched.panNumber}
-              getInputClass={getInputClass}
-            />
-
-            {/* Photo */}
+            {/* Photo (Optional) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Employee Photo
@@ -764,7 +727,7 @@ const AddEmployeePage: React.FC = () => {
               )}
             </div>
 
-            {/* Aadhar file */}
+            {/* Aadhar file (Optional) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Aadhar Document (PDF / Image)
@@ -786,7 +749,7 @@ const AddEmployeePage: React.FC = () => {
               )}
             </div>
 
-            {/* PAN file */}
+            {/* PAN file (Optional) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 PAN Document (PDF / Image)
@@ -808,7 +771,7 @@ const AddEmployeePage: React.FC = () => {
               )}
             </div>
 
-            {/* 10th & 12th marksheets */}
+            {/* 10th & 12th marksheets (Optional) */}
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -853,7 +816,7 @@ const AddEmployeePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Provisional / Experience certificate */}
+            {/* Provisional / Experience certificate (Conditional Required) */}
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -997,4 +960,3 @@ const AddEmployeePage: React.FC = () => {
 };
 
 export default AddEmployeePage;
-
