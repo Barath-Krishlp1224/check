@@ -30,8 +30,7 @@ export interface IEmployee extends Document {
 
   // NEW FIELDS
   employmentType: "Fresher" | "Experienced";
-  aadharNumber: string;
-  panNumber: string;
+  // aadharNumber and panNumber removed from interface
   aadharDoc?: string;
   panDoc?: string;
   tenthMarksheet?: string;
@@ -111,8 +110,8 @@ const EmployeeSchema = new Schema<IEmployee>(
       required: true,
     },
 
-    aadharNumber: { type: String, required: true, trim: true },
-    panNumber: { type: String, required: true, trim: true },
+    // Removed aadharNumber field from the schema
+    // Removed panNumber field from the schema
 
     aadharDoc: { type: String, default: "" },
     panDoc: { type: String, default: "" },
