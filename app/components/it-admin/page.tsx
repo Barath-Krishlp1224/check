@@ -7,14 +7,14 @@ export default function EmptyPage() {
   const router = useRouter();
 
   const handleEmployeeOnboard = () => router.push("/components/it-admin/new-emp");
-  const handleSecondAction = () => router.push("/components/manager/view-emp");
+  const handleSecondAction = () => router.push("/components/it-admin/view-emp");
   const handleViewTasks = () => router.push("/components/view-task");
 
   // 🆕 New buttons
   const handleLaptopPolicy = () => router.push("/components/it-admin/laptop-policy");
   const handleAssetManagement = () => router.push("/components/it-admin/asset-management");
   const handleBills = () => router.push("/components/it-admin/bills");
-  const handleCreateTask = () => router.push("/components/team-lead/create-task");
+  const handleCreateTask = () => router.push("/components/it-admin/create-task");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">

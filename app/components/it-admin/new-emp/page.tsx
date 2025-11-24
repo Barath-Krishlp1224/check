@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check, List } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type DepartmentMap = string[];
 type SubCategoryMap = { [key: string]: DepartmentMap };
@@ -27,12 +28,7 @@ interface IFormValues {
   ifscCode: string;
   password?: string;
   confirmPassword?: string;
-
-  // NEW FIELDS
   employmentType: "Fresher" | "Experienced" | "";
-  // aadharNumber: string; // Removed
-  // panNumber: string; // Removed
-
   aadharFile: File | null;
   panFile: File | null;
   tenthMarksheet: File | null;
@@ -165,6 +161,8 @@ const structure: Structure = {
 };
 
 const AddEmployeePage: React.FC = () => {
+  const router = useRouter();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>([]);
@@ -187,8 +185,6 @@ const AddEmployeePage: React.FC = () => {
         "password",
         "confirmPassword",
         "employmentType",
-        // "aadharNumber", // Removed from step
-        // "panNumber", // Removed from step
         "photo",
         "aadharFile",
         "panFile",
@@ -249,9 +245,6 @@ const AddEmployeePage: React.FC = () => {
     employmentType: Yup.mixed<"Fresher" | "Experienced">()
       .oneOf(["Fresher", "Experienced"])
       .nullable(),
-
-    // aadharNumber: Yup.string().nullable(), // Removed from schema
-    // panNumber: Yup.string().nullable(), // Removed from schema
 
     photo: Yup.mixed<File>()
       .nullable()
@@ -335,10 +328,7 @@ const AddEmployeePage: React.FC = () => {
       ifscCode: "",
       password: "",
       confirmPassword: "",
-
       employmentType: "",
-      // aadharNumber: "", // Removed from initialValues
-      // panNumber: "", // Removed from initialValues
       aadharFile: null,
       panFile: null,
       tenthMarksheet: null,
@@ -480,6 +470,10 @@ const AddEmployeePage: React.FC = () => {
     if (isValid) {
       formik.handleSubmit();
     }
+  };
+  
+  const handleViewAll = () => {
+    router.push("/components/it-admin");
   };
 
   const renderStepContent = () => {
@@ -665,7 +659,6 @@ const AddEmployeePage: React.FC = () => {
       case 4:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Passwords (Mandatory) */}
             <InputField
               label="Password *"
               name="password"
@@ -690,7 +683,6 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
 
-            {/* Employment Type (Optional) */}
             <SelectField
               label="Employment Type"
               name="employmentType"
@@ -702,10 +694,8 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
 
-            {/* Placeholder for removed Aadhar/PAN numbers to maintain grid structure */}
             <div className="hidden md:block"></div> 
 
-            {/* Photo (Optional) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Employee Photo
@@ -727,7 +717,6 @@ const AddEmployeePage: React.FC = () => {
               )}
             </div>
 
-            {/* Aadhar file (Optional) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Aadhar Document (PDF / Image)
@@ -749,7 +738,6 @@ const AddEmployeePage: React.FC = () => {
               )}
             </div>
 
-            {/* PAN file (Optional) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 PAN Document (PDF / Image)
@@ -771,7 +759,6 @@ const AddEmployeePage: React.FC = () => {
               )}
             </div>
 
-            {/* 10th & 12th marksheets (Optional) */}
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -816,7 +803,6 @@ const AddEmployeePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Provisional / Experience certificate (Conditional Required) */}
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -868,12 +854,23 @@ const AddEmployeePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 mt-[5%]">
+    <div className="min-h-screen bg-white py-12 px-4 mt-[5%]">
       <div className="max-w-5xl mx-auto">
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleViewAll}
+            className="flex items-center gap-2 px-6 py-3 bg-white text-gray-800 text-base font-semibold border-2 border-gray-300 rounded-lg shadow-md hover:bg-gray-100 transition-colors"
+          >
+            <List size={20} />
+            Home
+          </button>
+        </div>
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-gray-800 px-8 py-6 text-white">
-            <h2 className="text-3xl font-bold">Add New Employee</h2>
-            <p className="text-sm opacity-90">Fill in the details to register a new employee</p>
+          <div className="bg-gray-800 px-8 py-6 text-white flex justify-between items-start">
+            <div>
+              <h2 className="text-3xl font-bold">Add New Employee</h2>
+              <p className="text-sm opacity-90">Fill in the details to register a new employee</p>
+            </div>
           </div>
 
           <div className="px-8 py-6 border-b border-gray-200">

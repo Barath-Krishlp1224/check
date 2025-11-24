@@ -21,7 +21,7 @@ interface IEmployee {
   photo?: string;
 }
 
-const teams = ["Tech", "Accounts", "HR", "Admin & Operations"];
+const teams = ["Tech", "Accounts", "HR", "Admin & Operations", "Housekeeping"];
 
 const techCategories = [
   {
@@ -43,7 +43,6 @@ export default function ViewEmpPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch employees
   useEffect(() => {
     const fetchEmployees = async () => {
       setLoading(true);
@@ -73,10 +72,12 @@ export default function ViewEmpPage() {
     const subCategory = emp.subCategory?.trim().toLowerCase() || "";
     const selected = selectedTeam.trim().toLowerCase();
 
+    // 1. Filter Non-Tech Teams (including Housekeeping)
     if (selected !== "tech") {
       return team === selected;
     }
 
+    // 2. Filter Tech Team
     if (selected === "tech") {
       if (!selectedCategory) return false;
       
@@ -84,10 +85,13 @@ export default function ViewEmpPage() {
 
       if (category === selCat) {
         if (selCat === "developer") {
+          // Developer roles must match a specific sub-category
           if (!selectedSubCategory) return false;
           return subCategory === selectedSubCategory.toLowerCase();
         } else {
-          return !selectedSubCategory; 
+          // Non-developer roles (IT Admin, DevOps, etc.) must match the category
+          // AND have no sub-category defined for the employee.
+          return selectedSubCategory === null && !subCategory; 
         }
       }
     }
@@ -100,7 +104,6 @@ export default function ViewEmpPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-7xl mx-auto w-full py-8"> 
-        {/* Breadcrumb Navigation */}
         {(selectedTeam || selectedCategory || selectedSubCategory) && (
           <nav className="mb-6 flex items-center gap-2 text-sm bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm mx-4 sm:mx-0">
             <button 
@@ -156,7 +159,6 @@ export default function ViewEmpPage() {
           </nav>
         )}
 
-        {/* Step 1: Team Selection */}
         {!selectedTeam && (
           <div className="mx-4 sm:mx-0">
             <div className="mb-8 text-center">
@@ -196,7 +198,6 @@ export default function ViewEmpPage() {
           </div>
         )}
 
-        {/* Step 2: Tech Category Selection */}
         {selectedTeam === "Tech" && !selectedCategory && !selectedEmployee && (
           <div className="mx-4 sm:mx-0">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
@@ -227,7 +228,7 @@ export default function ViewEmpPage() {
                     <div className="bg-blue-600 p-6">
                       <div className="flex items-center justify-between">
                         <h3
-                          onClick={() => !cat.children && setSelectedCategory(cat.name)}
+                          onClick={() => !cat.children && (setSelectedCategory(cat.name), setSelectedSubCategory(null))}
                           className={`text-xl font-bold text-white ${
                             cat.children ? "" : "cursor-pointer hover:scale-105 transition-transform"
                           }`}
@@ -278,7 +279,7 @@ export default function ViewEmpPage() {
                     ) : (
                       <div className="p-5">
                         <button
-                          onClick={() => setSelectedCategory(cat.name)}
+                          onClick={() => (setSelectedCategory(cat.name), setSelectedSubCategory(null))}
                           className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-lg hover:bg-blue-700 hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
                         >
                           View Team
@@ -295,7 +296,6 @@ export default function ViewEmpPage() {
           </div>
         )}
 
-        {/* Step 3: Employees Display */}
         {selectedTeam &&
           (selectedTeam !== "Tech" || selectedCategory) &&
           !selectedEmployee && (
@@ -315,7 +315,7 @@ export default function ViewEmpPage() {
                   onClick={() => {
                     if (selectedTeam !== "Tech") {
                       setSelectedTeam(null);
-                    } else if (selectedSubCategory) {
+                    } else if (selectedSubCategory !== null) {
                       setSelectedSubCategory(null);
                     } else if (selectedCategory) {
                       setSelectedCategory(null);
@@ -390,7 +390,6 @@ export default function ViewEmpPage() {
             </div>
           )}
 
-        {/* Step 4: Employee Detail Modal */}
         <AnimatePresence>
           {selectedEmployee && (
             <motion.div
@@ -414,7 +413,6 @@ export default function ViewEmpPage() {
                   ×
                 </button>
 
-                {/* Profile Header */}
                 <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white px-8 pt-10 pb-8 rounded-t-3xl relative overflow-hidden">
                   <div className="absolute inset-0 bg-black/10"></div>
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
@@ -448,9 +446,7 @@ export default function ViewEmpPage() {
                   </div>
                 </div>
 
-                {/* Details Sections */}
                 <div className="p-8 space-y-8 bg-gradient-to-br from-gray-50 to-indigo-50">
-                  {/* Personal Information */}
                   <div>
                     <div className="flex items-center gap-3 mb-5">
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -474,7 +470,6 @@ export default function ViewEmpPage() {
                     </div>
                   </div>
 
-                  {/* Contact Information */}
                   <div>
                     <div className="flex items-center gap-3 mb-5">
                       <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -490,7 +485,6 @@ export default function ViewEmpPage() {
                     </div>
                   </div>
 
-                  {/* Banking Details */}
                   <div>
                     <div className="flex items-center gap-3 mb-5">
                       <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -506,7 +500,6 @@ export default function ViewEmpPage() {
                     </div>
                   </div>
 
-                  {/* Print Button */}
                   <div className="flex justify-center pt-6">
                     <button
                       onClick={handlePrint}
@@ -528,7 +521,6 @@ export default function ViewEmpPage() {
   );
 }
 
-// Info Component with Modern Design
 const Info = ({ label, value }: { label: string; value?: string }) => (
   <div className="bg-white/80 backdrop-blur-sm border-2 border-indigo-100 rounded-2xl p-5 hover:shadow-lg hover:border-indigo-300 hover:scale-105 transition-all duration-300">
     <p className="text-xs text-indigo-600 font-extrabold uppercase tracking-wider mb-2">{label}</p>

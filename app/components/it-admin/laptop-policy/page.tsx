@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import AssetListTable from "./AllocatedAssetsTable";
+import Link from 'next/link';
 
 const Structure = {
   Founders: {
@@ -232,7 +233,14 @@ export default function AssetAllocationForm() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mt-30 mx-auto">
-        <div className="bg-white border border-gray-200 shadow-lg p-8 rounded-3xl mb-6">
+        <div className="relative bg-white border border-gray-200 shadow-lg p-8 rounded-3xl mb-6">
+          <div className="absolute top-4 right-4">
+            <Link href="/components/it-admin" passHref>
+              <button className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-md">
+                Home
+              </button>
+            </Link>
+          </div>
           <h1 className="text-4xl font-bold text-gray-800 text-center tracking-tight">
             Asset Allocation Form
           </h1>
