@@ -1,6 +1,8 @@
+// ./components/TaskChartView.tsx
 import React, { useMemo } from 'react';
-import { Task } from '../page';
 import { BarChart2, Users, ListTodo, CheckCircle } from 'lucide-react';
+// Import Task type from the unified types file
+import { Task } from "./types";
 
 interface TaskChartViewProps {
     tasks: Task[];
@@ -15,11 +17,10 @@ const useChartData = (tasks: Task[]) => {
         }, {} as { [key: string]: number });
 
         const tasksByAssignee = tasks.reduce((acc, task) => {
-            // 🔥 FIX 1: Iterate over the assigneeNames array to count for ALL assignees
+            // FIX: Iterate over the assigneeNames array to count for ALL assignees
             const assignees = task.assigneeNames && task.assigneeNames.length > 0 ? task.assigneeNames : ['Unassigned'];
             
             assignees.forEach(assignee => {
-                // Ensure assignee name is normalized (e.g., proper casing for display)
                 const displayAssignee = assignee.trim() || 'Unassigned'; 
                 acc[displayAssignee] = (acc[displayAssignee] || 0) + 1;
             });
@@ -51,12 +52,12 @@ const useChartData = (tasks: Task[]) => {
 };
 
 const getStatusColor = (status: string): string => {
-    switch (status) {
-        case 'Completed': return 'bg-emerald-500';
-        case 'In Progress': return 'bg-blue-500';
-        case 'Backlog': return 'bg-gray-500';
-        case 'Dev Review': return 'bg-purple-500';
-        case 'Paused': return 'bg-amber-500';
+    switch (status.toLowerCase()) {
+        case 'completed': return 'bg-emerald-500';
+        case 'in progress': return 'bg-blue-500';
+        case 'backlog': return 'bg-gray-500';
+        case 'dev review': return 'bg-purple-500';
+        case 'paused': return 'bg-amber-500';
         default: return 'bg-slate-400';
     }
 };
@@ -196,15 +197,10 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
                 </div>
 
                 <div className="space-y-4 pt-2">
-                    {/* Note: Total assignees counted will be >= totalTasks since one task can have multiple assignees */}
                     {Object.entries(tasksByAssignee).sort(([, a], [, b]) => b - a).map(([assignee, count]) => (
                         <div key={assignee} className="flex items-center">
                             <span className="text-sm font-medium text-slate-700 w-32">{assignee}</span>
                             <div className="flex-1 ml-4 bg-slate-200 rounded-full h-8 overflow-hidden relative">
-                                {/* The bar width here reflects the count relative to the total number of tasks, 
-                                    which is a common way to visualize but note that total percentage can exceed 100%. 
-                                    We cap the visualization bar at 100% width for display purposes. 
-                                */}
                                 <div 
                                     className={`bg-green-500 h-full transition-all duration-500`}
                                     style={{ width: `${Math.min((count / totalTasks) * 100, 100)}%` }} 

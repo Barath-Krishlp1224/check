@@ -1,6 +1,8 @@
+// ./components/TaskTableHeader.tsx
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
-import { Employee } from "../page"; 
+// Import Employee type from the unified types file
+import { Employee } from "./types"; 
 
 interface TaskTableHeaderProps {
   uniqueProjects: string[];
@@ -24,6 +26,7 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
   handleExcelDownload,
 }) => {
   const isDownloadDisabled = !xlsxLoaded || (downloadFilterType !== "all" && !downloadFilterValue);
+  
   return (
     <div className="mb-8">
       <div className="flex items-end justify-between">
@@ -56,22 +59,22 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
               className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm text-gray-900"
             >
               <option value="">Select Status</option>
-              <option value="Backlog">Backlog Files</option>
-              <option value="In Progress">Sprint Files (In Progress)</option>
-              <option value="Completed">Completed Files</option>
-              <option value="Paused">Paused Files</option>
-              <option value="On Hold">On Hold Files</option>
+              <option value="backlog">Backlog Files</option>
+              <option value="in progress">Sprint Files (In Progress)</option>
+              <option value="completed">Completed Files</option>
+              <option value="paused">Paused Files</option>
+              <option value="on hold">On Hold Files</option>
             </select>
           )}
           {downloadFilterType === "project" && (
             <select
               value={downloadFilterValue}
-              onChange={(e) => setDownloadFilterValue(e.target.value)}
+              onChange={(e) => setDownloadFilterValue(e.target.value.toLowerCase())}
               className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm text-gray-900"
             >
               <option value="">Select Project</option>
               {uniqueProjects.sort().map((project) => (
-                <option key={project} value={project}>
+                <option key={project} value={project.toLowerCase()}>
                   {project}
                 </option>
               ))}
@@ -102,7 +105,8 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
               <option value="">Select Employee</option>
               <option value="all">All Employees</option>
               {employees.map(employee => (
-                <option key={employee._id} value={employee.name}>{employee.name}</option>
+                // Use lowercase name as the value for case-insensitive filtering in TasksPage.tsx
+                <option key={employee._id} value={employee.name.toLowerCase()}>{employee.name}</option>
               ))}
             </select>
           )}

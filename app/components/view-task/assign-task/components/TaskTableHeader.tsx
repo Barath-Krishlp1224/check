@@ -1,6 +1,6 @@
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
-import { Employee } from "../page"; 
+import { Employee } from "./types"; 
 
 interface TaskTableHeaderProps {
   uniqueProjects: string[];

@@ -1,6 +1,8 @@
+// ./components/TaskCard.tsx
 import React from "react";
 import { Clock, CheckCircle2, User, ChevronRight, Pause, AlertCircle } from "lucide-react";
-import { Task } from "../page";
+// Import Task type from the unified types file
+import { Task } from "./types";
 
 interface TaskCardProps {
   task: Task;
@@ -11,16 +13,18 @@ const getStatusBadge = (status: string) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
   let icon = null;
-  if (status === "Completed") {
+  const lowerStatus = status.toLowerCase();
+
+  if (lowerStatus === "completed") {
     colorClasses = "bg-emerald-100 text-black";
     icon = <CheckCircle2 className="w-3 h-3" />;
-  } else if (status === "In Progress") {
+  } else if (lowerStatus === "in progress") {
     colorClasses = "bg-blue-100 text-black";
     icon = <Clock className="w-3 h-3" />;
-  } else if (status === "Backlog") { 
+  } else if (lowerStatus === "backlog") { 
     colorClasses = "bg-gray-100 text-black";
     icon = <AlertCircle className="w-3 h-3" />;
-  } else if (status === "On Hold" || status === "Paused" || status === "Pending") {
+  } else if (lowerStatus === "on hold" || lowerStatus === "paused" || lowerStatus === "pending") {
     colorClasses = "bg-amber-100 text-black";
     icon = <Pause className="w-3 h-3" />;
   } else {
@@ -38,7 +42,7 @@ const getStatusBadge = (status: string) => {
 const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   
-  // 🔥 FIX 1: Access the assigneeNames array
+  // Use assigneeNames array
   const assignees = task.assigneeNames || [];
   const primaryAssignee = assignees[0];
   const otherAssigneesCount = assignees.length > 1 ? assignees.length - 1 : 0;
@@ -56,7 +60,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
       
       <div className="flex items-center text-sm text-black mb-3">
         <User className="w-4 h-4 mr-2 text-black" />
-        {/* 🔥 FIX 2: Display primary assignee and count */}
         <span className="font-medium">
           {primaryAssignee || 'Unassigned'}
           {otherAssigneesCount > 0 && 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Clock, CheckCircle2, User, ChevronRight, Pause, AlertCircle } from "lucide-react";
-import { Task } from "../page";
+import { Task } from "./types";
 
 interface TaskCardProps {
   task: Task;
@@ -11,22 +11,31 @@ const getStatusBadge = (status: string) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
   let icon = null;
-  if (status === "Completed") {
-    colorClasses = "bg-emerald-100 text-black";
-    icon = <CheckCircle2 className="w-3 h-3" />;
-  } else if (status === "In Progress") {
-    colorClasses = "bg-blue-100 text-black";
-    icon = <Clock className="w-3 h-3" />;
-  } else if (status === "Backlog") { 
-    colorClasses = "bg-gray-100 text-black";
-    icon = <AlertCircle className="w-3 h-3" />;
-  } else if (status === "On Hold" || status === "Paused" || status === "Pending") {
-    colorClasses = "bg-amber-100 text-black";
-    icon = <Pause className="w-3 h-3" />;
-  } else {
-    colorClasses = "bg-gray-100 text-black";
-    icon = <AlertCircle className="w-3 h-3" />;
+  
+  switch (status) {
+    case "Completed":
+      colorClasses = "bg-emerald-100 text-black";
+      icon = <CheckCircle2 className="w-3 h-3" />;
+      break;
+    case "In Progress":
+      colorClasses = "bg-blue-100 text-black";
+      icon = <Clock className="w-3 h-3" />;
+      break;
+    case "Backlog": 
+      colorClasses = "bg-gray-100 text-black";
+      icon = <AlertCircle className="w-3 h-3" />;
+      break;
+    case "On Hold":
+    case "Paused":
+    case "Pending":
+      colorClasses = "bg-amber-100 text-black";
+      icon = <Pause className="w-3 h-3" />;
+      break;
+    default:
+      colorClasses = "bg-gray-100 text-black";
+      icon = <AlertCircle className="w-3 h-3" />;
   }
+  
   return (
     <span className={`${baseClasses} ${colorClasses}`}>
       {icon}
@@ -36,7 +45,10 @@ const getStatusBadge = (status: string) => {
 };
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  const subtaskCount = task.subtasks?.length ?? 0;
+  const hasSubtasks = subtaskCount > 0; 
+  const displayAssigneeName = task.assigneeNames?.length > 0 ? task.assigneeNames.join(', ') : 'Unassigned';
+  
   return (
     <div
       onClick={() => onViewDetails(task)}
@@ -50,7 +62,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
       
       <div className="flex items-center text-sm text-black mb-3">
         <User className="w-4 h-4 mr-2 text-black" />
-        <span className="font-medium">{task.assigneeName}</span>
+        <span className="font-medium">{displayAssigneeName}</span>
       </div>
       <div className="flex justify-between items-center text-sm text-black mb-3">
         <span>Due: <span className="font-semibold text-black">{task.dueDate}</span></span>
@@ -66,7 +78,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
       
       <div className="flex justify-between items-center pt-2 border-t border-slate-100">
         <span className="text-xs text-black">
-          {hasSubtasks ? `${task.subtasks!.length} Subtask(s)` : 'No Subtasks'}
+          {/* Use the pre-calculated count for safety */}
+          {hasSubtasks ? `${subtaskCount} Subtask(s)` : 'No Subtasks'}
         </span>
         <button className="inline-flex items-center text-black text-sm font-medium hover:text-black">
           View Details <ChevronRight className="w-4 h-4 ml-1" />

@@ -1,4 +1,3 @@
-// ./TasksPage.tsx (Corrected to use assigneeNames array)
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
@@ -157,34 +156,27 @@ const TasksPage: React.FC = () => {
     init();
   }, []);
   
-  // =========================================================
-  // 🔥 FIX: Update visibleTasks to check assigneeNames array
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
       
       return tasks.filter((task) => {
-        // Check if the current user's name is included in the assigneeNames array
         if (task.assigneeNames && Array.isArray(task.assigneeNames)) {
           return task.assigneeNames.some(
             (assignee) => assignee.toLowerCase() === nameLower
           );
         }
-        // Fallback or legacy check (optional, but safer to remove singular assigneeName if model is updated)
         return false; 
       });
     }
     return tasks;
   }, [tasks, currentUserRole, currentUserName]);
-  // =========================================================
   
   const uniqueProjects = useMemo(() => {
     const names = visibleTasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(names));
   }, [visibleTasks]);
   
-  // =========================================================
-  // 🔥 FIX: Update filteredTasks to use assigneeNames for filtering
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
@@ -197,7 +189,6 @@ const TasksPage: React.FC = () => {
           return task.project.toLowerCase() === value;
         case "assignee":
           if (value === "all") return true;
-          // Check if any assignee name matches the filter value
           return (task.assigneeNames || []).some(
             (assignee) => assignee.toLowerCase() === value
           );
@@ -220,7 +211,6 @@ const TasksPage: React.FC = () => {
       }
     });
   }, [visibleTasks, downloadFilterType, downloadFilterValue]);
-  // =========================================================
   
   const openTaskModal = (task: Task) => {
     setSelectedTaskForModal(task);
@@ -250,10 +240,22 @@ const TasksPage: React.FC = () => {
     setCurrentProjectPrefix("");
   };
   const handleDraftChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    let finalValue: string | string[] | number = value;
+
+    if (name === "completion") {
+      finalValue = Number(value);
+    } else if (name === "assigneeNames" && type === "select-multiple") {
+        const select = e.target as HTMLSelectElement;
+        finalValue = Array.from(select.selectedOptions, option => option.value);
+    } else if (name === "assigneeNames") {
+        // If a single select is used, put the single value into an array
+        finalValue = [value];
+    }
+    
     setDraftTask((prev) => ({
       ...prev,
-      [name]: name === "completion" ? Number(value) : value,
+      [name]: finalValue,
     }));
   };
   const handleSubtaskChange: SubtaskChangeHandler = (path, field, value) => {
@@ -475,7 +477,7 @@ const TasksPage: React.FC = () => {
           className={`p-3 rounded-xl transition-all duration-200 ${
             viewType === "board"
               ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+              : "text-gray-500 hover:bg-gray-100 hover:hover:text-indigo-600"
           }`}
           title="Board View (Kanban)"
         >

@@ -1,9 +1,10 @@
 // ./TasksPage.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, LogOut, BarChart2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SetStateAction, Dispatch } from "react"; 
 
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -11,47 +12,15 @@ import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import TaskChartView from "./components/TaskChartView";
 
-export interface Subtask {
-  id?: string;
-  title: string;
-  assigneeName?: string;
-  status: string;
-  completion: number;
-  remarks?: string;
-}
-
-// FIX 1: Updated the Task interface to use assigneeNames (array)
-export interface Task {
-  _id: string;
-  projectId: string;
-  project: string;
-  assigneeNames: string[]; // Fixed: Use array for multiple assignees
-  startDate: string;
-  endDate?: string;
-  dueDate: string;
-  completion: number;
-  status:
-    | "Backlog"
-    | "In Progress"
-    | "Dev Review"
-    | "Deployed in QA"
-    | "Test In Progress"
-    | "QA Sign Off"
-    | "Deployment Stage"
-    | "Pilot Test"
-    | "Completed"
-    | "Paused"
-    | string;
-  remarks?: string;
-  subtasks?: Subtask[];
-}
-
-export interface Employee {
-  _id: string;
-  name: string;
-}
-
-export type ViewType = "card" | "board" | "chart";
+// IMPORT CORRECT TYPES from the unified file
+import { 
+    Task, 
+    Subtask, 
+    Employee,
+    ViewType,
+    SubtaskChangeHandler, 
+    SubtaskPathHandler,
+} from "./components/types"; 
 
 const TasksPage: React.FC = () => {
   const router = useRouter();
@@ -66,13 +35,21 @@ const TasksPage: React.FC = () => {
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [draftTask, setDraftTask] = useState<Partial<Task>>({}); // Source of setDraftTask
+  const [draftTask, setDraftTask] = useState<Partial<Task>>({}); 
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [currentProjectPrefix, setCurrentProjectPrefix] = useState<string>("");
 
   const [downloadFilterType, setDownloadFilterType] = useState<string>("all");
   const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
+
+  // Define All possible Task Statuses for the select dropdown
+  const allTaskStatuses = useMemo(() => [
+    "Backlog", "In Progress", "Dev Review", "Deployed in QA", 
+    "Test In Progress", "QA Sign Off", "Deployment Stage", 
+    "Pilot Test", "Completed", "Paused"
+  ], []);
+
 
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
@@ -126,7 +103,6 @@ const TasksPage: React.FC = () => {
     return Array.from(new Set(projectNames));
   }, [tasks]);
 
-  // FIX 2: Corrected filtering logic for multi-select assignees
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     let value = downloadFilterValue.trim().toLowerCase();
@@ -159,11 +135,10 @@ const TasksPage: React.FC = () => {
           const assigneeFilterNames = primaryFilterValue.split('#').filter(name => name.trim() !== '');
           
           if (assigneeFilterNames.length === 0) {
-              isPrimaryMatch = true; // No specific assignee selected in filter
+              isPrimaryMatch = true;
           } else if (assigneeFilterNames.includes("all")) {
-              isPrimaryMatch = true; // 'All Employees' selected
+              isPrimaryMatch = true;
           } else {
-              // Check if ANY of the task's assignees are present in the filter list
               isPrimaryMatch = task.assigneeNames.some(taskAssignee => 
                   assigneeFilterNames.includes(taskAssignee.toLowerCase())
               );
@@ -233,7 +208,7 @@ const TasksPage: React.FC = () => {
 
   const generateNextSubtaskId = (prefix: string, currentSubtasks: Subtask[]) => {
     const numbers = currentSubtasks.map((sub) => {
-      if (sub.id && sub.id.startsWith(`${prefix}-`)) {
+      if (sub.id && sub.id.startsWith(`${prefix}-`)) { 
         const numPart = sub.id.split("-").pop();
         return parseInt(numPart!) || 0;
       }
@@ -249,7 +224,6 @@ const TasksPage: React.FC = () => {
     setIsModalOpen(true);
     setIsEditing(false);
     
-    // FIX 3: Initialize draftTask with assigneeNames
     setDraftTask({
         ...task,
         assigneeNames: task.assigneeNames || [],
@@ -269,7 +243,6 @@ const TasksPage: React.FC = () => {
 
   const handleEdit = (task: Task) => {
     setIsEditing(true);
-    // FIX 4: Initialize draftTask with assigneeNames when entering edit mode
     setDraftTask({
         ...task,
         assigneeNames: task.assigneeNames || [],
@@ -303,10 +276,15 @@ const TasksPage: React.FC = () => {
     }));
   };
 
-  const handleSubtaskChange = (index: number, field: keyof Subtask, value: string | number) => {
-    const updated = [...subtasks];
-    (updated[index] as any)[field] = field === "completion" ? Number(value) : value;
-    setSubtasks(updated);
+  const handleSubtaskChange: SubtaskChangeHandler = (path, field, value) => {
+    const index = path[0];
+    if (index === undefined || index < 0 || index >= subtasks.length) return;
+    
+    setSubtasks(prev => {
+        const updated = [...prev];
+        (updated[index] as any)[field] = field === "completion" ? Number(value) : value;
+        return updated;
+    });
   };
 
   const addSubtask = () => {
@@ -314,20 +292,24 @@ const TasksPage: React.FC = () => {
     setSubtasks([
       ...subtasks,
       {
-        id: newId,
+        id: newId, 
         title: "",
         assigneeName: "",
         status: "Pending",
         completion: 0,
         remarks: "",
-      },
+      } as Subtask, 
     ]);
   };
 
-  const removeSubtask = (index: number) => {
-    setSubtasks(subtasks.filter((_, i) => i !== index));
-  };
+  const removeSubtask: SubtaskPathHandler = (path) => {
+    const index = path[0];
+    if (index === undefined || index < 0 || index >= subtasks.length) return;
 
+    setSubtasks(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  // Existing function for main task status change (ASYNC)
   const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
@@ -352,6 +334,37 @@ const TasksPage: React.FC = () => {
       alert("A server error occurred during status update.");
     }
   }, []);
+
+  // NEW FUNCTION: Subtask Status Change (Required by TaskModal.tsx)
+  const onSubtaskStatusChange = useCallback((taskId: string, subtaskId: string, newStatus: string) => {
+    // NOTE: This implementation only updates the local state for the modal's current view. 
+    // To persist this change, you would need an API call here.
+    
+    setSubtasks(prevSubtasks => prevSubtasks.map(sub => 
+      sub.id === subtaskId ? { ...sub, status: newStatus } : sub
+    ));
+
+    // Optional: Add logic to update main task completion based on subtask status here.
+    console.log(`Subtask status update locally applied: Task ${taskId}, Subtask ${subtaskId} -> ${newStatus}`);
+  }, []);
+
+
+  // NEW FUNCTION: Placeholder for TaskModal's required UI handlers
+  const onToggleEdit: SubtaskPathHandler = () => {
+    // This function is likely used by TaskModal's recursive components 
+    // to toggle isEditing state on a specific subtask/nested subtask. 
+    // Since TasksPage manages a flat array, we provide a placeholder.
+    console.log("onToggleEdit called (Placeholder)");
+  };
+  
+  // NEW FUNCTION: Placeholder for TaskModal's required UI handlers
+  const onToggleExpansion: SubtaskPathHandler = () => {
+    // This function is likely used by TaskModal's recursive components 
+    // to toggle isExpanded state on a specific subtask/nested subtask. 
+    // Since TasksPage manages a flat array, we provide a placeholder.
+    console.log("onToggleExpansion called (Placeholder)");
+  };
+
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -386,24 +399,10 @@ const TasksPage: React.FC = () => {
 
   const handleStartSprint = async (taskId: string) => {
     if (!window.confirm("Do you want to start the sprint for this task? Status will change to 'In Progress'.")) return;
-    try {
-      const url = getApiUrl(`/api/tasks/${taskId}`);
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "In Progress" }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert("🚀 Sprint started! Task status is now 'In Progress'.");
-        closeTaskModal();
-        fetchTasks();
-      } else {
-        alert(`❌ Failed to start sprint: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
-      alert("Server error during status update.");
-    }
+    // Since onTaskStatusChange is async, we can reuse it here
+    await onTaskStatusChange(taskId, "In Progress");
+    alert("🚀 Sprint started! Task status is now 'In Progress'.");
+    closeTaskModal();
   };
 
   const handleDelete = async (id: string) => {
@@ -422,7 +421,9 @@ const TasksPage: React.FC = () => {
     }
   };
 
+
   const handleExcelDownload = () => {
+    // ... (Excel Download Logic, remains unchanged)
     if (typeof window === "undefined" || !(window as any).XLSX) {
       alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
       return;
@@ -441,7 +442,6 @@ const TasksPage: React.FC = () => {
             return task.project === value;
 
           case "assignee":
-            // FIX 5: Handle assignee filtering using assigneeNames array for export
             const assigneeNamesFilter = value.toLowerCase().split('#');
 
             if (value.toLowerCase() === "all" || assigneeNamesFilter.length === 0) return true;
@@ -475,7 +475,6 @@ const TasksPage: React.FC = () => {
         TaskID: task.projectId,
         ItemType: "Task",
         TaskName: task.project,
-        // FIX 6: Export multiple assignees joined by a comma
         MainAssignees: task.assigneeNames.join(', '), 
         StartDate: task.startDate,
         EndDate: task.endDate || "N/A",
@@ -542,6 +541,7 @@ const TasksPage: React.FC = () => {
     XLSX.writeFile(wb, fileName);
     alert(`✅ Task report downloaded as ${fileName}`);
   };
+
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
@@ -650,19 +650,28 @@ const TasksPage: React.FC = () => {
               onClose={closeTaskModal}
               isEditing={isEditing}
               draftTask={draftTask}
-              setDraftTask={setDraftTask} // Passing state setter
+              setDraftTask={setDraftTask as Dispatch<SetStateAction<Partial<Task>>>} 
               subtasks={subtasks}
               employees={employees}
               currentProjectPrefix={currentProjectPrefix}
+              allTaskStatuses={allTaskStatuses} // Pass task statuses
               handleEdit={handleEdit}
               handleDelete={handleDelete}
               handleUpdate={handleUpdate}
               cancelEdit={cancelEdit}
               handleDraftChange={handleDraftChange}
-              handleSubtaskChange={handleSubtaskChange}
+              handleSubtaskChange={handleSubtaskChange} 
               addSubtask={addSubtask}
-              removeSubtask={removeSubtask}
+              removeSubtask={removeSubtask} 
               handleStartSprint={handleStartSprint}
+              
+              // FIX 1: Provide the missing UI handlers (SubtaskPathHandler type)
+              onToggleEdit={onToggleEdit}
+              onToggleExpansion={onToggleExpansion}
+
+              // FIX 2: Provide the missing status handlers (Matching TaskModalProps)
+              onTaskStatusChange={onTaskStatusChange} // Passes the ASYNC version
+              onSubtaskStatusChange={onSubtaskStatusChange} // Passes the new local state function
             />
           )}
         </div>

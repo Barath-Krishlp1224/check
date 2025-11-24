@@ -1,6 +1,5 @@
-// ./components/TaskModal.tsx
 import React, { useCallback, useState } from "react";
-import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, ChevronRight, ChevronDown, Eye } from "lucide-react";
+import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, ChevronRight, Eye } from "lucide-react";
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler, SubtaskStatusChangeFunc } from "./types";
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
@@ -65,7 +64,7 @@ const SubtaskViewer: React.FC<{ subtasks: Subtask[], level: number, handleSubtas
                         <div className="font-semibold text-purple-700 flex items-center gap-2">
                             {sub.subtasks && sub.subtasks.length > 0 && (
                                 <span className="w-4 h-4 text-slate-500">
-                                    {sub.subtasks.some(s => s.subtasks?.length) ? <ChevronRight /> : null}
+                                    <ChevronRight className='w-4 h-4'/>
                                 </span>
                             )}
                             {sub.id || `New Subtask ${i + 1}`} - {sub.title}
@@ -139,7 +138,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         return null;
     }
     const displayValue = task[name];
-    const displayString = (typeof displayValue === 'string' || typeof displayValue === 'number' || displayValue === undefined)
+    const displayString = (name === 'assigneeNames') ? (task.assigneeNames || []).join(', ') : 
+    (typeof displayValue === 'string' || typeof displayValue === 'number' || displayValue === undefined)
         ? displayValue
         : <span className="text-gray-500">N/A</span>;
     const isSelect = type === 'select' || (name === 'status' && !isEditing);
@@ -148,14 +148,15 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
         {isEditing || isSelect ? (
-            name === 'assigneeName' ? (
+            name === 'assigneeNames' ? (
                 <select
                 name={name}
-                value={current[name] as string | number || ""}
+                value={current.assigneeNames || []}
                 onChange={handleDraftChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
+                multiple
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900 h-24"
                 >
-                <option value="">Select Assignee</option>
+                <option value="">Select Assignee(s)</option>
                 {employees.map(employee => (
                     <option key={employee._id} value={employee.name}>{employee.name}</option>
                 ))}
@@ -186,7 +187,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                 <input
                     type={type === 'date' ? 'date' : type === 'number' ? 'number' : 'text'}
                     name={name}
-                    value={current[name] as string | number || ""}
+                    value={(current[name] as string | number) || ""}
                     onChange={handleDraftChange}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
                     min={type === 'number' ? 0 : undefined}
@@ -226,7 +227,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">Task Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {renderField("Task Name", "project", "text")}
-              {renderField("Assignee", "assigneeName", "select")}
+              {renderField("Assignee", "assigneeNames", "select")}
               {renderField("Start Date", "startDate", "date")}
               {renderField("Due Date", "dueDate", "date")}
               {renderField("End Date", "endDate", "date")}

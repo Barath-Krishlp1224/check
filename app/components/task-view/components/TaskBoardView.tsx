@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Task } from '../page';
+// ✅ FIX: Import Task from the shared types file, not the parent page.
+import { Task } from './types'; 
 import {
     DragDropContext,
     Droppable,
@@ -44,15 +45,18 @@ const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task
                     ${snapshot.isDragging ? 'scale-[1.03] shadow-md' : 'hover:shadow-md hover:scale-[1.02]'}`}
                 onClick={() => openTaskModal(task)}
             >
+                {/* Use optional chaining (?) for project/projectId since they might be optional now */}
                 <div className="flex items-start justify-between mb-2">
                     <p className="text-sm font-semibold text-slate-900">{task.project}</p>
                 </div>
 
-                <p className="text-xs text-slate-500 mb-2">{task.projectId}</p>
+                <p className="text-xs text-slate-500 mb-2">{task.projectId}</p> 
 
                 <div className="flex items-center justify-between mt-3">
                     <p className="text-xs text-slate-700">
-                        <span className="text-slate-500">Assignee:</span> {task.assigneeName}
+                        <span className="text-slate-500">Assignee:</span> 
+                        {/* FIX: Use assigneeNames with optional chaining and fallback */}
+                        {task.assigneeNames?.join(', ') || 'Unassigned'}
                     </p>
                     <div className="bg-gray-100 text-slate-900 text-xs px-3 py-1 rounded-full font-medium">
                         {task.completion}%
@@ -74,7 +78,8 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
 
     const tasksByStatus = useMemo(() => {
         return tasks.reduce((acc, task) => {
-            const status = task.status || 'Backlog';
+            // Use optional chaining for status, defaulting to 'Backlog'
+            const status = task.status || 'Backlog'; 
             if (!acc[status]) acc[status] = [];
             acc[status].push(task);
             return acc;

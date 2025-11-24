@@ -14,6 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 
+// Assuming types.ts is correct and available
 import {
   Task,
   Subtask,
@@ -66,36 +67,41 @@ interface TaskModalProps {
   subtasks: Subtask[];
   employees: Employee[];
   currentProjectPrefix: string;
-  allTaskStatuses?: string[]; // optional, will default to []
+  allTaskStatuses?: string[]; 
   handleEdit: (task: Task) => void;
   handleDelete: (id: string) => void;
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   handleSubtaskChange: SubtaskChangeHandler;
-  addSubtask: SubtaskPathHandler;
+  addSubtask: () => void; // Corrected type: addSubtask should not take a path
   removeSubtask: SubtaskPathHandler;
-  onToggleEdit: SubtaskPathHandler;
+  
+  // REQUIRED MISSING PROPS from the error:
+  onToggleEdit: SubtaskPathHandler; 
   onToggleExpansion: SubtaskPathHandler;
+  onTaskStatusChange: (taskId: string, newStatus: string) => void; // Matching TasksPage's prop
+  onSubtaskStatusChange: (taskId: string, subtaskId: string, newStatus: string) => void; // Matching TasksPage's prop
+
   handleStartSprint: (taskId: string) => void;
-  onTaskStatusChange: (taskId: string, newStatus: string) => void;
-  onSubtaskStatusChange: (taskId: string, subtaskId: string, newStatus: string) => void;
   setDraftTask: React.Dispatch<React.SetStateAction<Partial<Task>>>;
 }
 
 const SubtaskViewer: React.FC<{
   subtasks: Subtask[];
   level: number;
-  handleSubtaskStatusChange: SubtaskStatusChangeFunc;
+  handleSubtaskStatusChange: (subtaskId: string | null | undefined, newStatus: string) => void;
   onView: (subtask: Subtask) => void;
 }> = ({ subtasks, level, handleSubtaskStatusChange, onView }) => {
   if (!subtasks || subtasks.length === 0) return null;
   return (
     <ul className={`list-none ${level > 0 ? "mt-3 border-l-2 border-slate-300 ml-4 pl-4" : ""}`}>
       {subtasks.map((sub, i) => (
+        // Use key based on ID if available, otherwise use index
         <li key={sub.id ?? i} className="mb-2 p-3 bg-slate-50 rounded-lg transition-colors border border-slate-200">
           <div className="flex justify-between items-center text-sm">
             <div className="font-semibold text-purple-700 flex items-center gap-2">
+              {/* NOTE: You might need recursive rendering logic here if subtasks can be nested */}
               {sub.subtasks && sub.subtasks.length > 0 && <span className="w-4 h-4 text-slate-500"><ChevronRight /></span>}
               {sub.id || `New Subtask ${i + 1}`} - {sub.title}
             </div>
@@ -147,7 +153,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     subtasks,
     employees,
     currentProjectPrefix,
-    allTaskStatuses = [], // safe default
+    allTaskStatuses = [], 
     handleEdit,
     handleDelete,
     handleUpdate,
@@ -156,8 +162,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     handleSubtaskChange,
     addSubtask,
     removeSubtask,
-    onToggleEdit,
-    onToggleExpansion,
+    onToggleEdit, // Used in TaskSubtaskEditor
+    onToggleExpansion, // Used in TaskSubtaskEditor
     handleStartSprint,
     onTaskStatusChange,
     onSubtaskStatusChange,
@@ -208,9 +214,11 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     [task._id, onTaskStatusChange]
   );
 
-  const handleSubtaskStatusChange: SubtaskStatusChangeFunc = useCallback(
+  // Adapting the signature to match the SubtaskViewer component requirement:
+  const handleSubtaskStatusChange: (subtaskId: string | null | undefined, newStatus: string) => void = useCallback(
     (subtaskId, newStatus) => {
       if (task._id && subtaskId) {
+        // Calls the handler provided by TasksPage.tsx
         onSubtaskStatusChange(task._id, subtaskId, newStatus);
       }
     },
@@ -222,7 +230,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   const current = isEditing ? draftTask : task;
   const subtasksToDisplay = isEditing ? subtasks : task.subtasks || [];
   const hasSubtasks = !!(subtasksToDisplay && subtasksToDisplay.length > 0);
-  const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+  const stopPropagation = (e: React.MouseEvent) => e.stopPropagation;
 
   const renderField = (
     label: string,
@@ -236,10 +244,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     const currentTask = task as Record<string, any>;
     const currentDraft = (isEditing ? (draftTask as Record<string, any>) : currentTask) as Record<string, any>;
 
-    // choose options: status uses allTaskStatuses, otherwise use provided options
     const finalOptions = name === "status" ? allTaskStatuses : options;
 
-    // display string for read-only mode
     const displayValue = currentTask[name];
     const displayString =
       typeof displayValue === "string" || typeof displayValue === "number" || displayValue === undefined
@@ -253,7 +259,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
 
         {isEditing || isSelect ? (
-          // CASE: status + not editing -> allow quick status change using task.status
           name === "status" && !isEditing ? (
             <select
               name={String(name)}
@@ -307,7 +312,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     >
       <div
         className="bg-white rounded-4xl shadow-2xl w-full max-w-5xl my-12 transform transition-all duration-300 overflow-hidden"
-        onClick={stopPropagation}
+        onClick={stopPropagation as unknown as React.MouseEventHandler<HTMLDivElement>}
       >
         <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-900">
@@ -404,6 +409,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             />
           ) : hasSubtasks ? (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+              {/* Correctly pass the adapted subtask status handler */}
               <SubtaskViewer subtasks={subtasksToDisplay} level={0} handleSubtaskStatusChange={handleSubtaskStatusChange} onView={handleViewSubtask} />
             </div>
           ) : (
