@@ -9,7 +9,7 @@ import { SetStateAction, Dispatch } from "react";
 import TaskTableHeader from "./components/TaskTableHeader";
 // import TaskCard from "./components/TaskCard"; // REMOVED
 // Import the new Table Summary component
-import EmployeeTaskSummaryTable from "./components/EmployeeTaskSummaryTable"; 
+import EmployeeTaskSummaryTable from "./components/TaskCard"; 
 import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import TaskChartView from "./components/TaskChartView";
