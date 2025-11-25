@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; 
+import { Task, Subtask, Employee } from "./types"; 
 import TaskRow from "./TaskRow";
 
 interface TaskTableProps {
@@ -17,9 +17,9 @@ interface TaskTableProps {
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
-  addSubtask: () => void;
-  removeSubtask: () => void;
+  handleSubtaskChange: (path: number[], field: keyof Subtask, value: string | number) => void; // Updated handler signature
+  addSubtask: (path: number[]) => void; // Updated handler signature
+  removeSubtask: (path: number[]) => void; // Updated handler signature
 }
 
 const TaskTable: React.FC<TaskTableProps> = (props) => {

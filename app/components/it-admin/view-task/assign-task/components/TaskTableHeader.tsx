@@ -1,7 +1,6 @@
 import React from "react";
 import { Download, AlertCircle } from "lucide-react";
-import { Employee } from "../page";
-import Link from 'next/link';
+import { Employee } from "./types"; 
 
 interface TaskTableHeaderProps {
   uniqueProjects: string[];
@@ -25,9 +24,8 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
   handleExcelDownload,
 }) => {
   const isDownloadDisabled = !xlsxLoaded || (downloadFilterType !== "all" && !downloadFilterValue);
-  
   return (
-    <div className="mb-8 mt-10 relative"> {/* Added relative for absolute positioning of home button */}
+    <div className="mb-8">
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-4xl font-bold text-black mb-2">Project Tasks</h1> 
@@ -121,14 +119,6 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
             Export to Excel
           </button>
         </div>
-      </div>
-      {/* Home button added here */}
-      <div className="absolute top-0 right-0 -mt-10"> {/* Adjusted positioning */}
-        <Link href="/components/it-admin" passHref>
-          <button className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-md">
-            Home
-          </button>
-        </Link>
       </div>
     </div>
   );
