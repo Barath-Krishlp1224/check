@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.919.0",
+    "@aws-sdk/client-s3": "^3.939.0",
     "@aws-sdk/s3-request-presigner": "^3.934.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -24,9 +24,10 @@
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.545.0",
-    "mongoose": "^8.19.4",
+    "mongoose": "^8.20.1",
     "next": "^15.5.4",
     "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.3.1",
     "react-curved-text": "^3.0.1",
@@ -44,6 +45,7 @@
     "@types/formidable": "^3.4.6",
     "@types/mongoose": "^5.11.96",
     "@types/node": "^20.19.25",
+    "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-toastify": "^4.0.2",

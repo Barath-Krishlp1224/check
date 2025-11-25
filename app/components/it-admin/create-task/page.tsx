@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import Link from 'next/link';
 
 interface Employee {
   _id: string;
@@ -71,7 +70,7 @@ const EmployeesPage: React.FC = () => {
   const [fetchingByDept, setFetchingByDept] = useState<boolean>(false);
 
   const [formData, setFormData] = useState({
-    assigneeName: "",
+    assigneeNames: [] as string[],
     projectId: "",
     project: "",
     department: "",
@@ -150,20 +149,50 @@ const EmployeesPage: React.FC = () => {
 
   useEffect(() => {
     if (!formData.department) {
-      setFormData((s) => ({ ...s, assigneeName: "" }));
+      setFormData((s) => ({ ...s, assigneeNames: [] }));
       return;
     }
-    const selected = employees.find((e) => e.name === formData.assigneeName);
-    if (selected && (selected.canonicalTeam ?? "").toLowerCase() !== formData.department.toLowerCase()) {
-      setFormData((s) => ({ ...s, assigneeName: "" }));
+    
+    const canonicalSelected = formData.department.toLowerCase();
+
+    const currentAssigneesValid = formData.assigneeNames.every(name => {
+        const selected = employees.find((e) => e.name === name);
+        return selected && (selected.canonicalTeam ?? "").toLowerCase() === canonicalSelected;
+    });
+
+    if (!currentAssigneesValid) {
+        setFormData((s) => ({ ...s, assigneeNames: [] }));
     }
-  }, [formData.department, employees, formData.assigneeName]);
+
+  }, [formData.department, employees]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const { name, value } = e.target;
-    setFormData((s) => ({ ...s, [name]: value }));
+    const { name, value, type } = e.target;
+    
+    // Handle checkbox change (for assigneeNames)
+    if (name === "assigneeNames" && type === "checkbox") {
+        const isChecked = (e.target as HTMLInputElement).checked;
+        const assigneeName = value;
+
+        setFormData((s) => {
+            const currentNames = s.assigneeNames;
+            if (isChecked) {
+                // Add the name if checked and not already present
+                if (!currentNames.includes(assigneeName)) {
+                    return { ...s, assigneeNames: [...currentNames, assigneeName] };
+                }
+            } else {
+                // Remove the name if unchecked
+                return { ...s, assigneeNames: currentNames.filter(n => n !== assigneeName) };
+            }
+            return s; // No change needed
+        });
+    } else {
+        // Handle regular inputs/selects
+        setFormData((s) => ({ ...s, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -175,8 +204,8 @@ const EmployeesPage: React.FC = () => {
       return;
     }
 
-    if (!formData.assigneeName.trim()) {
-      setMessage("❌ Please select an Assignee.");
+    if (formData.assigneeNames.length === 0) {
+      setMessage("❌ Please select at least one Assignee.");
       return;
     }
 
@@ -188,13 +217,20 @@ const EmployeesPage: React.FC = () => {
     try {
       const payload = {
         ...formData,
+        assigneeName: formData.assigneeNames.join(', '), // Ensure backend accepts single string or adapt logic if backend expects array
+        assigneeNames: formData.assigneeNames, // Include the array for dedicated handling if needed
         completion: formData.completion === "" ? undefined : Number(formData.completion),
       };
+      
+      // Clean up payload slightly for submission, removing the redundant single assigneeName field if the backend expects the array
+      // NOTE: Assuming your backend expects the array 'assigneeNames'
+      const { assigneeName, ...finalPayload } = payload;
+
 
       const res = await fetch("/api/tasks/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(finalPayload),
       });
 
       const data = await res.json();
@@ -202,7 +238,7 @@ const EmployeesPage: React.FC = () => {
       if (res.ok) {
         setMessage("✅ Task submitted successfully!");
         setFormData({
-          assigneeName: "",
+          assigneeNames: [], 
           projectId: "",
           project: "",
           department: "",
@@ -265,18 +301,11 @@ const EmployeesPage: React.FC = () => {
   return (
     <div className="min-h-screen mt-10 py-8 px-4 bg-slate-50">
       <div className="mx-auto max-w-6xl">
-        <div className="relative mb-8">
+        <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Create New Task</h1>
             </div>
-          </div>
-          <div className="absolute top-0 right-0">
-            <Link href="/components/it-admin" passHref>
-              <button className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-md">
-                Home
-              </button>
-            </Link>
           </div>
         </div>
 
@@ -358,7 +387,7 @@ const EmployeesPage: React.FC = () => {
                     <h3 className="text-base font-semibold text-slate-900">Assignment</h3>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Assignee *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Assignee(s) *</label>
 
                     {loading || fetchingByDept ? (
                       <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-500 bg-slate-50">
@@ -367,39 +396,37 @@ const EmployeesPage: React.FC = () => {
                           Loading employees...
                         </div>
                       </div>
+                    ) : assigneeDisabled ? (
+                        <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-500 bg-slate-50 opacity-60 cursor-not-allowed">
+                            Choose a department first
+                        </div>
                     ) : (
-                      <select
-                        name="assigneeName"
-                        value={formData.assigneeName}
-                        onChange={handleChange}
-                        disabled={assigneeDisabled}
-                        aria-disabled={assigneeDisabled}
-                        className={`w-full border rounded-lg px-4 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm ${
-                          assigneeDisabled ? "opacity-60 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        <option value="">
-                          {assigneeDisabled
-                            ? "Choose a department first"
-                            : formData.department
-                            ? `Select an assignee from ${formData.department}`
-                            : "Select an assignee"}
-                        </option>
-
-                        {!assigneeDisabled &&
-                          filteredAssignees.length > 0 &&
-                          filteredAssignees.map((emp) => (
-                            <option key={emp._id} value={emp.name}>
-                              {emp.name} {emp.empId ? `• ${emp.empId}` : ""}
-                            </option>
-                          ))}
-
-                        {!assigneeDisabled && filteredAssignees.length === 0 && (
-                          <option value="" disabled>
-                            No assignees found for {formData.department}
-                          </option>
+                      // REPLACED: Multi-select with Checkbox list
+                      <div className={`p-4 border rounded-lg bg-white overflow-y-auto max-h-48 shadow-sm ${assigneeDisabled ? 'opacity-60 cursor-not-allowed border-slate-200' : 'border-slate-300'}`}>
+                        {filteredAssignees.length === 0 ? (
+                            <p className="text-sm text-slate-500">No assignees found for {formData.department}</p>
+                        ) : (
+                            filteredAssignees.map((emp) => (
+                                <div key={emp._id} className="flex items-center mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id={`assignee-${emp._id}`}
+                                        name="assigneeNames"
+                                        value={emp.name}
+                                        checked={formData.assigneeNames.includes(emp.name)}
+                                        onChange={handleChange}
+                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    />
+                                    <label 
+                                        htmlFor={`assignee-${emp._id}`}
+                                        className="ml-3 text-sm font-medium text-slate-700 cursor-pointer"
+                                    >
+                                        {emp.name} {emp.empId ? `• ${emp.empId}` : ""}
+                                    </label>
+                                </div>
+                            ))
                         )}
-                      </select>
+                      </div>
                     )}
                   </div>
                 </div>

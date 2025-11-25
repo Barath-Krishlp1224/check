@@ -1,13 +1,17 @@
+// app/api/employees/add/route.ts
 import { NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import os from "os";
 import fs from "fs/promises";
-import connectDB from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongoose";
 import Employee from "@/models/Employee";
+import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
 
 export const runtime = "nodejs";
 
+/* ---------- S3 / temp storage setup (same logic you used) ---------- */
 const REGION = String(process.env.S3_REGION || "");
 const BUCKET = String(process.env.S3_BUCKET_NAME || "");
 const S3_PUBLIC = String(process.env.S3_PUBLIC || "false").toLowerCase() === "true";
@@ -63,10 +67,10 @@ async function saveFile(file: File | null, empId: string) {
   if (!file) return { key: "", url: "" };
   const arr = await file.arrayBuffer();
   const buf = Buffer.from(arr);
-  const name = file.name || `file-${Date.now()}`;
+  const name = (file as any).name || `file-${Date.now()}`;
   try {
     if (s3Client && BUCKET) {
-      const res = await uploadToS3(buf, empId, name, file.type || "application/octet-stream");
+      const res = await uploadToS3(buf, empId, name, (file as any).type || "application/octet-stream");
       console.log("Uploaded to S3:", res.url);
       return res;
     } else {
@@ -88,8 +92,54 @@ async function saveFile(file: File | null, empId: string) {
   }
 }
 
+/* ---------- Simple welcome-email helper (Nodemailer) ---------- */
+async function sendWelcomeEmailSMTP(to: string, params: { name?: string; empId?: string; joiningDate?: string; team?: string }) {
+  const SMTP_HOST = process.env.SMTP_HOST;
+  const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+  const SMTP_USER = process.env.SMTP_USER;
+  const SMTP_PASS = process.env.SMTP_PASS;
+  const EMAIL_FROM = process.env.EMAIL_FROM || "No Reply <no-reply@example.com>";
+
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    throw new Error("SMTP not configured (SMTP_HOST / SMTP_USER / SMTP_PASS required)");
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+
+  const subject = `Welcome to Company — ${params.name || ""}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height:1.5; color:#111;">
+      <h2>Welcome ${params.name || ""} 👋</h2>
+      <p>Hi ${params.name || ""},</p>
+      <p>Welcome to the ${params.team || "team"}! Your onboarding record has been created.</p>
+      <p><strong>Employee ID:</strong> ${params.empId || "—"}</p>
+      <p><strong>Joining Date:</strong> ${params.joiningDate || "—"}</p>
+      <p>Further instructions will be shared by HR.</p>
+      <p>Best,<br/>People Ops</p>
+    </div>
+  `;
+
+  const info = await transporter.sendMail({
+    from: EMAIL_FROM,
+    to,
+    subject,
+    html,
+  });
+
+  return info;
+}
+
+/* ---------- POST handler ---------- */
 export async function POST(req: Request) {
-  await connectDB();
+  await connectToDatabase();
   try {
     const form = await req.formData();
 
@@ -106,7 +156,7 @@ export async function POST(req: Request) {
     const mailId = String(form.get("mailId") || "").trim().toLowerCase();
     const accountNumber = String(form.get("accountNumber") || "").trim();
     const ifscCode = String(form.get("ifscCode") || "").trim().toUpperCase();
-    const password = String(form.get("password") || "");
+    const passwordRaw = String(form.get("password") || "");
     const employmentType = String(form.get("employmentType") || "").trim();
 
     const photo = form.get("photo") as unknown as File | null;
@@ -117,19 +167,25 @@ export async function POST(req: Request) {
     const provisionalCertificate = form.get("provisionalCertificate") as unknown as File | null;
     const experienceCertificate = form.get("experienceCertificate") as unknown as File | null;
 
-    if (!empId || !name || !mailId || !phoneNumber || !password) {
+    if (!empId || !name || !mailId || !phoneNumber || !passwordRaw) {
       return NextResponse.json({ success: false, message: "Missing required fields (empId, name, mailId, phoneNumber, password)" }, { status: 400 });
     }
 
+    // check duplicates
     const exists = await Employee.findOne({ $or: [{ empId }, { mailId }] });
     if (exists) {
       return NextResponse.json({ success: false, message: "Employee with this ID or email already exists" }, { status: 409 });
     }
 
+    // hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(passwordRaw, salt);
+
+    // save files (S3 or temp)
     const filesToSave = [photo, aadharFile, panFile, tenthMarksheet, twelfthMarksheet, provisionalCertificate, experienceCertificate];
 
     const savedResults = await Promise.all(
-      filesToSave.map(async (f, i) => {
+      filesToSave.map(async (f) => {
         try {
           const r = await saveFile(f, empId);
           return { ok: true, url: r.url || "", key: (r as any).key || "" };
@@ -155,7 +211,7 @@ export async function POST(req: Request) {
       mailId,
       accountNumber,
       ifscCode,
-      password,
+      password: hashed,
       employmentType: employmentType === "Experienced" ? "Experienced" : "Fresher",
       photo: photoSaved.url || "",
       aadharDoc: aadharSaved.url || "",
@@ -167,7 +223,35 @@ export async function POST(req: Request) {
       role: "Employee",
     });
 
-    return NextResponse.json({ success: true, message: "Employee added", employee, fileStatus: savedResults }, { status: 201 });
+    // send welcome email — don't fail the whole request on email error
+    let emailResult: any = null;
+    try {
+      emailResult = await sendWelcomeEmailSMTP(employee.mailId, {
+        name: employee.name,
+        empId: employee.empId,
+        joiningDate: employee.joiningDate,
+        team: employee.team,
+      });
+    } catch (mailErr) {
+      console.error("Failed to send welcome email:", mailErr);
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Employee added",
+        employee: {
+          _id: employee._id,
+          empId: employee.empId,
+          name: employee.name,
+          mailId: employee.mailId,
+          team: employee.team,
+        },
+        fileStatus: savedResults,
+        emailSent: !!emailResult,
+      },
+      { status: 201 }
+    );
   } catch (err: any) {
     console.error("POST /employees/add error:", err?.stack || err?.message || err);
     const message = err?.message || "Server error while adding employee";

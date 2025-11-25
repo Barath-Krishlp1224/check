@@ -9,6 +9,11 @@ if (!MONGODB_URI) {
   throw new Error("Please define the MONGODB_URI environment variable in .env");
 }
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  var __mongoose: any;
+}
+
 let cached = (global as any).__mongoose;
 
 if (!cached) {
