@@ -40,6 +40,7 @@ const TaskSchema = new Schema(
         "HR",
         "Founders",
         "TL-Reporting Manager",
+        "TL Accountant", // UPDATED: Added TL Accountant
       ],
       required: false,
     },

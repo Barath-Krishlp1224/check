@@ -1,10 +1,9 @@
 "use client";
 
-// 1. Import ToastContainer and toast
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // 2. Import CSS
+import "react-toastify/dist/ReactToastify.css";
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 type Team =
@@ -15,14 +14,13 @@ type Team =
   | "Tech"
   | "Accounts"
   | "HR"
-  | "Admin & Operations";
+  | "Admin & Operations"
+  | "TL Accountant"; // UPDATED: Changed "Senior Accountant" to "TL Accountant"
 
 export default function LoginPage() {
   const [form, setForm] = useState({ empId: "", password: "" });
-  // Removed the local 'error' state since we'll use toast for errors
   const router = useRouter();
 
-  // Helper function for showing validation errors
   const showValidationError = (message: string) => {
     toast.error(message, {
       position: "top-right",
@@ -54,15 +52,12 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Use toast.error for API errors (e.g., "Invalid credentials")
         const errorMessage = data.error || "Login failed. Please check your credentials.";
         return toast.error(errorMessage);
       }
 
-      // 3. Use toast.success for successful login
       toast.success(data.message || "Login successful!", {
         onClose: () => {
-          // Check for required user data after a successful response
           if (!data.user?.role || !data.user?.empId) {
             return toast.error("Login successful but required user data is missing.");
           }
@@ -70,13 +65,11 @@ export default function LoginPage() {
           const userRole = data.user.role as Role;
           const userTeam = data.user.team as Team | undefined;
 
-          // Store user data in localStorage
           localStorage.setItem("userRole", userRole);
           localStorage.setItem("userEmpId", data.user.empId);
           if (data.user.name) localStorage.setItem("userName", data.user.name);
           if (userTeam) localStorage.setItem("userTeam", userTeam);
 
-          // Redirect logic after toast closes
           if (userRole === "Admin") router.push("/components/admin");
           else if (userRole === "Manager") router.push("/components/manager");
           else if (userRole === "TeamLead") router.push("/components/team-lead");
@@ -84,6 +77,7 @@ export default function LoginPage() {
             switch (userTeam) {
               case "HR": router.push("/components/hr"); break;
               case "Accounts": router.push("/components/accounts"); break;
+              case "TL Accountant": router.push("/components/tl-accountant"); break; // UPDATED: Directing TL Accountant to accounts dashboard (or create new path)
               case "Admin & Operations": router.push("/components/admin-operations"); break;
               case "Tech": router.push("/components/view-task"); break;
               case "IT Admin": router.push("/components/it-admin"); break;
@@ -94,10 +88,9 @@ export default function LoginPage() {
             }
           }
         },
-        autoClose: 1000, // Optional: Short autoClose to redirect quicker
+        autoClose: 1000,
       });
     } catch {
-      // Use toast.error for network errors
       toast.error("Network error. Try again later.");
     }
   };
@@ -108,7 +101,6 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-white">
-      {/* 4. Add ToastContainer to the root of your component's return */}
       <ToastContainer position="top-right" autoClose={5000} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
 
       <div className="absolute inset-0 overflow-hidden">
@@ -130,7 +122,6 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-6">
-          {/* Employee ID / Email */}
           <div className="group">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Enter Employee ID / Email
@@ -164,7 +155,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Password */}
           <div className="group">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Enter Password
@@ -208,9 +198,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Removed the static error message div */}
-          
-          {/* Submit button */}
           <button
             onClick={handleSubmit}
             className="w-full text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0"

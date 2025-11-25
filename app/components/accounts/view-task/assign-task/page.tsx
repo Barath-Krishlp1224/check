@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar, IndianRupee } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import TaskTableHeader from "./components/TaskTableHeader";
@@ -10,9 +10,7 @@ import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import HolidaysModal, { Holiday, staticHolidays } from "./components/HolidaysModal";
 
-// Assuming you have an Expense Tracker component/page you want to treat like an import
-// We are importing the page component itself, even though we navigate via router.push
-import ExpenseTrackerPage from "../../expense-tracker/page"; // Adjust path as necessary
+// Removed: import ExpenseTrackerPage from "../../expense-tracker/page";
 
 export interface Subtask {
   id?: string;
@@ -97,7 +95,7 @@ const TasksPage: React.FC = () => {
 
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
   
-  const [isExpenseTrackerOpen, setIsExpenseTrackerOpen] = useState(false);
+  // Removed: const [isExpenseTrackerOpen, setIsExpenseTrackerOpen] = useState(false);
 
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
@@ -437,9 +435,7 @@ const TasksPage: React.FC = () => {
     }
   };
   
-  const handleOpenExpenseTracker = () => {
-      router.push("/components/accounts/expense-tracker");
-  };
+  // Removed: const handleOpenExpenseTracker = () => { ... }
 
 
   if (loading)
@@ -494,6 +490,8 @@ const TasksPage: React.FC = () => {
           <ListTodo className="w-6 h-6" />
         </button>
         
+        {/* Removed: Expense Tracker button */}
+        {/*
         <button
           onClick={handleOpenExpenseTracker}
           className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
@@ -501,6 +499,7 @@ const TasksPage: React.FC = () => {
         >
           <IndianRupee className="w-6 h-6" /> 
         </button>
+        */}
         
         <button
           onClick={() => setIsHolidaysOpen(true)}
@@ -589,8 +588,7 @@ const TasksPage: React.FC = () => {
 
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
       
-      {/* If Expense Tracker were a modal/component you needed to render here, you would do this: */}
-      {/* {isExpenseTrackerOpen && <ExpenseTrackerPage onClose={() => setIsExpenseTrackerOpen(false)} />} */}
+      {/* Removed: Conditional rendering for Expense Tracker component/modal */}
     </div>
   );
 };

@@ -17,7 +17,8 @@ export interface IEmployee extends Document {
     | "Accounts"
     | "HR"
     | "Admin & Operations"
-    | "Housekeeping";
+    | "Housekeeping"
+    | "TL Accountant";
   category?: string;
   subCategory?: string;
   department: string;
@@ -62,6 +63,7 @@ const EmployeeSchema = new Schema<IEmployee>(
         "HR",
         "Admin & Operations",
         "Housekeeping",
+        "TL Accountant",
       ],
       trim: true,
     },

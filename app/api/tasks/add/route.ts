@@ -33,6 +33,7 @@ type ReqBody = {
   subtasks?: Subtask[]; 
 };
 
+// UPDATED: Added tl accountant to the webhook map
 const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   tech: process.env.SLACK_WEBHOOK_URL,
   accounts: process.env.SLACK_WEBHOOK_URL_ACC,
@@ -43,6 +44,7 @@ const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   hr: process.env.SLACK_WEBHOOK_URL_HR ?? process.env.SLACK_WEBHOOK_URL,
   founders: process.env.SLACK_WEBHOOK_URL_FOUNDERS ?? process.env.SLACK_WEBHOOK_URL,
   "tl-reporting manager": process.env.SLACK_WEBHOOK_URL_TL ?? process.env.SLACK_WEBHOOK_URL,
+  "tl accountant": process.env.SLACK_WEBHOOK_URL_TLACC ?? process.env.SLACK_WEBHOOK_URL_ACC, // NEW
 };
 
 const normalizeDeptKey = (d?: string) => (d ? d.toString().trim().toLowerCase() : "");
@@ -140,6 +142,7 @@ export async function POST(req: Request) {
     
     // Determine webhook
     const deptKey = normalizeDeptKey(department);
+    // Logic handles the new key "tl accountant" being present
     const webhookUrl = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
 
     if (!webhookUrl) {

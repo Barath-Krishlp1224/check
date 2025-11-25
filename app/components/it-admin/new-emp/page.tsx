@@ -158,6 +158,9 @@ const structure: Structure = {
   Housekeeping: {
     Housekeeping: ["Housekeeper", "Senior Housekeeper"],
   },
+  "TL Accountant": {
+    "TL Accountant": ["TL Accountant"],
+  },
 };
 
 const AddEmployeePage: React.FC = () => {
