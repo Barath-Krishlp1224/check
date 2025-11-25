@@ -7,7 +7,6 @@ import {
   SubtaskChangeHandler,
   SubtaskPathHandler,
 } from "./types";
-import SubtaskRow from "./SubtaskRow";
 
 const subtaskStatuses = ["Pending", "In Progress", "Completed", "Paused"];
 
@@ -21,7 +20,7 @@ interface TaskSubtaskEditorProps {
   onToggleEdit: SubtaskPathHandler;
   onToggleExpansion: SubtaskPathHandler;
   onViewSubtask: (subtask: Subtask) => void;
-  allTaskStatuses: string[]; // still available to the editor if needed
+  allTaskStatuses: string[];
 }
 
 const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
@@ -34,7 +33,7 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
   onToggleEdit,
   onToggleExpansion,
   onViewSubtask,
-  allTaskStatuses, // present for editor-level usage (not forwarded below)
+  allTaskStatuses,
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-6">
@@ -65,24 +64,11 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
                 </td>
               </tr>
             ) : (
-              subtasks.map((sub, i) => (
-                <SubtaskRow
-                  key={sub.id ?? i}
-                  subtask={sub}
-                  index={i}
-                  level={0}
-                  employees={employees}
-                  subtaskStatuses={subtaskStatuses}
-                  onSubtaskChange={handleSubtaskChange}
-                  onToggleEdit={onToggleEdit}
-                  onToggleExpansion={onToggleExpansion}
-                  onRemove={removeSubtask}
-                  onAddNested={addSubtask}
-                  onView={onViewSubtask}
-                  path={[i]}
-                  /* removed `allTaskStatuses` here because SubtaskRow doesn't accept it */
-                />
-              ))
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-red-500 font-semibold">
+                  Error: Subtasks cannot be displayed because the SubtaskRow component and its logic were removed.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
