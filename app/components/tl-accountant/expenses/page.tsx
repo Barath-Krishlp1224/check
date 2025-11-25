@@ -1,139 +1,55 @@
+
+
 'use client'
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Expense, DateFilter } from './interfaces';
+import { getWeekStartISO, getFilterDates, uid } from './utils';
+import NewExpenseForm from './NewExpenseForm';
+import ExpenseList from './ExpenseList';
+import SummaryAndFilter from './SummaryAndFilter';
 
-interface Subtask {
-  id: string;
-  title: string;
-  done: boolean;
-  amount?: number;
-  date?: string;
-}
-
-interface Expense {
-  _id?: string;
-  description: string;
-  amount: number;
-  category: string;
-  date: string;
-  createdAt?: string;
-  shop?: string;
-  paid?: boolean;
-  weekStart?: string;
-  subtasks?: Subtask[];
-}
-
-type DateFilter =
-  | 'all'
-  | 'yesterday'
-  | 'last_month'
-  | 'last_3_months'
-  | 'last_6_months'
-  | 'last_9_months'
-  | 'last_year'
-  | 'custom'
-  | '';
-
-const uid = () => Math.random().toString(36).slice(2, 9);
-
-const getWeekStartISO = (d: Date) => {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diffToMonday = ((day + 6) % 7);
-  const monday = new Date(date);
-  monday.setDate(date.getDate() - diffToMonday);
-  monday.setHours(0, 0, 0, 0);
-  return monday.toISOString().split('T')[0];
-};
-
-const getFilterDates = (filter: DateFilter): { startDate: string | null; endDate: string | null } => {
-  const today = new Date();
-  let startDate: Date | null = null;
-  let endDate: Date = new Date();
-
-  switch (filter) {
-    case 'all':
-      return { startDate: null, endDate: null };
-    case 'yesterday':
-      startDate = new Date(today);
-      startDate.setDate(today.getDate() - 1);
-      endDate = new Date(startDate);
-      break;
-    case 'last_month':
-      startDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-      break;
-    case 'last_3_months':
-      startDate = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
-      break;
-    case 'last_6_months':
-      startDate = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
-      break;
-    case 'last_9_months':
-      startDate = new Date(today.getFullYear(), today.getMonth() - 9, today.getDate());
-      break;
-    case 'last_year':
-      startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-      break;
-    case 'custom':
-    default:
-      return { startDate: null, endDate: null };
-  }
-  const formatDate = (d: Date) => d.toISOString().split('T')[0];
-  return { startDate: startDate ? formatDate(startDate) : null, endDate: formatDate(endDate) };
-};
-
-const downloadCSV = (data: Expense[], filename: string = 'expense_report.csv') => {
-  if (data.length === 0) {
-    alert('No data to download.');
-    return;
-  }
-  const headers = ['ID', 'Date', 'Category', 'Shop', 'Description', 'Amount', 'Paid'];
-  const csvRows = data.map((expense, idx) =>
-    `${idx + 1},"${expense.date}","${expense.category}","${(expense.shop || '').replace(/"/g, '""')}","${(expense.description || '').replace(/"/g, '""')}",${expense.amount.toFixed(2)},${expense.paid ? 'YES' : 'NO'}`
-  );
-  const csvString = [headers.join(','), ...csvRows].join('\n');
-  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
-    alert('Your browser does not support downloading files directly.');
-  }
+const categoryIcons: Record<string, string> = {
+  Food: '🍔',
+  Transport: '🚗',
+  Utilities: '💡',
+  Entertainment: '🎬',
+  Other: '📦',
 };
 
 const ExpenseTrackerPage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // New Expense Form state
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [category, setCategory] = useState('');
   const [shop, setShop] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Filter state
   const [dateFilter, setDateFilter] = useState<DateFilter>('');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [shopFilter, setShopFilter] = useState(''); 
 
+  // Modals/Edit state
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [weekEditorOpen, setWeekEditorOpen] = useState<string | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [localExpCopy, setLocalExpCopy] = useState<Expense | null>(null);
   
   const [selectedExpensesToPay, setSelectedExpensesToPay] = useState<string[]>([]);
-
-  const [showWeekTotalFor, setShowWeekTotalFor] = useState<string | null>(null);
   const [showExpenseTotalId, setShowExpenseTotalId] = useState<string | null>(null);
 
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [newSubtaskAmount, setNewSubtaskAmount] = useState<number | ''>('');
+  
+  const currentWeekStart = getWeekStartISO(new Date());
 
+  // --- API Functions ---
+  
   const fetchExpenses = async () => {
     setLoading(true);
     try {
@@ -260,6 +176,17 @@ const ExpenseTrackerPage: React.FC = () => {
     }
   };
 
+  // --- Helper/Logic Functions ---
+
+  const getExpenseTotal = (e: Expense) => {
+    const expenseAmount = typeof e.amount === 'number' && !Number.isNaN(e.amount) ? e.amount : Number(e.amount) || 0;
+    const subtasksTotal = (e.subtasks || []).reduce((ss, st) => {
+      const a = (st as any).amount;
+      return ss + (typeof a === 'number' && !Number.isNaN(a) ? a : Number(a) || 0);
+    }, 0);
+    return expenseAmount + subtasksTotal;
+  };
+
   const toggleSelectExpense = (id: string) => {
     setSelectedExpensesToPay(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -273,60 +200,14 @@ const ExpenseTrackerPage: React.FC = () => {
     setWeekEditorOpen(wk);
   };
 
-  const getExpenseTotal = (e: Expense) => {
-    const expenseAmount = typeof e.amount === 'number' && !Number.isNaN(e.amount) ? e.amount : Number(e.amount) || 0;
-    const subtasksTotal = (e.subtasks || []).reduce((ss, st) => {
-      const a = (st as any).amount;
-      return ss + (typeof a === 'number' && !Number.isNaN(a) ? a : Number(a) || 0);
-    }, 0);
-    return expenseAmount + subtasksTotal;
+  const openExpenseEditor = (exp: Expense) => {
+    setEditingExpense(exp);
+    const expCopy: Expense = JSON.parse(JSON.stringify(exp));
+    expCopy.shop = expCopy.shop || '';
+    expCopy.subtasks = expCopy.subtasks || [];
+    setLocalExpCopy(expCopy);
   };
-
-  const expensesByWeek = useMemo(() => {
-    const map = new Map<string, Expense[]>();
-    for (const e of expenses) {
-      const wk = e.weekStart || getWeekStartISO(new Date(e.date));
-      if (!map.has(wk)) map.set(wk, []);
-      map.get(wk)!.push(e);
-    }
-    const sorted = Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
-    return sorted;
-  }, [expenses]);
-
-  const currentWeekStart = getWeekStartISO(new Date());
-
-  const filteredExpenses = useMemo(() => {
-    if (!dateFilter) {
-      return expenses.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-    let startDate: string | null = null;
-    let endDate: string | null = null;
-
-    if (dateFilter === 'custom') {
-      startDate = customStartDate;
-      endDate = customEndDate;
-    } else if (dateFilter !== 'all') {
-      const d = getFilterDates(dateFilter as DateFilter);
-      startDate = d.startDate;
-      endDate = d.endDate;
-    }
-
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(23, 59, 59, 999);
-
-    return expenses
-      .filter(exp => {
-        const expenseDate = new Date(exp.date);
-        expenseDate.setHours(0, 0, 0, 0);
-        if (!start && !end) return true;
-        const isAfterStart = !start || expenseDate >= start;
-        const isBeforeEnd = !end || expenseDate <= end;
-        return isAfterStart && isBeforeEnd;
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses, dateFilter, customStartDate, customEndDate]);
-
+  
   const addSubtaskToLocal = () => {
     if (!localExpCopy) return;
     const desc = newSubtaskTitle.trim();
@@ -342,28 +223,110 @@ const ExpenseTrackerPage: React.FC = () => {
     }
     
     const today = new Date().toISOString().split('T')[0];
-    const newSub: Subtask = { id: uid(), title: desc, done: false, amount: amt, date: today };
+    const newSub = { id: uid(), title: desc, done: false, amount: amt, date: today };
     setLocalExpCopy({ ...localExpCopy, subtasks: [...(localExpCopy.subtasks || []), newSub] });
 
     setNewSubtaskTitle('');
     setNewSubtaskAmount('');
   };
 
-  const categoryIcons: Record<string, string> = {
-    Food: '🍔',
-    Transport: '🚗',
-    Utilities: '💡',
-    Entertainment: '🎬',
-    Other: '📦',
-  };
+  // --- Filtering Logic (useMemo) ---
 
-  const openExpenseEditor = (exp: Expense) => {
-    setEditingExpense(exp);
-    const expCopy: Expense = JSON.parse(JSON.stringify(exp));
-    expCopy.shop = expCopy.shop || '';
-    expCopy.subtasks = expCopy.subtasks || [];
-    setLocalExpCopy(expCopy);
-  };
+  const dateFilteredExpenses = useMemo(() => {
+    if (dateFilter === '' && shopFilter.trim() === '') {
+      return expenses.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    
+    let startDate: string | null = null;
+    let endDate: string | null = null;
+
+    if (dateFilter === 'custom') {
+      startDate = customStartDate;
+      endDate = customEndDate;
+    } else if (dateFilter !== 'all' && dateFilter !== '') {
+      const d = getFilterDates(dateFilter as DateFilter);
+      startDate = d.startDate;
+      endDate = d.endDate;
+    } else if (dateFilter === 'all') {
+      startDate = null;
+      endDate = null;
+    } else {
+        startDate = null;
+        endDate = null;
+    }
+
+
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
+    return expenses
+      .filter(exp => {
+        const expenseDate = new Date(exp.date);
+        expenseDate.setHours(0, 0, 0, 0);
+        
+        const isAfterStart = !start || expenseDate >= start;
+        const isBeforeEnd = !end || expenseDate <= end;
+        
+        return isAfterStart && isBeforeEnd;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [expenses, dateFilter, customStartDate, customEndDate, shopFilter]);
+
+  const isFilterActive = useMemo(() => {
+    const isDateFilterSet = dateFilter !== '';
+    const isShopFilterSet = shopFilter.trim() !== '';
+    
+    return isDateFilterSet || isShopFilterSet;
+    
+  }, [dateFilter, shopFilter]);
+
+  const finalFilteredExpenses = useMemo(() => {
+    let filtered = dateFilteredExpenses;
+    
+    const lowerCaseShopFilter = shopFilter.toLowerCase().trim();
+    if (lowerCaseShopFilter) {
+        filtered = filtered.filter(exp => {
+            const expShop = exp.shop ? exp.shop.toLowerCase() : '';
+            return expShop.includes(lowerCaseShopFilter);
+        });
+    }
+
+    if (!isFilterActive) {
+        filtered = filtered.filter(exp => !exp.paid);
+    }
+
+    return filtered;
+  }, [dateFilteredExpenses, shopFilter, isFilterActive]);
+  
+  const expensesByWeek = useMemo(() => {
+    const map = new Map<string, Expense[]>();
+    for (const e of finalFilteredExpenses) {
+        const wk = e.weekStart || getWeekStartISO(new Date(e.date));
+        if (!map.has(wk)) map.set(wk, []);
+        map.get(wk)!.push(e);
+    }
+    const sorted = Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+    return sorted;
+  }, [finalFilteredExpenses]);
+
+  const unpaidTotalsByShop = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    finalFilteredExpenses.forEach(exp => {
+      if (!exp.paid) {
+        const shopName = exp.shop && exp.shop.trim() ? exp.shop.trim() : 'Unassigned Shop';
+        const totalAmount = getExpenseTotal(exp);
+        
+        const currentTotal = totals.get(shopName) || 0;
+        totals.set(shopName, currentTotal + totalAmount);
+      }
+    });
+
+    return Array.from(totals.entries()).map(([shop, total]) => ({ shop, total }));
+  }, [finalFilteredExpenses, getExpenseTotal]);
+
+  // --- Render ---
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6 py-12">
@@ -375,140 +338,47 @@ const ExpenseTrackerPage: React.FC = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-              <h2 className="text-2xl font-bold mb-4 text-gray-900">New Expense</h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input value={shop} onChange={(e) => setShop(e.target.value)} placeholder="Shop" className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                  <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                  <input type="number" value={amount as any} onChange={(e) => setAmount(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Amount" className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" min="0.01" step="0.01" />
-                </div>
+            <NewExpenseForm
+              shop={shop} setShop={setShop}
+              description={description} setDescription={setDescription}
+              amount={amount} setAmount={setAmount}
+              category={category} setCategory={setCategory}
+              date={date} setDate={setDate}
+              handleSubmit={handleSubmit}
+            />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600">
-                    <option value="">Choose Category</option>
-                    <option>Food</option>
-                    <option>Transport</option>
-                    <option>Utilities</option>
-                    <option>Entertainment</option>
-                    <option>Other</option>
-                  </select>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                  <button type="submit" className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors">Add Expense</button>
-                </div>
-              </form>
-            </div>
-
-            <div className="space-y-4">
-              {expensesByWeek.map(([wk, wkExpenses]) => {
-                const weekTotal = wkExpenses.reduce((sum, e) => {
-                  return sum + getExpenseTotal(e);
-                }, 0);
-                const unpaidCount = wkExpenses.filter(e => !e.paid).length;
-                const isCurrentWeek = wk === currentWeekStart;
-                const weekLabel = `${wk}${isCurrentWeek ? ' • This week' : ''}`;
-                return (
-                  <div key={wk} className={`bg-white rounded-2xl shadow-lg border p-5 ${isCurrentWeek ? 'border-gray-500 ring-2 ring-gray-300' : 'border-gray-200'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-lg">{weekLabel}</h3>
-                        <div className="text-sm text-gray-700">{wkExpenses.length} items • ₹ {weekTotal.toFixed(2)} • {unpaidCount} unpaid</div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!isCurrentWeek && unpaidCount > 0 && <div className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">Pending</div>}
-                        {unpaidCount === 0 && <div className="px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium">Paid</div>}
-                        <button 
-                            onClick={() => openWeekEditor(wk)} 
-                            className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 text-sm font-medium transition-colors"
-                        >
-                            {isCurrentWeek ? 'Edit Week' : 'View/Edit'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {wkExpenses.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
-                        <div key={exp._id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="text-2xl">{categoryIcons[exp.category]}</div>
-                            <div>
-                              <div className="font-semibold text-gray-900">
-                                {exp.description} 
-                                {exp.shop ? (
-                                    <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded ml-2">
-                                        @{exp.shop}
-                                    </span>
-                                ) : null}
-                              </div>
-                              <div className="text-xs text-gray-600">{exp.date} • {exp.category} {exp.subtasks && exp.subtasks.length > 0 ? `• ${exp.subtasks.filter(s => s.done).length}/${exp.subtasks.length} subtasks` : ''}</div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className={`font-bold ${exp.paid ? 'text-emerald-600' : 'text-rose-600'}`}>
-                              ₹ {getExpenseTotal(exp).toFixed(2)}
-                            </div>
-
-                            <button
-                              onClick={() => setShowExpenseTotalId(exp._id || null)}
-                              className="px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm font-medium transition-colors"
-                            >
-                              Details
-                            </button>
-
-                            {!exp.paid && isCurrentWeek && (
-                              <button onClick={() => openExpenseEditor(exp)} className="px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm font-medium transition-colors">Edit</button>
-                            )}
-                            <button onClick={() => setDeleteConfirm(exp._id || null)} className="text-gray-600 hover:text-rose-600 font-medium transition-colors">Del</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ExpenseList
+              expensesByWeek={expensesByWeek}
+              currentWeekStart={currentWeekStart}
+              isFilterActive={isFilterActive}
+              categoryIcons={categoryIcons}
+              getExpenseTotal={getExpenseTotal}
+              openWeekEditor={openWeekEditor}
+              setShowExpenseTotalId={setShowExpenseTotalId}
+              openExpenseEditor={openExpenseEditor}
+              setDeleteConfirm={setDeleteConfirm}
+            />
           </div>
 
-          <div className="xl:col-span-1 space-y-4">
-            <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-xl">
-              <h3 className="text-lg font-semibold mb-1">Total Unpaid</h3>
-              <p className="text-4xl font-bold mb-1">
-                ₹ {filteredExpenses.reduce((s, e) => s + (e.paid ? 0 : getExpenseTotal(e)), 0).toFixed(2)}
-              </p>
-              <p className="text-sm opacity-90 mb-4">{filteredExpenses.length} items</p>
-              <div className="flex gap-2">
-                <button onClick={() => downloadCSV(filteredExpenses, `expense_report_${dateFilter || 'all'}.csv`)} className="px-4 py-2 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex-1">Export</button>
-                <button onClick={fetchExpenses} className="px-4 py-2 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex-1">Refresh</button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-lg">
-              <h4 className="font-bold mb-3 text-gray-900">Filters</h4>
-              <select value={dateFilter} onChange={(e) => { setDateFilter(e.target.value as DateFilter); if (e.target.value !== 'custom') { setCustomStartDate(''); setCustomEndDate(''); } }} className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mb-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600">
-                <option value="">No Filter</option>
-                <option value="all">All Time</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="last_month">Last Month</option>
-                <option value="last_3_months">Last 3 Months</option>
-                <option value="last_6_months">Last 6 Months</option>
-                <option value="last_9_months">Last 9 Months</option>
-                <option value="last_year">Last 1 Year</option>
-                <option value="custom">Custom Range</option>
-              </select>
-
-              {dateFilter === 'custom' && (
-                <div className="grid grid-cols-1 gap-2">
-                  <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                  <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                </div>
-              )}
-            </div>
-          </div>
+          <SummaryAndFilter
+            unpaidTotalsByShop={unpaidTotalsByShop}
+            finalFilteredExpenses={finalFilteredExpenses}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            customStartDate={customStartDate}
+            setCustomStartDate={setCustomStartDate}
+            customEndDate={customEndDate}
+            setCustomEndDate={setCustomEndDate}
+            shopFilter={shopFilter}
+            setShopFilter={setShopFilter}
+            fetchExpenses={fetchExpenses}
+            isFilterActive={isFilterActive}
+            getExpenseTotal={getExpenseTotal}
+          />
         </div>
       </div>
 
+      {/* --- Delete Confirmation Modal (page.tsx) --- */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setDeleteConfirm(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -522,6 +392,7 @@ const ExpenseTrackerPage: React.FC = () => {
         </div>
       )}
 
+      {/* --- Week Editor Modal (page.tsx) --- */}
       {weekEditorOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setWeekEditorOpen(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -596,6 +467,7 @@ const ExpenseTrackerPage: React.FC = () => {
         </div>
       )}
 
+      {/* --- Expense Editor Modal (page.tsx) --- */}
       {localExpCopy && editingExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => { setEditingExpense(null); setLocalExpCopy(null); }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -695,26 +567,7 @@ const ExpenseTrackerPage: React.FC = () => {
         </div>
       )}
 
-      {showWeekTotalFor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowWeekTotalFor(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">Week total — {showWeekTotalFor}</h3>
-            <p className="text-4xl font-bold text-gray-900">
-              {(() => {
-                const wkArr = expensesByWeek.find(([wk]) => wk === showWeekTotalFor)?.[1] || [];
-                const total = wkArr.reduce((sum, e) => {
-                  return sum + getExpenseTotal(e);
-                }, 0);
-                return `₹ ${total.toFixed(2)}`;
-              })()}
-            </p>
-            <div className="mt-6 flex justify-end">
-              <button onClick={() => setShowWeekTotalFor(null)} className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-900 font-semibold transition-colors">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* --- Expense Details Modal (page.tsx) --- */}
       {showExpenseTotalId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowExpenseTotalId(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>

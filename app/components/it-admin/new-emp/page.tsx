@@ -2,166 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
-import * as Yup from "yup";
 import { ChevronRight, Check, List } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-type DepartmentMap = string[];
-type SubCategoryMap = { [key: string]: DepartmentMap };
-type CategoryMap = { [key: string]: DepartmentMap | SubCategoryMap };
-type Structure = { [team: string]: CategoryMap };
-
-interface IFormValues {
-  empId: string;
-  name: string;
-  fatherName: string;
-  dateOfBirth: string;
-  joiningDate: string;
-  team: keyof Structure | "";
-  category: string;
-  subCategory: string;
-  department: string;
-  photo: File | null;
-  phoneNumber: string;
-  mailId: string;
-  accountNumber: string;
-  ifscCode: string;
-  password?: string;
-  confirmPassword?: string;
-  employmentType: "Fresher" | "Experienced" | "";
-  aadharFile: File | null;
-  panFile: File | null;
-  tenthMarksheet: File | null;
-  twelfthMarksheet: File | null;
-  provisionalCertificate: File | null;
-  experienceCertificate: File | null;
-}
-
-interface BaseFieldProps {
-  label: string;
-  name: keyof Omit<IFormValues, 'aadharNumber' | 'panNumber'>;
-  value: string;
-  error?: string;
-  touched?: boolean;
-  getInputClass: (field: keyof IFormValues) => string;
-}
-
-interface InputFieldProps extends BaseFieldProps {
-  type: string;
-  placeholder?: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-interface SelectFieldProps extends BaseFieldProps {
-  options: string[];
-  disabled?: boolean;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-}
-
-const InputField: React.FC<InputFieldProps> = ({
-  label,
-  name,
-  type,
-  placeholder,
-  value,
-  onChange,
-  error,
-  touched,
-  getInputClass,
-}) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-700 mb-2">
-      {label}
-    </label>
-    <input
-      type={type}
-      name={String(name)}
-      placeholder={placeholder}
-      value={value || ""}
-      onChange={onChange}
-      className={getInputClass(name)}
-    />
-    {touched && error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-  </div>
-);
-
-const SelectField: React.FC<SelectFieldProps> = ({
-  label,
-  name,
-  options,
-  value,
-  onChange,
-  error,
-  touched,
-  getInputClass,
-  disabled,
-}) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-700 mb-2">
-      {label}
-    </label>
-    <select
-      name={String(name)}
-      value={value || ""}
-      onChange={onChange}
-      className={getInputClass(name)}
-      disabled={disabled}
-    >
-      <option value="">Select {label}</option>
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
-    </select>
-    {touched && error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-  </div>
-);
-
-const structure: Structure = {
-  Founders: {
-    Founders: ["Founder", "Co-Founder"],
-  },
-  Manager: {
-    Manager: ["Manager"],
-  },
-  "TL-Reporting Manager": {
-    "TL-Reporting Manager": ["Team Lead", "Reporting Manager"],
-  },
-  HR: {
-    HR: ["HR Executive", "HR Manager"],
-  },
-  Tech: {
-    Developer: {
-      Frontend: ["Junior Frontend Developer", "Senior Frontend Developer"],
-      Backend: ["Junior Backend Developer", "Senior Backend Developer"],
-      "Full Stack": [
-        "Junior Full Stack Developer",
-        "Senior Full Stack Developer",
-      ],
-      "UI/UX Developer": ["UI/UX Developer"],
-    },
-    DevOps: ["Product Manager"],
-    Tester: ["QA Engineer – Manual & Automation"],
-    Designer: ["UI/UX Designer"],
-    "Team Leads": ["Project Manager"],
-  },
-  "IT Admin": {
-    "IT Admin": ["IT Administrator"],
-  },
-  Accounts: {
-    Accountant: ["Accountant", "Senior Accountant"],
-  },
-  "Admin & Operations": {
-    "Admin & Operations": ["Admin & Operations"],
-  },
-  Housekeeping: {
-    Housekeeping: ["Housekeeper", "Senior Housekeeper"],
-  },
-  "TL Accountant": {
-    "TL Accountant": ["TL Accountant"],
-  },
-};
+import { InputField, SelectField } from "./FormFields";
+import { IFormValues, SubCategoryMap, structure } from "./types";
+import { validationSchema } from "./validation";
 
 const AddEmployeePage: React.FC = () => {
   const router = useRouter();
@@ -198,120 +43,6 @@ const AddEmployeePage: React.FC = () => {
       ],
     },
   ];
-
-  const allowedDocTypes = [
-    "application/pdf",
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-  ];
-
-  const validationSchema = Yup.object<IFormValues>().shape({
-    empId: Yup.string()
-      .matches(/^[A-Z0-9]+$/,
-        "Employee ID must contain only uppercase letters and numbers")
-      .nullable(),
-    name: Yup.string()
-      .matches(/^[A-Z][a-zA-Z\s]*$/,
-        "Name must start with a capital letter")
-      .nullable(),
-    fatherName: Yup.string()
-      .matches(/^[A-Z][a-zA-Z\s]*$/,
-        "Father's name must start with a capital letter")
-      .nullable(),
-    dateOfBirth: Yup.string().nullable(),
-    joiningDate: Yup.string().nullable(),
-    team: Yup.string().nullable(),
-    category: Yup.string().nullable(),
-    subCategory: Yup.string().nullable(),
-    department: Yup.string().nullable(),
-
-    phoneNumber: Yup.string()
-      .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
-      .nullable(),
-    mailId: Yup.string().email("Invalid email").nullable(),
-
-    accountNumber: Yup.string()
-      .matches(/^[0-9]{9,18}$/, "Account number must be between 9-18 digits")
-      .nullable(),
-    ifscCode: Yup.string()
-      .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code (e.g., SBIN0001234)")
-      .nullable(),
-
-    password: Yup.string()
-      .min(8, "Password must be at least 8 characters")
-      .required("Password is required"),
-    confirmPassword: Yup.string()
-      .oneOf([Yup.ref("password")], "Passwords must match")
-      .required("Confirm Password is required"),
-
-    employmentType: Yup.mixed<"Fresher" | "Experienced">()
-      .oneOf(["Fresher", "Experienced"])
-      .nullable(),
-
-    photo: Yup.mixed<File>()
-      .nullable()
-      .test("fileFormat", "Only PNG, JPEG, JPG allowed", (value) => {
-        if (!value) return true;
-        return ["image/png", "image/jpeg", "image/jpg"].includes(value.type);
-      }),
-
-    aadharFile: Yup.mixed<File>()
-      .nullable()
-      .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
-        if (!value) return true;
-        return allowedDocTypes.includes(value.type);
-      }),
-
-    panFile: Yup.mixed<File>()
-      .nullable()
-      .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
-        if (!value) return true;
-        return allowedDocTypes.includes(value.type);
-      }),
-
-    tenthMarksheet: Yup.mixed<File>()
-      .nullable()
-      .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
-        if (!value) return true;
-        return allowedDocTypes.includes(value.type);
-      }),
-
-    twelfthMarksheet: Yup.mixed<File>()
-      .nullable()
-      .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
-        if (!value) return true;
-        return allowedDocTypes.includes(value.type);
-      }),
-
-    provisionalCertificate: Yup.mixed<File>()
-      .nullable()
-      .test("provisionalRequired", "Provisional certificate is required for fresher", function (value) {
-        const { employmentType } = this.parent as IFormValues;
-        if (employmentType === "Fresher" && !value) {
-          return this.createError({ message: "Provisional certificate is required for fresher" });
-        }
-        return true;
-      })
-      .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
-        if (!value) return true;
-        return allowedDocTypes.includes(value.type);
-      }),
-
-    experienceCertificate: Yup.mixed<File>()
-      .nullable()
-      .test("experienceRequired", "Experience certificate is required for experienced candidates", function (value) {
-        const { employmentType } = this.parent as IFormValues;
-        if (employmentType === "Experienced" && !value) {
-          return this.createError({ message: "Experience certificate is required for experienced candidates" });
-        }
-        return true;
-      })
-      .test("fileFormat", "Only PDF / PNG / JPG allowed", (value) => {
-        if (!value) return true;
-        return allowedDocTypes.includes(value.type);
-      }),
-  });
 
   const formik = useFormik<IFormValues>({
     initialValues: {
@@ -474,7 +205,7 @@ const AddEmployeePage: React.FC = () => {
       formik.handleSubmit();
     }
   };
-  
+
   const handleViewAll = () => {
     router.push("/components/it-admin");
   };
@@ -697,7 +428,7 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
 
-            <div className="hidden md:block"></div> 
+            <div className="hidden md:block"></div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">

@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
       setMessage(data.message || "Password reset successfully.");
       // Small delay then go back to login
       setTimeout(() => {
-        router.push("/login-signup");
+        router.push("/");
       }, 1500);
     } catch (err) {
       console.error(err);
