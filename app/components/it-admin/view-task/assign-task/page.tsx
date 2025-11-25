@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -249,7 +249,6 @@ const TasksPage: React.FC = () => {
         const select = e.target as HTMLSelectElement;
         finalValue = Array.from(select.selectedOptions, option => option.value);
     } else if (name === "assigneeNames") {
-        // If a single select is used, put the single value into an array
         finalValue = [value];
     }
     
@@ -435,6 +434,9 @@ const TasksPage: React.FC = () => {
       router.push("/");
     }
   };
+  const handleCreateTask = () => {
+    router.push("/components/it-admin/create-task");
+  };
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
@@ -564,6 +566,13 @@ const TasksPage: React.FC = () => {
         </div>
       </div>
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
+      <button
+        onClick={handleCreateTask}
+        className="fixed bottom-6 right-6 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 z-50"
+        title="Create New Task"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 };

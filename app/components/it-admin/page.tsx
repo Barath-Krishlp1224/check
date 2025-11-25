@@ -14,7 +14,7 @@ export default function EmptyPage() {
   const handleLaptopPolicy = () => router.push("/components/it-admin/laptop-policy");
   const handleAssetManagement = () => router.push("/components/it-admin/asset-management");
   const handleBills = () => router.push("/components/it-admin/bills");
-  const handleCreateTask = () => router.push("/components/it-admin/create-task");
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">
@@ -43,7 +43,7 @@ export default function EmptyPage() {
             onClick={handleViewTasks}
             className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-all duration-300 shadow-md hover:scale-[1.02]"
           >
-            🗂️ View My Task
+            🗂️ Create and View My Tasks
           </button>
 
           {/* 🆕 Extra Buttons */}
@@ -68,12 +68,7 @@ export default function EmptyPage() {
             🧾 Bill Payments
           </button>
 
-          <button
-            onClick={handleCreateTask}
-            className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold transition-all duration-300 shadow-md hover:scale-[1.02]"
-          >
-            📝 Create Task
-          </button>
+        
 
         </div>
       </div>
