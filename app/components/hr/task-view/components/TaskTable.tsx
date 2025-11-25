@@ -1,13 +1,22 @@
-// app/team-lead/assign-task/components/TaskTable.tsx
-
 import React from "react";
 import { AlertCircle } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; 
 import TaskRow from "./TaskRow";
+import type { RecursiveSubtaskChangeHandler, RecursiveSubtaskPathHandler, Task, Subtask, Employee } from "./types";
 
-// --- PROP INTERFACES ---
+/**
+ * If you already have Task/Subtask/Employee types elsewhere in your app,
+ * replace the import above with the correct path (e.g. from "../page").
+ *
+ * This file expects the following exported types from ./types:
+ * - Task, Subtask, Employee
+ * - Recursive handler types (used below)
+ *
+ * If you don't want to use a separate types file, you can copy those types
+ * directly into this file (but I kept them in a small `types` module to stay tidy).
+ */
+
 interface TaskTableProps {
-  tasks: Task[]; // This will receive the filtered list of tasks
+  tasks: Task[];
   employees: Employee[];
   editRowId: string | null;
   draftTask: Partial<Task>;
@@ -20,15 +29,15 @@ interface TaskTableProps {
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
-  addSubtask: () => void;
-  removeSubtask: (index: number) => void;
+
+  // recursive handlers
+  handleSubtaskChange: RecursiveSubtaskChangeHandler;
+  addSubtask: RecursiveSubtaskPathHandler;
+  removeSubtask: RecursiveSubtaskPathHandler;
 }
 
-// --- COMPONENT ---
 const TaskTable: React.FC<TaskTableProps> = (props) => {
-  // Now correctly checks the length of the filtered list
-  if (props.tasks.length === 0) {
+  if (!props.tasks || props.tasks.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
         <div className="text-center py-16">
@@ -62,9 +71,7 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
               <th className="px-4 py-4 text-right text-xs font-bold text-white uppercase tracking-wider w-[14%]">Actions</th>
             </tr>
           </thead>
-
           <tbody className="bg-white divide-y divide-slate-100">
-            {/* Iterates over the filtered list */}
             {props.tasks.map((task, idx) => (
               <TaskRow
                 key={task._id}
@@ -82,6 +89,7 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
                 handleUpdate={props.handleUpdate}
                 cancelEdit={props.cancelEdit}
                 handleDraftChange={props.handleDraftChange}
+                // pass recursive handlers through
                 handleSubtaskChange={props.handleSubtaskChange}
                 addSubtask={props.addSubtask}
                 removeSubtask={props.removeSubtask}

@@ -3,6 +3,7 @@ import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, 
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler, SubtaskStatusChangeFunc } from "./types";
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
+
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
@@ -30,6 +31,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
     </span>
   );
 };
+
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
@@ -54,6 +56,7 @@ interface TaskModalProps {
   onTaskStatusChange: (taskId: string, newStatus: string) => void;
   onSubtaskStatusChange: (taskId: string, subtaskId: string, newStatus: string) => void;
 }
+
 const SubtaskViewer: React.FC<{ subtasks: Subtask[], level: number, handleSubtaskStatusChange: SubtaskStatusChangeFunc, onView: (subtask: Subtask) => void }> = ({ subtasks, level, handleSubtaskStatusChange, onView }) => {
     if (!subtasks || subtasks.length === 0) return null;
     return (
@@ -101,49 +104,62 @@ const SubtaskViewer: React.FC<{ subtasks: Subtask[], level: number, handleSubtas
         </ul>
     );
 };
+
 const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
     task, isOpen, onClose, isEditing, draftTask, subtasks, employees, currentProjectPrefix, allTaskStatuses,
     handleEdit, handleDelete, handleUpdate, cancelEdit, handleDraftChange,
     handleSubtaskChange, addSubtask, removeSubtask, onToggleEdit, onToggleExpansion, handleStartSprint, onTaskStatusChange, onSubtaskStatusChange
   } = props;
+
   const [isSubtaskModalOpen, setIsSubtaskModalOpen] = useState(false);
   const [selectedSubtask, setSelectedSubtask] = useState<Subtask | null>(null);
+
   const handleViewSubtask = useCallback((subtask: Subtask) => {
     setSelectedSubtask(subtask);
     setIsSubtaskModalOpen(true);
   }, []);
+
   const handleCloseSubtaskModal = useCallback(() => {
     setIsSubtaskModalOpen(false);
     setSelectedSubtask(null);
   }, []);
+
   const handleMainTaskStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
     if (newStatus && task._id) {
       onTaskStatusChange(task._id, newStatus);
     }
   }, [task._id, onTaskStatusChange]);
+
   const handleSubtaskStatusChange: SubtaskStatusChangeFunc = useCallback((subtaskId, newStatus) => {
     if (task._id && subtaskId) {
       onSubtaskStatusChange(task._id, subtaskId, newStatus);
     }
   }, [task._id, onSubtaskStatusChange]);
+
   if (!isOpen) return null;
+
   const current = isEditing ? draftTask : task;
   const subtasksToDisplay = isEditing ? subtasks : task.subtasks || [];
   const hasSubtasks = subtasksToDisplay.length > 0;
+
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
   const renderField = (label: string, name: keyof Task, type: 'text' | 'date' | 'select' | 'number', options?: string[]) => {
     if (name === 'subtasks') {
         return null;
     }
+
     const displayValue = task[name];
     const displayString = (name === 'assigneeNames') ? (task.assigneeNames || []).join(', ') : 
     (typeof displayValue === 'string' || typeof displayValue === 'number' || displayValue === undefined)
         ? displayValue
         : <span className="text-gray-500">N/A</span>;
+
     const isSelect = type === 'select' || (name === 'status' && !isEditing);
     const finalOptions = name === 'status' ? allTaskStatuses : options;
+
     return (
         <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
@@ -151,12 +167,11 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             name === 'assigneeNames' ? (
                 <select
                 name={name}
-                value={current.assigneeNames || []}
+                value={(current.assigneeNames && current.assigneeNames.length > 0) ? current.assigneeNames[0] : ""}
                 onChange={handleDraftChange}
-                multiple
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900 h-24"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900"
                 >
-                <option value="">Select Assignee(s)</option>
+                <option value="">Select Assignee</option>
                 {employees.map(employee => (
                     <option key={employee._id} value={employee.name}>{employee.name}</option>
                 ))}
@@ -202,6 +217,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         </div>
     );
   };
+
   return (
     <div
         className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60 flex items-center justify-center p-4 sm:p-6"
@@ -342,4 +358,5 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     </div>
   );
 };
+
 export default TaskModal;

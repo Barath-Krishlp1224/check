@@ -1,143 +1,222 @@
+// ./components/TaskBoardView.tsx
 import React, { useMemo } from 'react';
-import { Task } from '../page';
+import { Task } from './types'; 
+// Import only the icons needed for the summary table
+import { TrendingUp, User, AlertCircle, Clock, CheckCircle2, Pause, Zap } from 'lucide-react';
 
-import {
-    DragDropContext,
-    Droppable,
-    Draggable,
-    DropResult,
-} from '@hello-pangea/dnd';
-
+// The props are simplified as DND logic is removed, but kept to match the TasksPage.tsx caller signature.
 interface TaskBoardViewProps {
     tasks: Task[];
     openTaskModal: (task: Task) => void;
     onTaskStatusChange: (taskId: string, newStatus: string) => void;
 }
 
-const statusColumns = [
-    { title: "To Do (Backlog)", status: "Backlog" },
-    { title: "In Progress (Sprint)", status: "In Progress" },
-    { title: "Paused", status: "Paused" },
-    { title: "Dev Review", status: "Dev Review" },
-    { title: "Deployed in QA", status: "Deployed in QA" },
-    { title: "Test In Progress", status: "Test In Progress" },
-    { title: "QA Sign Off", status: "QA Sign Off" },
-    { title: "Deployment Stage", status: "Deployment Stage" },
-    { title: "Pilot Test", status: "Pilot Test" },
-    { title: "Done", status: "Completed" },
-];
+interface EmployeeSummary {
+  name: string;
+  backlog: number;
+  inProgress: number;
+  completed: number;
+  paused: number;
+  totalTasks: number;
+  avgTaskCompletion: number;
+  punctualityScore: number; 
+  finalHikePercentage: string;
+}
 
-const getProgressBarColor = (completion: number) => {
-    if (completion === 100) return 'bg-green-500';
-    if (completion >= 70) return 'bg-blue-500';
-    if (completion >= 30) return 'bg-yellow-500';
-    return 'bg-red-500';
+/**
+ * Mocks punctuality/attendance data (50% of the Hike calculation).
+ * @param employeeName The name of the employee.
+ * @returns A mock attendance score (85% to 100%)
+ */
+const getMockPunctuality = (employeeName: string): number => {
+    // Simple mock: give 'Unassigned' 0, others random 85-100
+    if (employeeName === 'Unassigned') return 0;
+    // Use employee name length and character code for a deterministic but variable mock score
+    const seed = employeeName.length % 10;
+    return Math.min(85 + (seed * 1.5) + (employeeName.charCodeAt(0) % 5), 100);
 };
 
-const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task) => void }> = ({ task, index, openTaskModal }) => (
-    <Draggable draggableId={task._id} index={index}>
-        {(provided, snapshot) => (
-            <div
-                ref={provided.innerRef}
-                {...provided.draggableProps}
-                {...provided.dragHandleProps}
-                className={`bg-slate-800 p-4 rounded-xl border border-slate-700 cursor-pointer transition-all duration-200 shadow-lg 
-                    ${snapshot.isDragging ? 'bg-slate-700 border-indigo-500 shadow-2xl scale-[1.02]' : 'hover:bg-slate-750 hover:border-slate-600 hover:shadow-xl'}`}
-                onClick={() => openTaskModal(task)}
-            >
-                <div className="flex items-start justify-between mb-2">
-                    <p className="text-sm font-semibold text-white">{task.project}</p>
-                </div>
-                <p className="text-xs text-slate-400 mb-2">{task.projectId}</p>
-                <div className="flex items-center justify-between mt-3">
-                    <p className="text-xs text-slate-300">
-                        <span className="text-slate-500">Assignee:</span> {task.assigneeName}
-                    </p>
-                    <div className="bg-slate-700 text-slate-200 text-xs px-3 py-1 rounded-full font-medium">
-                        {task.completion}%
-                    </div>
-                </div>
-                <div className="mt-3 bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                        className={`${getProgressBarColor(task.completion)} h-full rounded-full transition-all duration-300`}
-                        style={{ width: `${task.completion}%` }}
-                    />
-                </div>
-            </div>
-        )}
-    </Draggable>
-);
-
-const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onTaskStatusChange }) => {
+/**
+ * Calculates the final hike percentage based on task completion and punctuality.
+ * Weighting: 50% Task Completion, 50% Punctuality.
+ */
+const calculateFinalHike = (avgTaskCompletion: number, punctualityScore: number): number => {
+    const taskWeight = 0.5;
+    const punctualityWeight = 0.5;
     
-    const tasksByStatus = useMemo(() => {
-        return tasks.reduce((acc, task) => {
-            const status = task.status || 'Backlog'; 
-            if (!acc[status]) {
-                acc[status] = [];
+    // Formula: (Task Score * 0.5) + (Punctuality Score * 0.5)
+    return (avgTaskCompletion * taskWeight) + (punctualityScore * punctualityWeight);
+};
+
+
+// The main component is now a static summary table.
+const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks }) => {
+
+    const employeeSummaries: EmployeeSummary[] = useMemo(() => {
+        
+        // 1. Collect all unique assignees and initialize map
+        const uniqueAssignees = new Set<string>();
+        tasks.forEach(task => {
+            task.assigneeNames?.forEach(name => uniqueAssignees.add(name.trim()));
+            if (!task.assigneeNames || task.assigneeNames.length === 0) {
+                uniqueAssignees.add('Unassigned');
             }
-            acc[status].push(task);
-            return acc;
-        }, {} as { [key: string]: Task[] });
+        });
+
+        const employeeMap = new Map<string, EmployeeSummary>();
+        uniqueAssignees.forEach(name => {
+            const punctuality = getMockPunctuality(name);
+            employeeMap.set(name, {
+                name: name,
+                backlog: 0,
+                inProgress: 0,
+                completed: 0,
+                paused: 0,
+                totalTasks: 0,
+                avgTaskCompletion: 0,
+                punctualityScore: punctuality,
+                finalHikePercentage: "0.00%",
+            });
+        });
+
+
+        // 2. Process tasks and aggregate counts/completion sums
+        const employeeTaskCompletionSums = new Map<string, { sum: number, count: number }>();
+
+        tasks.forEach(task => {
+            const assignees = task.assigneeNames && task.assigneeNames.length > 0 ? task.assigneeNames : ['Unassigned'];
+
+            assignees.forEach(assigneeName => {
+                const name = assigneeName.trim() || 'Unassigned';
+                if (!employeeMap.has(name)) return;
+                
+                const summary = employeeMap.get(name)!;
+
+                // Update task status counts
+                summary.totalTasks++;
+                switch (task.status) {
+                    case 'Backlog': summary.backlog++; break;
+                    case 'In Progress': summary.inProgress++; break;
+                    case 'Completed': summary.completed++; break;
+                    case 'Paused':
+                    case 'On Hold': summary.paused++; break;
+                    default: summary.inProgress++; break;
+                }
+                
+                // Track completion sum for average calculation
+                const current = employeeTaskCompletionSums.get(name) || { sum: 0, count: 0 };
+                current.sum += task.completion || 0;
+                current.count++;
+                employeeTaskCompletionSums.set(name, current);
+            });
+        });
+
+        // 3. Calculate Final Averages and Hike Percentage
+        const summariesArray = Array.from(employeeMap.values()).map(summary => {
+            const completionData = employeeTaskCompletionSums.get(summary.name);
+            
+            const avgCompletion = completionData && completionData.count > 0 
+                ? completionData.sum / completionData.count 
+                : 0;
+            
+            // Calculate the Final Hike Score
+            const hikeScore = calculateFinalHike(avgCompletion, summary.punctualityScore);
+
+            return {
+                ...summary,
+                avgTaskCompletion: avgCompletion,
+                finalHikePercentage: `${hikeScore.toFixed(2)}%`,
+            };
+        }).filter(s => s.totalTasks > 0 || s.name === 'Unassigned'); // Only display employees with tasks
+
+        // Sort by Final Hike Percentage (descending)
+        return summariesArray.sort((a, b) => parseFloat(b.finalHikePercentage) - parseFloat(a.finalHikePercentage));
+
     }, [tasks]);
 
-    const onDragEnd = (result: DropResult) => {
-        const { destination, source, draggableId } = result;
-
-        if (!destination) return;
-
-        if (destination.droppableId === source.droppableId && destination.index === source.index) {
-            return;
-        }
-        
-        if (destination.droppableId !== source.droppableId) {
-            const newStatus = destination.droppableId;
-            const taskId = draggableId;
-            onTaskStatusChange(taskId, newStatus);
-        }
-    };
+    if (employeeSummaries.length === 0) {
+        return (
+            <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8 text-center">
+                <AlertCircle className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                <h3 className="text-xl font-semibold text-slate-700">No Task Assignments Found</h3>
+                <p className="text-slate-500">No tasks are currently assigned to track performance.</p>
+            </div>
+        );
+    }
 
     return (
-        <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex space-x-5 overflow-x-auto pb-6 px-2">
-                {statusColumns.map((column) => (
-                    <Droppable droppableId={column.status} key={column.status}>
-                        {(provided, snapshot) => (
-                            <div 
-                                ref={provided.innerRef}
-                                {...provided.droppableProps}
-                                className="flex-shrink-0 w-80"
-                            >
-                                <div className="bg-slate-800 text-white p-4 rounded-t-2xl border-b-4 border-slate-700">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="font-semibold text-base">{column.title}</h3>
-                                        <span className="bg-slate-700 px-3 py-1 rounded-full text-sm font-medium">
-                                            {tasksByStatus[column.status]?.length || 0}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div 
-                                    className={`space-y-3 p-4 min-h-[500px] rounded-b-2xl border-2 transition-colors duration-200 
-                                        ${snapshot.isDraggingOver ? 'bg-slate-700/50 border-indigo-500' : 'bg-slate-900 border-slate-800'}`}
-                                >
-                                    {(tasksByStatus[column.status] || []).map((task, index) => (
-                                        <TaskCard key={task._id} task={task} index={index} openTaskModal={openTaskModal} />
-                                    ))}
-                                    {provided.placeholder}
-                                    
-                                    {(!tasksByStatus[column.status] || tasksByStatus[column.status].length === 0) && (
-                                        <div className="text-center py-8 text-slate-600 text-sm">
-                                            No tasks
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </Droppable>
-                ))}
+        <div className="bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-5 bg-gradient-to-r from-indigo-700 to-indigo-600 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <User className="w-6 h-6 text-white" />
+                    <h2 className="text-xl font-bold text-white">Employee Performance & Hike Projection</h2>
+                </div>
+                <div className="text-sm font-medium text-indigo-100">
+                    * Final Hike calculated as: (50% Avg Task Completion) + (50% Punctuality Mock Score)
+                </div>
             </div>
-        </DragDropContext>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                    <thead>
+                        <tr className="bg-slate-50">
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider w-[15%]">Employee</th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-[10%]">
+                                <AlertCircle className="w-4 h-4 inline-block mr-1 text-red-500" />
+                                Backlog
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-[10%]">
+                                <Clock className="w-4 h-4 inline-block mr-1 text-blue-500" />
+                                In Progress
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-[10%]">
+                                <CheckCircle2 className="w-4 h-4 inline-block mr-1 text-emerald-500" />
+                                Completed
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-[10%]">
+                                <Pause className="w-4 h-4 inline-block mr-1 text-amber-500" />
+                                Paused
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-[15%]">
+                                Avg Task %
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-[15%]">
+                                <Zap className="w-4 h-4 inline-block mr-1 text-purple-500" />
+                                Punctuality %
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-white bg-green-600 uppercase tracking-wider w-[15%]">
+                                <TrendingUp className="w-4 h-4 inline-block mr-1" />
+                                Final Hike %
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-100">
+                        {employeeSummaries.map((summary) => (
+                            <tr key={summary.name} className="hover:bg-indigo-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <span className="flex items-center gap-2">
+                                        <User className="w-4 h-4 text-slate-500" />
+                                        {summary.name}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-semibold text-red-700">{summary.backlog}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-semibold text-blue-700">{summary.inProgress}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-semibold text-emerald-700">{summary.completed}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-semibold text-amber-700">{summary.paused}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-lg font-semibold text-indigo-600">
+                                    {summary.avgTaskCompletion.toFixed(1)}%
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-lg font-semibold text-purple-600">
+                                    {summary.punctualityScore.toFixed(1)}%
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center text-lg font-extrabold text-green-700 bg-green-50">
+                                    {summary.finalHikePercentage}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
 };
 
