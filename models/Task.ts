@@ -13,6 +13,8 @@ const BaseSubtaskSchema = new Schema({
   endDate: { type: String },
   timeSpent: { type: String },
   assigneeName: { type: String },
+  // ✨ ADDED DATE FIELD
+  date: { type: String }, 
 }, { _id: false });
 
 BaseSubtaskSchema.add({

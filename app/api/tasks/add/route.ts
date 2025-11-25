@@ -16,6 +16,8 @@ interface Subtask {
   endDate?: string;
   timeSpent?: string;
   assigneeName?: string;
+  // ✨ ADDED DATE FIELD
+  date?: string;
   subtasks?: Subtask[];
 }
 
@@ -44,7 +46,7 @@ const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   hr: process.env.SLACK_WEBHOOK_URL_HR ?? process.env.SLACK_WEBHOOK_URL,
   founders: process.env.SLACK_WEBHOOK_URL_FOUNDERS ?? process.env.SLACK_WEBHOOK_URL,
   "tl-reporting manager": process.env.SLACK_WEBHOOK_URL_TL ?? process.env.SLACK_WEBHOOK_URL,
-  "tl accountant": process.env.SLACK_WEBHOOK_URL_TLACC ?? process.env.SLACK_WEBHOOK_URL_ACC, // NEW
+  "tl accountant": process.env.SLFLACK_WEBHOOK_URL_TLACC ?? process.env.SLACK_WEBHOOK_URL_ACC, // NEW
 };
 
 const normalizeDeptKey = (d?: string) => (d ? d.toString().trim().toLowerCase() : "");
