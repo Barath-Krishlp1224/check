@@ -1,3 +1,4 @@
+// ./components/TaskRow.tsx
 import React from "react";
 import { 
   ChevronRight, Edit2, Trash2, Save, X, CheckCircle2, 
@@ -292,6 +293,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Type</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Title</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Assignee</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Date</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Progress</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Remarks</th>
@@ -309,6 +311,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{subtask.title}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{subtask.assigneeName || <span className="text-gray-500">Unassigned</span>}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{subtask.date || <span className="text-gray-500">N/A</span>}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden max-w-[80px]">

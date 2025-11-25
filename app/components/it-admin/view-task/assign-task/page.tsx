@@ -52,6 +52,7 @@ const TasksPage: React.FC = () => {
       subtasks: [],
       isEditing: true,
       isExpanded: true,
+      date: new Date().toISOString().split('T')[0], // ✨ Added initialization for date field
   });
   const updateSubtaskState = (
     currentSubs: Subtask[],

@@ -91,7 +91,7 @@ const SubtaskViewer: React.FC<{ subtasks: Subtask[], level: number, handleSubtas
                         </div>
                     </div>
                     <div className="text-xs text-slate-500 mt-1 ml-2">
-                        Assignee: {sub.assigneeName || 'Unassigned'} | Remarks: {sub.remarks || '-'}
+                        Assignee: {sub.assigneeName || 'Unassigned'} | Date: {sub.date || 'N/A'} | Remarks: {sub.remarks || '-'}
                     </div>
                     {sub.subtasks && sub.subtasks.length > 0 && (
                         <SubtaskViewer subtasks={sub.subtasks} level={level + 1} handleSubtaskStatusChange={handleSubtaskStatusChange} onView={onView} />

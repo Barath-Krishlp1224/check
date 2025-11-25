@@ -52,6 +52,7 @@ const TasksPage: React.FC = () => {
       subtasks: [],
       isEditing: true,
       isExpanded: true,
+      date: new Date().toISOString().split('T')[0],
   });
   const updateSubtaskState = (
     currentSubs: Subtask[],
@@ -249,7 +250,6 @@ const TasksPage: React.FC = () => {
         const select = e.target as HTMLSelectElement;
         finalValue = Array.from(select.selectedOptions, option => option.value);
     } else if (name === "assigneeNames") {
-        // If a single select is used, put the single value into an array
         finalValue = [value];
     }
     

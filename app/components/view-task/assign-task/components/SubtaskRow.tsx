@@ -59,6 +59,7 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
   const isExpanded = subtask.isExpanded ?? false;
   const hasNested = !!(subtask.subtasks && subtask.subtasks.length > 0);
   const indentStyle = { paddingLeft: `${level * 20 + 16}px` };
+  
   const StatusSelect = (
     <select
       value={subtask.status}
@@ -73,6 +74,7 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
       ))}
     </select>
   );
+  
   const AssigneeSelect = (
     <select
       value={subtask.assigneeName || ""}
@@ -90,6 +92,17 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
       ))}
     </select>
   );
+  
+  const DateInput = (
+    <input
+        type="date"
+        value={subtask.date || ""}
+        onChange={(e) => onSubtaskChange(path, "date", e.target.value)}
+        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+        disabled={!isEditing}
+    />
+  );
+  
   const TextInput = (field: keyof Subtask, placeholder: string) => (
     <input
       value={String(subtask[field] || "")}
@@ -99,6 +112,7 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
       disabled={!isEditing}
     />
   );
+  
   const ProgressInput = (
     <input
       type="number"
@@ -111,9 +125,11 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
       disabled={!isEditing}
     />
   );
+  
   const DisplayText = (field: keyof Subtask) => (
     <span className="text-gray-700 block px-3 py-2">{String(subtask[field] ?? "-")}</span>
   );
+  
   return (
     <>
       <tr className={`bg-white hover:bg-slate-50 transition-colors ${level > 0 ? "border-l-4 border-l-purple-200" : ""}`}>
@@ -131,6 +147,10 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         </td>
         <td className="px-4 py-3">{isEditing ? TextInput("title", "Subtask Title") : DisplayText("title")}</td>
         <td className="px-4 py-3">{isEditing ? AssigneeSelect : DisplayText("assigneeName")}</td>
+        
+        {/* ✨ ADDED DATE COLUMN */}
+        <td className="px-4 py-3">{isEditing ? DateInput : DisplayText("date")}</td> 
+        
         <td className="px-4 py-3">{isEditing ? StatusSelect : getStatusBadge(subtask.status)}</td>
         <td className="px-4 py-3 text-center">{isEditing ? ProgressInput : <span className="text-gray-700 block px-3 py-2">{subtask.completion ?? 0}%</span>}</td>
         <td className="px-4 py-3">{isEditing ? TextInput("remarks", "Add remarks") : DisplayText("remarks")}</td>

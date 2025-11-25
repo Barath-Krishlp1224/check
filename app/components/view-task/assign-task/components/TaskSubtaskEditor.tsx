@@ -37,18 +37,19 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
         <thead className="bg-gradient-to-r from-slate-700 to-slate-600">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">ID</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-3/12">Title</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-2/12">Assignee</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-2/12">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-2/12">Title</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Assignee</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Date</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Status</th>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Progress</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-2/12">Remarks</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-3/12">Remarks</th>
             <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase w-2/12">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {subtasks.length === 0 ? (
                 <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                         No subtasks added yet.
                     </td>
                 </tr>
