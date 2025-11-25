@@ -21,7 +21,6 @@ interface Employee {
   canonicalTeam?: string;
 }
 
-// 1. UPDATED: Added "TL Accountant" to DEPARTMENT_OPTIONS
 const DEPARTMENT_OPTIONS = [
   "Tech",
   "Accounts",
@@ -34,7 +33,6 @@ const DEPARTMENT_OPTIONS = [
   "TL Accountant",
 ] as const;
 
-// 2. UPDATED: Added aliases for "TL Accountant"
 const departmentAliases: Record<string, string[]> = {
   Tech: ["tech", "development", "engineering", "dev", "frontend", "backend"],
   Accounts: ["accounts", "finance", "fin"],
@@ -126,26 +124,48 @@ const EmployeesPage: React.FC = () => {
   const filteredAssignees = useMemo(() => {
     const dept = formData.department?.trim();
     if (!dept || employees.length === 0) return [];
+    
+    const selectedDeptLower = dept.toLowerCase();
+    const canonicalSelected = normalizeToCanonicalTeam(dept);
+    const canonicalSelectedLower = canonicalSelected ? canonicalSelected.toLowerCase() : '';
 
-    const canonicalSelected = DEPARTMENT_OPTIONS.find(
-      (d) => d.toLowerCase() === dept.toLowerCase()
-    ) as string | undefined;
+    let matchedEmployees: Employee[] = [];
 
     if (canonicalSelected) {
-      const byCanonical = employees.filter(
-        (e) => (e.canonicalTeam ?? "").toLowerCase() === canonicalSelected.toLowerCase()
+      // 1. Filter employees based on the primary canonical team match
+      matchedEmployees = employees.filter(
+        (e) => (e.canonicalTeam ?? "").toLowerCase() === canonicalSelectedLower
       );
-      if (byCanonical.length > 0) return byCanonical;
-
-      return employees.filter((e) => {
-        const combined = `${e.team ?? ""} ${e.department ?? ""} ${e.category ?? ""}`.toLowerCase();
-        return combined.includes(canonicalSelected.toLowerCase());
-      });
+      
+      // 2. SPECIAL CASE: If 'Accounts' is selected, also include 'TL Accountant' staff
+      if (canonicalSelectedLower === 'accounts') {
+        const tlAccountantEmployees = employees.filter(
+            (e) => (e.canonicalTeam ?? "").toLowerCase() === 'tl accountant'
+        );
+        // Combine the two lists, ensuring uniqueness if necessary (though canonicalTeam should prevent duplicates)
+        const combined = [...matchedEmployees, ...tlAccountantEmployees];
+        // Use a Set to ensure unique employees in case of edge cases, then map back to array
+        const uniqueEmployees = Array.from(new Set(combined.map(e => e._id)))
+            .map(id => combined.find(e => e._id === id))
+            .filter((e): e is Employee => e !== undefined);
+            
+        matchedEmployees = uniqueEmployees;
+      }
+      
+      if (matchedEmployees.length > 0) return matchedEmployees;
     }
-
+    
+    // Fallback: Filter by checking if any team/department field contains the selected value
     return employees.filter((e) => {
-      const combined = `${e.team ?? ""} ${e.department ?? ""} ${e.category ?? ""}`.toLowerCase();
-      return combined.includes(dept.toLowerCase());
+      const teamLower = (e.team ?? "").toLowerCase();
+      const departmentLower = (e.department ?? "").toLowerCase();
+      const categoryLower = (e.category ?? "").toLowerCase();
+      
+      return (
+        teamLower.includes(selectedDeptLower) ||
+        departmentLower.includes(selectedDeptLower) ||
+        categoryLower.includes(selectedDeptLower)
+      );
     });
   }, [formData.department, employees]);
 
@@ -158,10 +178,19 @@ const EmployeesPage: React.FC = () => {
     }
     
     const canonicalSelected = normalizeToCanonicalTeam(formData.department) ?? "";
+    const canonicalSelectedLower = canonicalSelected.toLowerCase();
+
+    // Determine the set of canonical teams considered valid for the current department selection
+    const validCanonicalTeams = new Set([canonicalSelectedLower]);
+    if (canonicalSelectedLower === 'accounts') {
+        validCanonicalTeams.add('tl accountant');
+    }
+
 
     const currentAssigneesValid = formData.assigneeNames.every(name => {
         const selected = employees.find((e) => e.name === name);
-        return selected && (selected.canonicalTeam ?? "").toLowerCase() === canonicalSelected.toLowerCase();
+        // Validate if the current selected assignee belongs to one of the valid canonical teams
+        return selected && validCanonicalTeams.has((selected.canonicalTeam ?? "").toLowerCase());
     });
 
     if (!currentAssigneesValid) {
@@ -221,12 +250,11 @@ const EmployeesPage: React.FC = () => {
     try {
       const payload = {
         ...formData,
-        assigneeName: formData.assigneeNames.join(', '), // Ensure backend accepts single string or adapt logic if backend expects array
-        assigneeNames: formData.assigneeNames, // Include the array for dedicated handling if needed
+        assigneeName: formData.assigneeNames.join(', '), 
+        assigneeNames: formData.assigneeNames, 
         completion: formData.completion === "" ? undefined : Number(formData.completion),
       };
       
-      // Clean up payload slightly for submission, removing the redundant single assigneeName field if the backend expects the array
       const { assigneeName, ...finalPayload } = payload;
 
 
@@ -404,7 +432,6 @@ const EmployeesPage: React.FC = () => {
                             Choose a department first
                         </div>
                     ) : (
-                      // REPLACED: Multi-select with Checkbox list
                       <div className={`p-4 border rounded-lg bg-white overflow-y-auto max-h-48 shadow-sm ${assigneeDisabled ? 'opacity-60 cursor-not-allowed border-slate-200' : 'border-slate-300'}`}>
                         {filteredAssignees.length === 0 ? (
                             <p className="text-sm text-slate-500">No assignees found for {formData.department}</p>
