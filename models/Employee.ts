@@ -1,4 +1,3 @@
-// models/Employee.ts
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
@@ -128,9 +127,10 @@ const EmployeeSchema = new Schema<IEmployee>(
   { timestamps: true }
 );
 
-// Avoid model overwrite in dev/hot-reload
+delete (mongoose.models as any).Employee;
+
 const Employee: Model<IEmployee> =
-  (mongoose.models && (mongoose.models as any).Employee) ||
+  mongoose.models.Employee ||
   mongoose.model<IEmployee>("Employee", EmployeeSchema);
 
 export default Employee;
