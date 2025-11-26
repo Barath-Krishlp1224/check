@@ -113,12 +113,13 @@ const TasksPage: React.FC = () => {
 
     if (value.includes("|")) {
       const parts = value.split("|");
-      primaryFilterValue = parts[0];
-      fromDateString = parts[1];
-      toDateString = parts[2];
+      primaryFilterValue = parts[0].trim().toLowerCase();
+      fromDateString = parts[1].trim();
+      toDateString = parts[2].trim();
       value = primaryFilterValue;
     }
-
+    
+    // Check if ALL filters (type and values) are empty
     if (filter === "all" && !primaryFilterValue && !fromDateString && !toDateString) {
       return tasks;
     }
@@ -128,15 +129,14 @@ const TasksPage: React.FC = () => {
 
       switch (filter) {
         case "project":
+          // If project filter is set, task must match the primary value
           isPrimaryMatch = primaryFilterValue === "" || task.project.toLowerCase() === primaryFilterValue;
           break;
 
         case "assignee":
-          const assigneeFilterNames = primaryFilterValue.split('#').filter(name => name.trim() !== '');
+          const assigneeFilterNames = primaryFilterValue.split('#').map(name => name.trim()).filter(name => name !== '');
           
-          if (assigneeFilterNames.length === 0) {
-              isPrimaryMatch = true;
-          } else if (assigneeFilterNames.includes("all")) {
+          if (assigneeFilterNames.length === 0 || assigneeFilterNames.includes("all")) {
               isPrimaryMatch = true;
           } else {
               isPrimaryMatch = task.assigneeNames.some(taskAssignee => 
@@ -150,6 +150,7 @@ const TasksPage: React.FC = () => {
           break;
 
         case "date":
+          // The "date" case handles single date values only
           return (
             task.startDate === downloadFilterValue ||
             task.dueDate === downloadFilterValue ||
@@ -157,6 +158,7 @@ const TasksPage: React.FC = () => {
           );
 
         case "month":
+          // The "month" case handles single month prefixes only
           return (
             task.startDate.startsWith(downloadFilterValue) ||
             task.dueDate.startsWith(downloadFilterValue) ||
@@ -175,6 +177,7 @@ const TasksPage: React.FC = () => {
         return false;
       }
 
+      // --- Date Range Filter (only applies if fromDateString or toDateString are present) ---
       if (!fromDateString && !toDateString) {
         return true;
       }
@@ -195,6 +198,7 @@ const TasksPage: React.FC = () => {
         }
 
         if (toDate) {
+          // Adjust toDate to include the entire end day
           const endOfDayToDate = new Date(toDateString as string);
           endOfDayToDate.setDate(endOfDayToDate.getDate() + 1);
           endOfDayToDate.setHours(0, 0, 0, 0);
@@ -423,7 +427,6 @@ const TasksPage: React.FC = () => {
 
 
   const handleExcelDownload = () => {
-    // ... (Excel Download Logic, remains unchanged)
     if (typeof window === "undefined" || !(window as any).XLSX) {
       alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
       return;
@@ -442,9 +445,9 @@ const TasksPage: React.FC = () => {
             return task.project === value;
 
           case "assignee":
-            const assigneeNamesFilter = value.toLowerCase().split('#');
+            const assigneeNamesFilter = value.toLowerCase().split('#').map(name => name.trim()).filter(name => name !== '');
 
-            if (value.toLowerCase() === "all" || assigneeNamesFilter.length === 0) return true;
+            if (assigneeNamesFilter.length === 0 || value.toLowerCase() === "all") return true;
             
             return task.assigneeNames.some(taskAssignee => 
                 assigneeNamesFilter.includes(taskAssignee.toLowerCase())
@@ -654,7 +657,7 @@ const TasksPage: React.FC = () => {
               subtasks={subtasks}
               employees={employees}
               currentProjectPrefix={currentProjectPrefix}
-              allTaskStatuses={allTaskStatuses} // Pass task statuses
+              allTaskStatuses={allTaskStatuses}
               handleEdit={handleEdit}
               handleDelete={handleDelete}
               handleUpdate={handleUpdate}
@@ -665,13 +668,11 @@ const TasksPage: React.FC = () => {
               removeSubtask={removeSubtask} 
               handleStartSprint={handleStartSprint}
               
-              // FIX 1: Provide the missing UI handlers (SubtaskPathHandler type)
               onToggleEdit={onToggleEdit}
               onToggleExpansion={onToggleExpansion}
 
-              // FIX 2: Provide the missing status handlers (Matching TaskModalProps)
-              onTaskStatusChange={onTaskStatusChange} // Passes the ASYNC version
-              onSubtaskStatusChange={onSubtaskStatusChange} // Passes the new local state function
+              onTaskStatusChange={onTaskStatusChange}
+              onSubtaskStatusChange={onSubtaskStatusChange}
             />
           )}
         </div>
