@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Edit2,
@@ -19,10 +19,12 @@ import {
   IdCard,
   FileText,
   XCircle,
-  List,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+// --- Interfaces for Employee Data ---
 interface IEmployee {
   _id: string;
   empId: string;
@@ -55,44 +57,99 @@ interface DocPreviewState {
   url: string;
 }
 
-const teams = ["Tech", "Accounts", "HR", "Admin & Operations"];
+interface Structure {
+    [team: string]: {
+        [category: string]: string[] | { [subCategory: string]: string[] };
+    };
+}
 
-const techCategories = [
-  {
-    name: "Developer",
-    children: ["Frontend", "Backend", "Full Stack"],
+// --- Interfaces for Stats Data ---
+interface EmployeeStats {
+  totalEmployees: number;
+  managerTeamCount: number;
+  tlReportingManagerTeamCount: number;
+  itAdminTeamCount: number;
+  techTeamCount: number;
+  accountsTeamCount: number;
+  hrTeamCount: number;
+  adminOpsTeamCount: number;
+  housekeepingTeamCount: number; 
+}
+
+interface StatCard {
+    label: string;
+    value: number;
+    icon: string;
+    sortKey: string;
+    teamKey: string;
+}
+
+// --- Team Structure Data ---
+const structure: Structure = {
+  Manager: {
+    Manager: ["Manager"],
   },
-  { name: "IT Admin" },
-  { name: "DevOps" },
-  { name: "Tester" },
-  { name: "Designer" },
-  { name: "Team Leads" },
-];
+  "TL-Reporting Manager": {
+    "TL-Reporting Manager": ["Team Lead", "Reporting Manager"],
+  },
+  HR: {
+    HR: ["HR Executive", "HR Manager"],
+  },
+  Tech: {
+    Developer: {
+      Frontend: ["Junior Frontend Developer", "Senior Frontend Developer"],
+      Backend: ["Junior Backend Developer", "Senior Backend Developer"],
+      "Full Stack": [
+        "Junior Full Stack Developer",
+        "Senior Full Stack Developer",
+      ],
+      "UI/UX Developer": ["UI/UX Developer"],
+    },
+    DevOps: ["Product Manager"],
+    Tester: ["QA Engineer – Manual & Automation"],
+    Designer: ["UI/UX Designer"],
+    "Team Leads": ["Project Manager"],
+  },
+  "IT Admin": {
+    "IT Admin": ["IT Administrator"],
+  },
+  Accounts: {
+    Accountant: ["Accountant", "Senior Accountant"],
+  },
+  "Admin & Operations": {
+    "Admin & Operations": ["Admin & Operations"],
+  },
+  Housekeeping: {
+    Housekeeping: ["Housekeeper", "Senior Housekeeper"],
+  },
+  "TL Accountant": {
+    "TL Accountant": ["TL Accountant"],
+  },
+};
 
-const departments = [
-  "Accountant",
-  "Senior Full Stack Developer",
-  "Junior Full Stack Developer",
-  "Hybrid Mobile Developer",
-  "Product Manager",
-  "Project Manager",
-  "QA Engineer – Manual & Automation",
-  "Social Media Manager & Content Writer",
-  "UI/UX Developer",
-  "IT Administrator",
-  "Customer Success Associate",
-];
+const teams = Object.keys(structure);
 
 const teamOptions = [
-  "Founders",
   "Manager",
   "TL-Reporting Manager",
-  "IT Admin",
-  "Tech",
-  "Accounts",
   "HR",
+  "Tech",
+  "IT Admin",
+  "Accounts",
   "Admin & Operations",
+  "Housekeeping",
+  "TL Accountant",
 ];
+
+const departments = Object.values(structure)
+    .flatMap(categories => 
+        Object.values(categories).flatMap(roles => 
+            Array.isArray(roles) ? roles : Object.values(roles).flat()
+        )
+    )
+    .filter((v, i, a) => a.indexOf(v) === i);
+
+// --- Reusable Components ---
 
 const InfoCard = ({
   icon,
@@ -226,6 +283,155 @@ const DocumentPreviewModal = ({ doc, onClose }: { doc: DocPreviewState | null; o
   );
 };
 
+
+// --- New Employee Stats Component (Modified to be Clickable) ---
+const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: string) => void }) => {
+  const [stats, setStats] = useState<EmployeeStats>({
+    totalEmployees: 0,
+    managerTeamCount: 0,
+    tlReportingManagerTeamCount: 0,
+    itAdminTeamCount: 0,
+    techTeamCount: 0,
+    accountsTeamCount: 0,
+    hrTeamCount: 0,
+    adminOpsTeamCount: 0,
+    housekeepingTeamCount: 0,
+  });
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(true);
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/employees/stats");
+        const data = await res.json();
+
+        if (!data || data.error) {
+          console.error("Error fetching stats:", data?.error ?? data);
+          return;
+        }
+
+        setStats({
+          totalEmployees: data.totalEmployees ?? 0,
+          managerTeamCount: data.managerTeamCount ?? 0,
+          tlReportingManagerTeamCount:
+            data.tlReportingManagerTeamCount ?? 0,
+          itAdminTeamCount: data.itAdminTeamCount ?? 0,
+          techTeamCount: data.techTeamCount ?? 0,
+          accountsTeamCount: data.accountsTeamCount ?? 0,
+          hrTeamCount: data.hrTeamCount ?? 0,
+          adminOpsTeamCount: data.adminOpsTeamCount ?? 0,
+          housekeepingTeamCount: data.housekeepingTeamCount ?? 0,
+        });
+      } catch (err) {
+        console.error("Error fetching employee stats:", err);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // --- MODIFIED LOGIC: Subtract a hardcoded founders count (3) from the total
+  const MOCK_FOUNDERS_COUNT = 3;
+  const totalStaffExclFounders = stats.totalEmployees > MOCK_FOUNDERS_COUNT 
+    ? stats.totalEmployees - MOCK_FOUNDERS_COUNT 
+    : 0;
+
+  const tlAccountantCount = stats.accountsTeamCount;
+
+  // --- BEGIN STAT CARD DATA ---
+  // Mapped to the team structure keys for selection.
+  const allCards: StatCard[] = [
+    // This card is non-clickable and now shows the calculated total
+    { 
+      label: "Total Staff (Excl. Founders)", 
+      value: totalStaffExclFounders, 
+      icon: "/1.png", 
+      sortKey: "A",
+      teamKey: "None", 
+    },
+    // Clickable team cards
+    { label: "Manager Team", value: stats.managerTeamCount, icon: "/3.png", sortKey: "Manager Team", teamKey: "Manager" },
+    { label: "TL - Reporting Manager", value: stats.tlReportingManagerTeamCount, icon: "/4.png", sortKey: "TL - Reporting Manager", teamKey: "TL-Reporting Manager" },
+    { label: "IT Admin Team", value: stats.itAdminTeamCount, icon: "/5.png", sortKey: "IT Admin Team", teamKey: "IT Admin" },
+    { label: "Tech Team", value: stats.techTeamCount, icon: "/6.png", sortKey: "Tech Team", teamKey: "Tech" },
+    { label: "Accounts Team", value: stats.accountsTeamCount, icon: "/7.png", sortKey: "Accounts Team", teamKey: "Accounts" },
+    // TL Accountant maps to the same count as Accounts for simplicity in this example
+    { label: "TL - Accountant", value: tlAccountantCount, icon: "/7.png", sortKey: "TL - Accountant", teamKey: "TL Accountant" }, 
+    { label: "HR Team", value: stats.hrTeamCount, icon: "/8.png", sortKey: "HR Team", teamKey: "HR" },
+    { label: "Admin & Ops Team", value: stats.adminOpsTeamCount, icon: "/9.png", sortKey: "Admin & Ops Team", teamKey: "Admin & Operations" },
+    { label: "Housekeeping Team", value: stats.housekeepingTeamCount, icon: "/10.png", sortKey: "Housekeeping Team", teamKey: "Housekeeping" },
+  ];
+
+  const primaryCard = allCards[0];
+  const secondaryCards = allCards.slice(1);
+  secondaryCards.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  const statsCards: StatCard[] = [primaryCard, ...secondaryCards];
+  // --- END STAT CARD DATA ---
+
+  return (
+    <div className={`mt-8 mb-12 transition-all duration-700 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+      {/* Changed accent color from indigo-600 to gray-800 */}
+      <h2 className="text-4xl font-bold text-gray-800 text-center mb-10 flex items-center justify-center gap-2">
+        <TrendingUp className="w-8 h-8 text-gray-800" /> 
+        Organization Staff Count & Directory Access
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        {statsCards.map((card, index) => {
+          const isClickable = card.teamKey !== "None";
+          const teamName = isClickable ? card.teamKey : card.label;
+
+          const handleClick = () => {
+            if (isClickable) {
+              setSelectedTeam(card.teamKey);
+            }
+          };
+
+          return (
+            <motion.div
+              key={card.label}
+              onClick={handleClick}
+              // Changed hover:bg-indigo-50 to hover:bg-gray-100
+              className={`p-4 rounded-xl border border-gray-200 shadow-lg transition-all duration-300 ${
+                isClickable
+                  ? "bg-white hover:bg-gray-100 cursor-pointer" 
+                  : "bg-gray-100 cursor-default"
+              }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.05 }}
+              whileHover={isClickable ? { scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" } : {}}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  {/* Changed text-indigo-600 to text-gray-800 */}
+                  <p className={`text-xs font-medium mb-1 uppercase tracking-wider truncate ${isClickable ? "text-gray-800" : "text-gray-500"}`}>
+                    {card.label}
+                  </p>
+                  <p className="text-3xl font-extrabold text-gray-900">{card.value}</p>
+                </div>
+                {/* Changed bg-indigo-600/10 and text-indigo-600 to dark gray equivalents */}
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isClickable ? "bg-gray-800/10" : "bg-gray-300/50"}`}>
+                  {isClickable ? <Users className="w-6 h-6 text-gray-800" /> : <TrendingUp className="w-6 h-6 text-gray-600" />}
+                </div>
+              </div>
+              {isClickable && (
+                // Changed text-indigo-500 to text-gray-600
+                <p className="mt-2 text-xs font-semibold text-gray-600">
+                  Click to view staff list
+                </p>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+
+// --- Main Page Component ---
 export default function ViewEmpPage() {
   const router = useRouter();
   const [employees, setEmployees] = useState<IEmployee[]>([]);
@@ -242,10 +448,6 @@ export default function ViewEmpPage() {
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
-
-  const handleGoHome = () => {
-    router.push("/components/it-admin");
-  };
 
   const clearMessages = () => {
     setError("");
@@ -289,34 +491,45 @@ export default function ViewEmpPage() {
     }
   }, [editFormData, isEditing, focusedField]);
 
+  const getSubcategoriesForTeam = useMemo(() => {
+    if (!selectedTeam || !structure[selectedTeam]) return {};
+    return structure[selectedTeam];
+  }, [selectedTeam]);
+
+
   const filteredEmployees = employees.filter((emp) => {
     if (!selectedTeam) return false;
 
-    const team = emp.team?.trim().toLowerCase();
-    const category = emp.category?.trim().toLowerCase() || "";
-    const subCategory = emp.subCategory?.trim().toLowerCase() || "";
-    const selected = selectedTeam.trim().toLowerCase();
+    const selectedTeamRoles = structure[selectedTeam];
+    if (!selectedTeamRoles) return false;
 
-    if (selected !== "tech") {
-      return team === selected.toLowerCase();
-    }
-
-    if (selected === "tech") {
-      if (!selectedCategory) return false;
-
-      const selCat = selectedCategory.toLowerCase();
-
-      if (category === selCat) {
-        if (selCat === "developer") {
-          if (!selectedSubCategory) return false;
-          return subCategory === selectedSubCategory.toLowerCase();
-        } else {
-          return !selectedSubCategory && (subCategory === "" || subCategory === "n/a");
+    let rolesToMatch: string[] = [];
+    
+    if (selectedCategory) {
+        const categoryRoles = selectedTeamRoles[selectedCategory];
+        if (Array.isArray(categoryRoles)) {
+            rolesToMatch = categoryRoles;
+        } else if (typeof categoryRoles === 'object' && categoryRoles !== null) {
+            if (selectedSubCategory) {
+                rolesToMatch = categoryRoles[selectedSubCategory] || [];
+            } else {
+                rolesToMatch = Object.values(categoryRoles).flat() as string[];
+            }
         }
-      }
+    } else {
+        rolesToMatch = Object.values(selectedTeamRoles).flatMap(roles => {
+            if (Array.isArray(roles)) {
+                return roles;
+            } else if (typeof roles === 'object' && roles !== null) {
+                return Object.values(roles).flat();
+            }
+            return [];
+        }) as string[];
     }
 
-    return false;
+    if (rolesToMatch.length === 0) return false;
+    
+    return rolesToMatch.includes(emp.department);
   });
 
   const handleOpenDetail = (emp: IEmployee) => {
@@ -449,7 +662,8 @@ export default function ViewEmpPage() {
           {selectedEmployee?.photo ? (
             <img src={selectedEmployee.photo} alt="Employee Photo" className="w-24 h-24 object-cover rounded-full shadow-lg ring-4 ring-gray-100 transition-transform" />
           ) : (
-            <div className="w-24 h-24 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full shadow-lg ring-4 ring-gray-100 flex items-center justify-center flex-shrink-0">
+            // Changed indigo accent to gray-800
+            <div className="w-24 h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-full shadow-lg ring-4 ring-gray-100 flex items-center justify-center flex-shrink-0">
               <User className="w-10 h-10 text-white" />
             </div>
           )}
@@ -459,7 +673,8 @@ export default function ViewEmpPage() {
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-          <button type="button" onClick={() => setIsEditing(true)} className="flex-1 sm:flex-none group px-4 py-2 bg-gray-700 text-white font-semibold text-sm rounded-lg hover:bg-gray-800 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
+          {/* Changed indigo accent to gray-800 */}
+          <button type="button" onClick={() => setIsEditing(true)} className="flex-1 sm:flex-none group px-4 py-2 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
             <Edit2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
             Edit
           </button>
@@ -512,7 +727,8 @@ export default function ViewEmpPage() {
     return (
       <div className="pt-2 animate-fade-in">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-700">
+          {/* Changed indigo accent to gray-800 */}
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-800">
             <Edit2 className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0 flex-1">
@@ -625,11 +841,11 @@ export default function ViewEmpPage() {
             label="PAN Number"
             name="panNumber"
             value={editFormData.panNumber}
-            onChange={(e: any) =>
+            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
               handleEditChange({
                 ...e,
                 target: { ...e.target, value: (e.target.value || "").toUpperCase() },
-              } as any)
+              })
             }
             icon={<IdCard className="w-4 h-4" />}
             inputRef={makeRefSetter("panNumber")}
@@ -642,7 +858,8 @@ export default function ViewEmpPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 pt-6 mt-6 border-t border-gray-200">
-          <button type="button" onClick={handleUpdate} className="flex-1 group px-6 py-3 bg-gray-700 text-white font-semibold text-sm rounded-lg hover:bg-gray-800 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
+          {/* Changed indigo accent to gray-800 */}
+          <button type="button" onClick={handleUpdate} className="flex-1 group px-6 py-3 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
             <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
             {loading ? "Saving..." : "Save Changes"}
           </button>
@@ -655,8 +872,70 @@ export default function ViewEmpPage() {
     );
   };
 
+  const RenderTechCategories = () => {
+    const techCategories = getSubcategoriesForTeam;
+    
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {Object.entries(techCategories).map(([category, rolesOrSubCategories]) => {
+                const hasSubcategories = !Array.isArray(rolesOrSubCategories);
+                
+                const handleCategoryClick = () => {
+                    setSelectedCategory(category);
+                    setSelectedSubCategory(null);
+                };
+
+                if (hasSubcategories) {
+                    return (
+                        <motion.div key={category} whileHover={{ scale: 1.05 }} className="bg-gray-50 border border-gray-200 p-6 rounded-2xl shadow-lg">
+                            {/* Changed hover:text-indigo-600 to hover:text-gray-800 */}
+                            <h3 className="text-xl font-semibold text-gray-900 text-center mb-4 cursor-pointer hover:text-gray-800" onClick={handleCategoryClick}>
+                                {category}
+                            </h3>
+                            <div className="flex flex-col gap-3">
+                                {Object.keys(rolesOrSubCategories).map((subCategory) => (
+                                    <motion.div 
+                                        key={subCategory} 
+                                        whileHover={{ scale: 1.03 }} 
+                                        onClick={() => { setSelectedCategory(category); setSelectedSubCategory(subCategory); }} 
+                                        className="bg-white border border-gray-200 text-gray-800 rounded-xl text-center py-3 cursor-pointer hover:bg-gray-100 transition-all duration-300"
+                                    >
+                                        {subCategory}
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    );
+                } else {
+                    return (
+                        <motion.div key={category} whileHover={{ scale: 1.05 }} onClick={handleCategoryClick} className="bg-gray-50 border border-gray-200 p-6 rounded-2xl cursor-pointer text-center hover:bg-gray-100 transition-all duration-300 shadow-lg">
+                            <h3 className="text-xl font-semibold text-gray-900">{category}</h3>
+                        </motion.div>
+                    );
+                }
+            })}
+        </div>
+    );
+  };
+  
+  const getBreadcrumbTitle = () => {
+      if (selectedSubCategory) return `${selectedSubCategory} (${filteredEmployees.length})`;
+      if (selectedCategory) return `${selectedCategory} (${filteredEmployees.length})`;
+      return `${selectedTeam} Team (${filteredEmployees.length})`;
+  }
+
+  const handleBackNavigation = () => {
+      if (selectedSubCategory) {
+          setSelectedSubCategory(null);
+      } else if (selectedCategory) {
+          setSelectedCategory(null);
+      } else {
+          setSelectedTeam(null);
+      }
+  };
+
   return (
-    <div className="min-h-screen **flex items-center justify-center** bg-gradient-to-br from-slate-800 to-slate-950 text-white py-10 px-5">
+    <div className="min-h-screen flex items-center justify-center bg-white text-gray-900 py-10 px-5">
       <style>{`
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
@@ -668,86 +947,60 @@ export default function ViewEmpPage() {
         }
       `}</style>
       
-      {/* Home Button (Fixed position) */}
-      <div className="fixed top-5 mt-40 right-5 z-50 no-print">
-        <button
-            onClick={handleGoHome}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-gray-800 text-base font-semibold border-2 border-gray-300 rounded-lg shadow-md hover:bg-gray-100 transition-colors"
-        >
-            <List size={20} />
-            Home
-        </button>
-      </div>
+      <div className="max-w-6xl mx-auto w-full no-print">
+        {/* Render the clickable stats cards ONLY when no team is selected */}
+        {!selectedTeam && <EmployeeStatsDisplay setSelectedTeam={setSelectedTeam} />}
 
-      <div className="max-w-6xl mt-[20%] mx-auto **w-full** no-print">
-        <h1 className="text-4xl font-bold text-center mb-10">Employee Directory</h1>
 
-        {!selectedTeam && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {teams.map((team) => (
-              <motion.div key={team} whileHover={{ scale: 1.05 }} onClick={() => setSelectedTeam(team)} className="bg-white/10 border border-white/20 p-6 rounded-2xl cursor-pointer text-center hover:bg-white/20 transition-all duration-300 shadow-xl">
-                <h2 className="text-xl font-semibold">{team}</h2>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {selectedTeam === "Tech" && !selectedCategory && !selectedEmployee && (
+        {/* Navigation for specific teams / categories */}
+        {selectedTeam && (selectedTeam === "Tech" || selectedTeam !== "Tech") && !selectedEmployee && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold">Tech Teams</h2>
-              <button type="button" onClick={() => setSelectedTeam(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 transition">← Back</button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {techCategories.map((cat) => (
-                <motion.div key={cat.name} whileHover={{ scale: 1.05 }} className="bg-white/10 border border-white/20 p-6 rounded-2xl shadow-xl">
-                  <h3 onClick={() => !cat.children && setSelectedCategory(cat.name)} className={`text-xl font-semibold text-center ${cat.children ? "mb-4" : "cursor-pointer hover:text-blue-400"}`}>{cat.name}</h3>
-
-                  {cat.children && (
-                    <div className="flex flex-col gap-3">
-                      {cat.children.map((child) => (
-                        <motion.div key={child} whileHover={{ scale: 1.03 }} onClick={() => { setSelectedCategory(cat.name); setSelectedSubCategory(child); }} className="bg-white/5 border border-white/10 rounded-xl text-center py-3 cursor-pointer hover:bg-white/20 transition-all duration-300">
-                          {child}
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedTeam && (selectedTeam !== "Tech" || selectedCategory) && !selectedEmployee && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold">
-                {selectedTeam === "Tech" ? `${selectedSubCategory || selectedCategory} (${filteredEmployees.length})` : `${selectedTeam} Team (${filteredEmployees.length})`}
+              <h2 className="text-2xl font-semibold text-gray-800">
+                {selectedCategory || selectedTeam === "Tech" ? (
+                  getBreadcrumbTitle()
+                ) : (
+                  `${selectedTeam} Teams` // This branch is for non-Tech teams when initially clicked
+                )}
               </h2>
-              <button type="button" onClick={() => { if (selectedTeam !== "Tech") { setSelectedTeam(null); } else if (selectedSubCategory) { setSelectedSubCategory(null); } else if (selectedCategory) { setSelectedCategory(null); } else { setSelectedTeam(null); } }} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 transition">← Back</button>
+              {/* Changed indigo accent to gray-800 */}
+              <button 
+                type="button" 
+                onClick={handleBackNavigation} 
+                className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition"
+              >
+                ← Back to {selectedCategory || selectedSubCategory ? selectedTeam : 'Directory'}
+              </button>
             </div>
 
-            {loading ? (
-              <p className="text-center text-gray-400">Loading employees...</p>
-            ) : filteredEmployees.length === 0 ? (
-              <p className="text-center text-gray-400">No employees found.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {/* Display categories/subcategories for Tech and other complex teams */}
+            {selectedTeam && !selectedCategory && (structure[selectedTeam] && Object.keys(structure[selectedTeam]).length > 1 || selectedTeam === "Tech") && (
+                <RenderTechCategories />
+            )}
+
+            {/* Display list of employees if a final selection is made OR the team has a flat structure */}
+            {filteredEmployees.length > 0 && selectedTeam && (
+                selectedCategory || (Object.keys(structure[selectedTeam] || {}).length === 1 && !selectedCategory)
+            ) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mt-6">
                 {filteredEmployees.map((emp) => (
-                  <motion.div key={emp._id} whileHover={{ scale: 1.03 }} onClick={() => handleOpenDetail(emp)} className="bg-white/10 border border-white/20 p-5 rounded-xl cursor-pointer hover:bg-white/20 transition-all duration-300 shadow-lg">
+                  <motion.div key={emp._id} whileHover={{ scale: 1.03 }} onClick={() => handleOpenDetail(emp)} className="bg-white border border-gray-200 p-5 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-300 shadow-md">
                     <div className="flex flex-col items-center text-center">
-                      <img src={emp.photo || "/default-avatar.png"} alt={emp.name} className="w-20 h-20 object-cover rounded-full mb-3 border-2 border-white/30" />
-                      <p className="text-lg font-semibold">{emp.name}</p>
-                      <p className="text-sm text-gray-300">{emp.empId}</p>
+                      {/* Changed border-indigo-300 to border-gray-300 */}
+                      <img src={emp.photo || "/default-avatar.png"} alt={emp.name} className="w-20 h-20 object-cover rounded-full mb-3 border-2 border-gray-300" />
+                      <p className="text-lg font-semibold text-gray-900">{emp.name}</p>
+                      <p className="text-sm text-gray-600">{emp.empId}</p>
                     </div>
                   </motion.div>
                 ))}
               </div>
-            )}
+            ) : selectedCategory && filteredEmployees.length === 0 ? (
+                <p className="text-center text-gray-500">No employees found in this selection.</p>
+            ) : null}
           </div>
         )}
 
+        {/* Detail/Edit Modal */}
         <AnimatePresence>
           {selectedEmployee && (
             <motion.div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} tabIndex={-1}>
@@ -763,6 +1016,7 @@ export default function ViewEmpPage() {
 
                 {loading && (
                   <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-2xl">
+                    {/* Changed indigo accent to gray-800 */}
                     <svg className="animate-spin h-8 w-8 text-gray-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
