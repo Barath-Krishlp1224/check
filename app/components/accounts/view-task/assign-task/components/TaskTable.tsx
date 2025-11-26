@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; 
+import { Task, Subtask, Employee } from "./types"; 
 import TaskRow from "./TaskRow";
 
 interface TaskTableProps {
@@ -17,12 +17,15 @@ interface TaskTableProps {
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
-  addSubtask: () => void;
-  removeSubtask: () => void;
+  handleSubtaskChange: (path: number[], field: keyof Subtask, value: string | number) => void; 
+  addSubtask: (path: number[]) => void; 
+  removeSubtask: (path: number[]) => void; 
 }
 
 const TaskTable: React.FC<TaskTableProps> = (props) => {
+  // Count the number of columns defined in the <thead> (12 main columns + 1 toggle column = 13)
+  const COL_SPAN_COUNT = 12; 
+
   if (props.tasks.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">

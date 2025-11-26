@@ -1,9 +1,10 @@
+// ./components/TaskRow.tsx
 import React from "react";
 import { 
   ChevronRight, Edit2, Trash2, Save, X, CheckCircle2, 
   Clock, Pause, AlertCircle 
 } from "lucide-react";
-import { Task, Subtask, Employee } from "../page"; 
+import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./types"; 
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
@@ -61,9 +62,9 @@ interface TaskRowProps {
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  handleSubtaskChange: (index: number, field: keyof Subtask, value: string | number) => void;
-  addSubtask: () => void;
-  removeSubtask: (index: number) => void;
+  handleSubtaskChange: SubtaskChangeHandler;
+  addSubtask: SubtaskPathHandler;
+  removeSubtask: SubtaskPathHandler;
 }
 
 const TaskRow: React.FC<TaskRowProps> = ({
@@ -86,7 +87,17 @@ const TaskRow: React.FC<TaskRowProps> = ({
   removeSubtask,
 }) => {
   const current = isEditing ? draftTask : task;
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  // Use a local variable for safe subtask access
+  const safeSubtasks = task.subtasks || [];
+  const hasSubtasks = safeSubtasks.length > 0;
+  
+  const displayAssigneeName = task.assigneeNames?.length > 0 ? task.assigneeNames.join(', ') : 'Unassigned';
+  const currentAssigneeNames = current.assigneeNames || [];
+  
+  // Dummy handlers to satisfy TaskSubtaskEditorProps requirements for this component instance
+  const dummySubtaskPathHandler: SubtaskPathHandler = () => {};
+  const dummyViewSubtaskHandler = () => {};
+
   return (
     <React.Fragment>
       <tr className={`transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50`}>
@@ -121,18 +132,19 @@ const TaskRow: React.FC<TaskRowProps> = ({
         <td className="px-4 py-4 text-sm text-gray-900">
           {isEditing ? (
             <select 
-              name="assigneeName" 
-              value={current.assigneeName || ""} 
+              name="assigneeNames" 
+              value={currentAssigneeNames}
               onChange={handleDraftChange} 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-black"
+              multiple 
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm text-gray-900 h-24"
             >
-              <option value="">Select Assignee</option>
+              <option value="">Select Assignee(s)</option>
               {employees.map(employee => (
                 <option key={employee._id} value={employee.name}>{employee.name}</option>
               ))}
             </select>
           ) : (
-            <span className="font-medium">{task.assigneeName}</span>
+            <span className="font-medium">{displayAssigneeName}</span>
           )}
         </td>
         <td className="px-4 py-4 text-sm text-gray-900">
@@ -281,13 +293,15 @@ const TaskRow: React.FC<TaskRowProps> = ({
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Type</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Title</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Assignee</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Date</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Progress</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Remarks</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {task.subtasks!.map((subtask, i) => (
+                    {/* Accessing the pre-checked safeSubtasks array */}
+                    {safeSubtasks.map((subtask, i) => (
                       <tr key={i} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-semibold text-purple-600">{subtask.id || "N/A"}</td>
                         <td className="px-4 py-3">
@@ -297,6 +311,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{subtask.title}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{subtask.assigneeName || <span className="text-gray-500">Unassigned</span>}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{subtask.date || <span className="text-gray-500">N/A</span>}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden max-w-[80px]">
@@ -330,6 +345,10 @@ const TaskRow: React.FC<TaskRowProps> = ({
               addSubtask={addSubtask}
               removeSubtask={removeSubtask}
               allTaskStatuses={subtaskStatuses}
+              // Required dummy handlers
+              onToggleEdit={dummySubtaskPathHandler}
+              onToggleExpansion={dummySubtaskPathHandler}
+              onViewSubtask={dummyViewSubtaskHandler}
             />
           </td>
         </tr>
