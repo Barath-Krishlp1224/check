@@ -152,7 +152,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     }
 
     const displayValue = task[name];
-    const displayString = (name === 'assigneeNames') ? (task.assigneeNames || []).join(', ') : 
+    const displayString = (name === 'assigneeNames') ? (task.assigneeNames || []).join(', ') :
     (typeof displayValue === 'string' || typeof displayValue === 'number' || displayValue === undefined)
         ? displayValue
         : <span className="text-gray-500">N/A</span>;
@@ -160,11 +160,9 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     const isSelect = type === 'select' || (name === 'status' && !isEditing);
     const finalOptions = name === 'status' ? allTaskStatuses : options;
 
-    return (
-        <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-        {isEditing || isSelect ? (
-            name === 'assigneeNames' ? (
+    const renderInput = () => {
+        if (name === 'assigneeNames') {
+            return (
                 <select
                 name={name}
                 value={(current.assigneeNames && current.assigneeNames.length > 0) ? current.assigneeNames[0] : ""}
@@ -176,29 +174,24 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     <option key={employee._id} value={employee.name}>{employee.name}</option>
                 ))}
                 </select>
-            ) : name === 'status' && !isEditing ? (
-                <select
-                name={name}
-                value={task.status || ""}
-                onChange={handleMainTaskStatusChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
-                >
-                {finalOptions?.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                ))}
-                </select>
-            ) : name === 'status' && isEditing ? (
+            );
+        } else if (name === 'status') {
+            const onChangeHandler = isEditing ? handleDraftChange : handleMainTaskStatusChange;
+            const currentValue = isEditing ? current.status : task.status;
+            return (
                 <select
                     name="status"
-                    value={current.status || ""}
-                    onChange={handleDraftChange}
+                    value={currentValue || ""}
+                    onChange={onChangeHandler}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
                 >
-                    {allTaskStatuses.map(opt => (
+                    {finalOptions?.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                     ))}
                 </select>
-            ) : (
+            );
+        } else {
+            return (
                 <input
                     type={type === 'date' ? 'date' : type === 'number' ? 'number' : 'text'}
                     name={name}
@@ -208,7 +201,15 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     min={type === 'number' ? 0 : undefined}
                     max={type === 'number' ? 100 : undefined}
                 />
-            )
+            );
+        }
+    }
+
+    return (
+        <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        {isEditing || (name === 'status' && !isEditing) ? (
+            renderInput()
         ) : (
             <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
             {displayString || <span className="text-gray-500">N/A</span>}
@@ -224,7 +225,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         onClick={onClose}
     >
       <div
-        className="bg-white rounded-4xl shadow-2xl w-full max-w-5xl my-12 transform transition-all duration-300 overflow-hidden"
+        className="bg-white rounded-4xl shadow-2xl w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
         <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0  bg-white z-10">
@@ -250,10 +251,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               {renderField("Progress (%)", "completion", "number")}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                {renderField("Status", "status", "select", allTaskStatuses)}
-              </div>
+              {renderField("Status", "status", "select", allTaskStatuses)}
               <div className="col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
                 {isEditing ? (
