@@ -567,7 +567,7 @@ const TasksPage: React.FC = () => {
               removeSubtask={removeSubtask}
               onToggleEdit={handleToggleEdit}
               onToggleExpansion={handleToggleExpansion}
-              handleStartSprint={handleStartSprint}
+              handleStartSprint={handleStartSprint} 
               onTaskStatusChange={onTaskStatusChange}
               onSubtaskStatusChange={onSubtaskStatusChange}
             />
