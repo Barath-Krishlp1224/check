@@ -1,5 +1,3 @@
-// ./models/Task.ts
-
 import { Schema, model, models } from "mongoose";
 
 const BaseSubtaskSchema = new Schema(
@@ -7,16 +5,15 @@ const BaseSubtaskSchema = new Schema(
     id: { type: String },
     title: { type: String, required: true },
     status: { type: String, default: "Pending" },
-    // 🔧 removed max: 100 so completion can go beyond 100
     completion: { type: Number, default: 0, min: 0 },
     remarks: { type: String },
     startDate: { type: String },
     dueDate: { type: String },
     endDate: { type: String },
-    timeSpent: { type: String },
+    timeSpent: { type: String }, // <-- UPDATED/CONFIRMED
     assigneeName: { type: String },
-    // ✨ ADDED DATE FIELD
     date: { type: String },
+    storyPoints: { type: Number, default: 0, min: 0 }, // ✨ ADDED STORY POINTS
   },
   { _id: false }
 );
@@ -46,7 +43,7 @@ const TaskSchema = new Schema(
         "HR",
         "Founders",
         "TL-Reporting Manager",
-        "TL Accountant", // UPDATED: Added TL Accountant
+        "TL Accountant",
       ],
       required: false,
     },
@@ -58,8 +55,11 @@ const TaskSchema = new Schema(
 
     status: { type: String, default: "Backlog" },
 
-    // 🔧 removed max: 100 here as well
     completion: { type: Number, default: 0, min: 0 },
+    
+    // ✨ ADDED MAIN TASK FIELDS
+    taskStoryPoints: { type: Number, default: 0, min: 0 },
+    taskTimeSpent: { type: String }, 
 
     subtasks: [SubtaskSchema],
 

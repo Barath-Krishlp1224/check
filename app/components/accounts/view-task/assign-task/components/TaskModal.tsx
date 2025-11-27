@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, ChevronRight, Eye, Calendar, User } from "lucide-react";
-// Assuming types here now include timeSpent on Subtask and correct SubtaskStatusChangeFunc
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler, SubtaskStatusChangeFunc } from "./types";
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
@@ -96,7 +95,8 @@ const SubtaskViewer: React.FC<{ subtasks: Subtask[], level: number, handleSubtas
                     </div>
                     <div className="text-xs text-slate-500 mt-1 ml-2 flex flex-wrap gap-x-4">
                         <span className="inline-flex items-center gap-1"><User className="w-3 h-3"/>Assignee: {sub.assigneeName || 'Unassigned'}</span>
-                        <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3"/>**Working Hours: {sub.timeSpent || '-'}**</span>
+                        <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3"/>Working Hours: {sub.timeSpent || '-'}</span>
+                        <span className="inline-flex items-center gap-1">Story Points: {sub.storyPoints || 0}</span>
                         <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3"/>Date: {sub.date || 'N/A'}</span>
                         <span>Remarks: {sub.remarks || '-'}</span>
                     </div>
@@ -194,6 +194,18 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     ))}
                 </select>
             );
+        } else if (name === 'taskStoryPoints' || name === 'completion') {
+            return (
+                <input
+                    type='number'
+                    name={name}
+                    value={(current[name] as number) || 0}
+                    onChange={handleDraftChange}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+                    min={0}
+                    max={name === 'completion' ? 100 : undefined}
+                />
+            );
         } else {
             return (
                 <input
@@ -209,6 +221,12 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         }
     }
 
+    // Special handling for read-only TaskTimeSpent (aggregated)
+    const isAggregatedField = name === 'taskTimeSpent' || name === 'taskStoryPoints';
+    const displayValueForAggregated = (isAggregatedField && !isEditing) 
+        ? (task[name] as string | number) || (name === 'taskStoryPoints' ? 0 : 'N/A')
+        : displayString;
+
     return (
         <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
@@ -216,7 +234,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             renderInput()
         ) : (
             <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
-            {displayString || <span className="text-gray-500">N/A</span>}
+            {displayValueForAggregated || <span className="text-gray-500">N/A</span>}
             </p>
         )}
         </div>
@@ -253,6 +271,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               {renderField("Due Date", "dueDate", "date")}
               {renderField("End Date", "endDate", "date")}
               {renderField("Progress (%)", "completion", "number")}
+              {renderField("Story Points", "taskStoryPoints", "number")}
+              {renderField("Time Spent", "taskTimeSpent", "text")}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {renderField("Status", "status", "select", allTaskStatuses)}

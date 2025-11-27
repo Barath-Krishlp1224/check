@@ -1,4 +1,3 @@
-// ./components/TaskSubtaskEditor.tsx
 import React from "react";
 import { Plus, AlertCircle } from "lucide-react";
 import { Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./types";
@@ -37,22 +36,21 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
         <thead className="bg-gradient-to-r from-slate-700 to-slate-600">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[8%]">ID</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[15%]">Title</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[12%]">Title</th>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Assignee</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Date</th>
-            {/* FIX: Added new column for Working Hours */}
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[8%]">Date</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[7%]">Story Points</th>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Working Hours</th>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Status</th>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[8%]">Progress</th>
             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[15%]">Remarks</th>
-            <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase w-[14%]">Actions</th>
+            <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase w-[12%]">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {subtasks.length === 0 ? (
                 <tr>
-                    {/* FIX: Increased colSpan to 9 to include the new column */}
-                    <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
                         No subtasks added yet.
                     </td>
                 </tr>

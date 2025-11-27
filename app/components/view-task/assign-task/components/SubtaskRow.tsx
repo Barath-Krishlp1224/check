@@ -1,4 +1,3 @@
-// ./components/SubtaskRow.tsx
 import React from "react";
 import { Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./types";
 import { Eye, ChevronDown, ChevronRight, Edit, Save, Trash2, PlusCircle, Clock, CheckCircle2, Pause, AlertCircle } from "lucide-react";
@@ -103,7 +102,6 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
     />
   );
 
-  // FIX: Added Working Hours Input
   const TimeSpentInput = (
     <input
         type="text"
@@ -111,6 +109,18 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         onChange={(e) => onSubtaskChange(path, "timeSpent", e.target.value)}
         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
         placeholder="e.g., 2h 30m"
+        disabled={!isEditing}
+    />
+  );
+
+  const StoryPointsInput = (
+    <input
+        type="number"
+        value={subtask.storyPoints ?? 0}
+        onChange={(e) => onSubtaskChange(path, "storyPoints", Number(e.target.value))}
+        className="w-16 px-3 py-2 border border-slate-300 rounded-lg text-center focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+        placeholder="0"
+        min={0}
         disabled={!isEditing}
     />
   );
@@ -139,7 +149,7 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
   );
   
   const DisplayText = (field: keyof Subtask) => (
-    <span className="text-gray-700 block px-3 py-2">{String(subtask[field] ?? "-")}</span>
+    <span className="text-gray-700 block px-3 py-2">{String(subtask[field] ?? (field === 'storyPoints' ? 0 : "-"))}</span>
   );
   
   return (
@@ -160,10 +170,10 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         <td className="px-4 py-3">{isEditing ? TextInput("title", "Subtask Title") : DisplayText("title")}</td>
         <td className="px-4 py-3">{isEditing ? AssigneeSelect : DisplayText("assigneeName")}</td>
         
-        {/* Date Column */}
         <td className="px-4 py-3">{isEditing ? DateInput : DisplayText("date")}</td> 
 
-        {/* FIX: ADDED WORKING HOURS COLUMN */}
+        <td className="px-4 py-3 text-center">{isEditing ? StoryPointsInput : DisplayText("storyPoints")}</td>
+
         <td className="px-4 py-3">{isEditing ? TimeSpentInput : DisplayText("timeSpent")}</td> 
         
         <td className="px-4 py-3">{isEditing ? StatusSelect : getStatusBadge(subtask.status)}</td>

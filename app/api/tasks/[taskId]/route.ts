@@ -1,4 +1,3 @@
-// app/api/tasks/[taskId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
@@ -129,11 +128,11 @@ export async function PUT(
     const originalDept = existingTask.department ?? existingTask.team ?? "";
 
     // 🔧 Update the task in DB
-    // Removed `runValidators: true` so schema max/min/maxlength won't block values > 100
+    // Since completion validation was removed in the schema, we don't need `runValidators: false` here
     const updatedTask: any = await Task.findByIdAndUpdate(
       id,
       { $set: body },
-      { new: true } // no runValidators
+      { new: true }
     ).lean();
 
     if (!updatedTask)
@@ -183,11 +182,19 @@ export async function PUT(
         const fields = [
           {
             type: "mrkdwn",
-            text: `*Assignee:*\n${updatedTask.assigneeName ?? "—"}`,
+            text: `*Assignee:*\n${updatedTask.assigneeNames?.join(", ") ?? "—"}`,
           },
           {
             type: "mrkdwn",
             text: `*Completion:*\n${updatedTask.completion ?? 0}%`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Story Points:*\n${updatedTask.taskStoryPoints ?? 0}`, // ✨ ADDED
+          },
+          {
+            type: "mrkdwn",
+            text: `*Time Spent:*\n${updatedTask.taskTimeSpent ?? "N/A"}`, // ✨ ADDED
           },
           {
             type: "mrkdwn",
@@ -196,10 +203,6 @@ export async function PUT(
           {
             type: "mrkdwn",
             text: `*Start Date:*\n${updatedTask.startDate ?? "N/A"}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*End Date:*\n${updatedTask.endDate ?? "N/A"}`,
           },
         ];
 
