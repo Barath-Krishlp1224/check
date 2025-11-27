@@ -23,7 +23,7 @@ const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   "it admin": process.env.SLACK_WEBHOOK_URL_ITADMIN ?? process.env.SLACK_WEBHOOK_URL,
   manager: process.env.SLACK_WEBHOOK_URL_MANAGER ?? process.env.SLACK_WEBHOOK_URL,
   "admin & operations": process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
-  "admin": process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
+  admin: process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
   hr: process.env.SLACK_WEBHOOK_URL_HR ?? process.env.SLACK_WEBHOOK_URL,
   founders: process.env.SLACK_WEBHOOK_URL_FOUNDERS ?? process.env.SLACK_WEBHOOK_URL,
   "tl-reporting manager": process.env.SLACK_WEBHOOK_URL_TL ?? process.env.SLACK_WEBHOOK_URL,
@@ -73,15 +73,26 @@ export async function GET(
   try {
     const { taskId } = await context.params;
     const id = (taskId || "").trim();
-    if (!id) return NextResponse.json({ success: false, error: "taskId required" }, { status: 400 });
+    if (!id)
+      return NextResponse.json(
+        { success: false, error: "taskId required" },
+        { status: 400 }
+      );
 
     const task: any = await Task.findById(id).lean();
-    if (!task) return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
+    if (!task)
+      return NextResponse.json(
+        { success: false, error: "Task not found" },
+        { status: 404 }
+      );
 
     return NextResponse.json({ success: true, task });
   } catch (error: any) {
     console.error("GET /api/tasks/[taskId] error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message || "Server error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -96,66 +107,139 @@ export async function PUT(
   try {
     const { taskId } = await context.params;
     const id = (taskId || "").trim();
-    if (!id) return NextResponse.json({ success: false, error: "taskId required" }, { status: 400 });
+    if (!id)
+      return NextResponse.json(
+        { success: false, error: "taskId required" },
+        { status: 400 }
+      );
 
     const body = await req.json();
-    const newStatus = typeof body.status === "string" ? body.status.trim() : undefined;
+    const newStatus =
+      typeof body.status === "string" ? body.status.trim() : undefined;
 
     // Fetch existing task (lean for plain object)
     const existingTask: any = await Task.findById(id).lean();
-    if (!existingTask) return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
+    if (!existingTask)
+      return NextResponse.json(
+        { success: false, error: "Task not found" },
+        { status: 404 }
+      );
 
     const originalStatus = existingTask.status;
     const originalDept = existingTask.department ?? existingTask.team ?? "";
 
-    // Update the task in DB
-    const updatedTask: any = await Task.findByIdAndUpdate(id, { $set: body }, { new: true, runValidators: true }).lean();
-    if (!updatedTask) return NextResponse.json({ success: false, error: "Task not found after update" }, { status: 404 });
+    // 🔧 Update the task in DB
+    // Removed `runValidators: true` so schema max/min/maxlength won't block values > 100
+    const updatedTask: any = await Task.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true } // no runValidators
+    ).lean();
+
+    if (!updatedTask)
+      return NextResponse.json(
+        { success: false, error: "Task not found after update" },
+        { status: 404 }
+      );
 
     // Only notify when status changed and is one we monitor
-    if (newStatus && newStatus !== originalStatus && STATUSES_TO_NOTIFY.includes(newStatus)) {
+    if (
+      newStatus &&
+      newStatus !== originalStatus &&
+      STATUSES_TO_NOTIFY.includes(newStatus)
+    ) {
       try {
-        // choose emoji for nicer Slack formatting
         const statusEmoji =
-          newStatus === "Backlog" ? "📥" :
-          newStatus === "In Progress" ? "▶️" :
-          newStatus === "Paused" ? "⏸️" :
-          newStatus === "Dev Review" ? "🔬" :
-          newStatus === "Deployed in QA" ? "📦" :
-          newStatus === "Test In Progress" ? "🧪" :
-          newStatus === "QA Sign Off" ? "📝" :
-          newStatus === "Deployment Stage" ? "⚙️" :
-          newStatus === "Pilot Test" ? "✈️" :
-          newStatus === "Completed" ? "✅" : "🔔";
+          newStatus === "Backlog"
+            ? "📥"
+            : newStatus === "In Progress"
+            ? "▶️"
+            : newStatus === "Paused"
+            ? "⏸️"
+            : newStatus === "Dev Review"
+            ? "🔬"
+            : newStatus === "Deployed in QA"
+            ? "📦"
+            : newStatus === "Test In Progress"
+            ? "🧪"
+            : newStatus === "QA Sign Off"
+            ? "📝"
+            : newStatus === "Deployment Stage"
+            ? "⚙️"
+            : newStatus === "Pilot Test"
+            ? "✈️"
+            : newStatus === "Completed"
+            ? "✅"
+            : "🔔";
 
         const headline = `${statusEmoji} *Task Status Shifted*`;
-        const projectLine = `*Task:* ${updatedTask.project ?? "—"} (${updatedTask.projectId ?? "—"})`;
-        const statusLine = `*Status:* ${originalStatus ?? "—"} → *${newStatus}*`;
+        const projectLine = `*Task:* ${
+          updatedTask.project ?? "—"
+        } (${updatedTask.projectId ?? "—"})`;
+        const statusLine = `*Status:* ${
+          originalStatus ?? "—"
+        } → *${newStatus}*`;
 
         const fields = [
-          { type: "mrkdwn", text: `*Assignee:*\n${updatedTask.assigneeName ?? "—"}` },
-          { type: "mrkdwn", text: `*Completion:*\n${updatedTask.completion ?? 0}%` },
-          { type: "mrkdwn", text: `*Due Date:*\n${updatedTask.dueDate ?? "N/A"}` },
-          { type: "mrkdwn", text: `*Start Date:*\n${updatedTask.startDate ?? "N/A"}` },
-          { type: "mrkdwn", text: `*End Date:*\n${updatedTask.endDate ?? "N/A"}` },
+          {
+            type: "mrkdwn",
+            text: `*Assignee:*\n${updatedTask.assigneeName ?? "—"}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Completion:*\n${updatedTask.completion ?? 0}%`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Due Date:*\n${updatedTask.dueDate ?? "N/A"}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Start Date:*\n${updatedTask.startDate ?? "N/A"}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*End Date:*\n${updatedTask.endDate ?? "N/A"}`,
+          },
         ];
 
         const blocks: any[] = [
-          { type: "section", text: { type: "mrkdwn", text: `${headline}\n${projectLine}\n${statusLine}` } },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `${headline}\n${projectLine}\n${statusLine}`,
+            },
+          },
           { type: "divider" },
           { type: "section", fields },
-          { type: "section", text: { type: "mrkdwn", text: `*Remarks:*\n${updatedTask.remarks ?? "None provided."}` } },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*Remarks:*\n${updatedTask.remarks ?? "None provided."}`,
+            },
+          },
         ];
 
         // Determine webhook from updated department (if provided) or fallback to original
-        const deptKey = normalizeDeptKey(updatedTask.department ?? updatedTask.team ?? originalDept);
+        const deptKey = normalizeDeptKey(
+          updatedTask.department ?? updatedTask.team ?? originalDept
+        );
         const webhook = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
 
         if (!webhook) {
-          console.warn("No Slack webhook configured for department:", updatedTask.department ?? originalDept);
+          console.warn(
+            "No Slack webhook configured for department:",
+            updatedTask.department ?? originalDept
+          );
         } else {
           await postToSlack(webhook, { blocks });
-          console.log(`Slack notification sent for task ${updatedTask.projectId} status change ${originalStatus} -> ${newStatus} to webhook for "${deptKey}"`);
+          console.log(
+            `Slack notification sent for task ${
+              updatedTask.projectId
+            } status change ${originalStatus} -> ${newStatus} to webhook for "${deptKey}"`
+          );
         }
       } catch (slackErr) {
         console.error("Slack notification error:", slackErr);
@@ -165,7 +249,10 @@ export async function PUT(
     return NextResponse.json({ success: true, task: updatedTask });
   } catch (error: any) {
     console.error("PUT /api/tasks/[taskId] error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Failed to update task" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to update task" },
+      { status: 500 }
+    );
   }
 }
 
@@ -180,14 +267,25 @@ export async function DELETE(
   try {
     const { taskId } = await context.params;
     const id = (taskId || "").trim();
-    if (!id) return NextResponse.json({ success: false, error: "taskId required" }, { status: 400 });
+    if (!id)
+      return NextResponse.json(
+        { success: false, error: "taskId required" },
+        { status: 400 }
+      );
 
     const deleted = await Task.findByIdAndDelete(id);
-    if (!deleted) return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
+    if (!deleted)
+      return NextResponse.json(
+        { success: false, error: "Task not found" },
+        { status: 404 }
+      );
 
     return NextResponse.json({ success: true, message: "Task deleted" });
   } catch (error: any) {
     console.error("DELETE /api/tasks/[taskId] error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Failed to delete task" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete task" },
+      { status: 500 }
+    );
   }
 }

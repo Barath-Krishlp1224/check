@@ -15,7 +15,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = true) => {
     icon = <Clock className="w-3 h-3" />;
   } else if (status === "Paused" || status === "Pending") {
     colorClasses = isSubtask ? "bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700 border border-amber-200";
-    icon = <Pause className="w-3 h-3" />;
+    icon = <Pause className="w-4 h-4" />;
   } else {
     colorClasses = isSubtask ? "bg-gray-100 text-gray-800" : "bg-gray-50 text-gray-700 border border-gray-200";
     icon = <AlertCircle className="w-3 h-3" />;
@@ -102,6 +102,18 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         disabled={!isEditing}
     />
   );
+
+  // FIX: Added Working Hours Input
+  const TimeSpentInput = (
+    <input
+        type="text"
+        value={subtask.timeSpent || ""}
+        onChange={(e) => onSubtaskChange(path, "timeSpent", e.target.value)}
+        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+        placeholder="e.g., 2h 30m"
+        disabled={!isEditing}
+    />
+  );
   
   const TextInput = (field: keyof Subtask, placeholder: string) => (
     <input
@@ -148,8 +160,11 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         <td className="px-4 py-3">{isEditing ? TextInput("title", "Subtask Title") : DisplayText("title")}</td>
         <td className="px-4 py-3">{isEditing ? AssigneeSelect : DisplayText("assigneeName")}</td>
         
-        {/* ✨ ADDED DATE COLUMN */}
+        {/* Date Column */}
         <td className="px-4 py-3">{isEditing ? DateInput : DisplayText("date")}</td> 
+
+        {/* FIX: ADDED WORKING HOURS COLUMN */}
+        <td className="px-4 py-3">{isEditing ? TimeSpentInput : DisplayText("timeSpent")}</td> 
         
         <td className="px-4 py-3">{isEditing ? StatusSelect : getStatusBadge(subtask.status)}</td>
         <td className="px-4 py-3 text-center">{isEditing ? ProgressInput : <span className="text-gray-700 block px-3 py-2">{subtask.completion ?? 0}%</span>}</td>

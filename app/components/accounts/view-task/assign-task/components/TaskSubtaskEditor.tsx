@@ -36,20 +36,23 @@ const TaskSubtaskEditor: React.FC<TaskSubtaskEditorProps> = ({
       <table className="min-w-full text-sm">
         <thead className="bg-gradient-to-r from-slate-700 to-slate-600">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">ID</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-2/12">Title</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Assignee</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Date</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Status</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-1/12">Progress</th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-3/12">Remarks</th>
-            <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase w-2/12">Actions</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[8%]">ID</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[15%]">Title</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Assignee</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Date</th>
+            {/* FIX: Added new column for Working Hours */}
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Working Hours</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[10%]">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[8%]">Progress</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase w-[15%]">Remarks</th>
+            <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase w-[14%]">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {subtasks.length === 0 ? (
                 <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                    {/* FIX: Increased colSpan to 9 to include the new column */}
+                    <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                         No subtasks added yet.
                     </td>
                 </tr>

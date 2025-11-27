@@ -42,6 +42,7 @@ const TasksPage: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
+  // FIX: Added timeSpent to Subtask initialization
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
       id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
       title: "",
@@ -53,6 +54,7 @@ const TasksPage: React.FC = () => {
       isEditing: true,
       isExpanded: true,
       date: new Date().toISOString().split('T')[0],
+      timeSpent: "",
   });
   const updateSubtaskState = (
     currentSubs: Subtask[],

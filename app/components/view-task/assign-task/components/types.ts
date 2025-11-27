@@ -5,6 +5,8 @@ export interface Subtask {
   status: string;
   completion: number;
   remarks: string;
+  // FIX: Added timeSpent
+  timeSpent?: string;
   subtasks?: Subtask[];
   isEditing?: boolean;
   isExpanded?: boolean;
@@ -44,4 +46,5 @@ export interface Employee {
 
 export type SubtaskChangeHandler = (path: number[], field: keyof Subtask, value: string | number) => void;
 export type SubtaskPathHandler = (path: number[]) => void;
+// FIX: Changed to match how it's used (ID-based) and avoid the number[] mismatch error
 export type SubtaskStatusChangeFunc = (subtaskId: string | null | undefined, newStatus: string) => void;

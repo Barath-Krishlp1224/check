@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
-import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, ChevronRight, Eye } from "lucide-react";
+import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, ChevronRight, Eye, Calendar, User } from "lucide-react";
+// Assuming types here now include timeSpent on Subtask and correct SubtaskStatusChangeFunc
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler, SubtaskStatusChangeFunc } from "./types";
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
@@ -93,8 +94,11 @@ const SubtaskViewer: React.FC<{ subtasks: Subtask[], level: number, handleSubtas
                             </button>
                         </div>
                     </div>
-                    <div className="text-xs text-slate-500 mt-1 ml-2">
-                        Assignee: {sub.assigneeName || 'Unassigned'} | Date: {sub.date || 'N/A'} | Remarks: {sub.remarks || '-'}
+                    <div className="text-xs text-slate-500 mt-1 ml-2 flex flex-wrap gap-x-4">
+                        <span className="inline-flex items-center gap-1"><User className="w-3 h-3"/>Assignee: {sub.assigneeName || 'Unassigned'}</span>
+                        <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3"/>**Working Hours: {sub.timeSpent || '-'}**</span>
+                        <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3"/>Date: {sub.date || 'N/A'}</span>
+                        <span>Remarks: {sub.remarks || '-'}</span>
                     </div>
                     {sub.subtasks && sub.subtasks.length > 0 && (
                         <SubtaskViewer subtasks={sub.subtasks} level={level + 1} handleSubtaskStatusChange={handleSubtaskStatusChange} onView={onView} />
@@ -276,7 +280,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               subtasks={subtasks}
               employees={employees}
               currentProjectPrefix={currentProjectPrefix}
-              handleSubtaskChange={handleSubtaskChange}
+              handleSubtaskChange={handleSubtaskChange as SubtaskChangeHandler}
               addSubtask={addSubtask}
               removeSubtask={removeSubtask}
               onToggleEdit={onToggleEdit}

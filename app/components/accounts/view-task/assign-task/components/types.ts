@@ -5,6 +5,7 @@ export interface Subtask {
   status: string;
   completion: number;
   remarks: string;
+  timeSpent?: string;
   subtasks?: Subtask[];
   isEditing?: boolean;
   isExpanded?: boolean;
@@ -45,3 +46,18 @@ export interface Employee {
 export type SubtaskChangeHandler = (path: number[], field: keyof Subtask, value: string | number) => void;
 export type SubtaskPathHandler = (path: number[]) => void;
 export type SubtaskStatusChangeFunc = (subtaskId: string | null | undefined, newStatus: string) => void;
+
+export interface SubtaskRowProps {
+  subtask: Subtask;
+  index: number;
+  level: number;
+  employees: Employee[];
+  subtaskStatuses: string[];
+  onSubtaskChange: SubtaskChangeHandler;
+  onToggleEdit: SubtaskPathHandler;
+  onToggleExpansion: SubtaskPathHandler;
+  onRemove: SubtaskPathHandler;
+  onAddNested: SubtaskPathHandler;
+  onView: (subtask: Subtask) => void;
+  path: number[];
+}
