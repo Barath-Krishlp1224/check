@@ -1,5 +1,3 @@
-
-
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -8,6 +6,11 @@ import { getWeekStartISO, getFilterDates, uid } from './utils';
 import NewExpenseForm from './NewExpenseForm';
 import ExpenseList from './ExpenseList';
 import SummaryAndFilter from './SummaryAndFilter';
+import BudgetDisplay from './BudgetDisplay';
+
+// Placeholder for Budget Key in Local Storage
+const BUDGET_STORAGE_KEY = 'expense_tracker_budget';
+const DEFAULT_BUDGET = 50000.00;
 
 const categoryIcons: Record<string, string> = {
   Food: '🍔',
@@ -18,9 +21,18 @@ const categoryIcons: Record<string, string> = {
 };
 
 const ExpenseTrackerPage: React.FC = () => {
+  // Load budget from localStorage on initial load, otherwise use default
+  const [mainBudget, setMainBudget] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+        const savedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
+        return savedBudget ? parseFloat(savedBudget) : DEFAULT_BUDGET;
+    }
+    return DEFAULT_BUDGET;
+  });
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
-
+  
   // New Expense Form state
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
@@ -28,11 +40,11 @@ const ExpenseTrackerPage: React.FC = () => {
   const [shop, setShop] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Filter state
-  const [dateFilter, setDateFilter] = useState<DateFilter>('');
+  // Filter state (set to 'all' to show all expenses by default)
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all'); 
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [shopFilter, setShopFilter] = useState(''); 
+  const [shopFilter, setShopFilter] = useState('');
 
   // Modals/Edit state
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -42,11 +54,37 @@ const ExpenseTrackerPage: React.FC = () => {
   
   const [selectedExpensesToPay, setSelectedExpensesToPay] = useState<string[]>([]);
   const [showExpenseTotalId, setShowExpenseTotalId] = useState<string | null>(null);
-
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-  const [newSubtaskAmount, setNewSubtaskAmount] = useState<number | ''>('');
+  
+  // Budget Editor State
+  const [budgetEditorOpen, setBudgetEditorOpen] = useState(false);
+  const [tempBudget, setTempBudget] = useState(mainBudget);
+  
+  // Sub Expense State
+  const [newSubExpenseTitle, setNewSubExpenseTitle] = useState('');
+  const [newSubExpenseAmount, setNewSubExpenseAmount] = useState<number | ''>('');
+  const [newSubExpenseDate, setNewSubExpenseDate] = useState(new Date().toISOString().split('T')[0]);
   
   const currentWeekStart = getWeekStartISO(new Date());
+
+  // --- Persistence Effect for Budget ---
+  useEffect(() => {
+    localStorage.setItem(BUDGET_STORAGE_KEY, mainBudget.toString());
+  }, [mainBudget]);
+
+  // --- Budget Control Functions ---
+  const openBudgetEditor = () => {
+    setTempBudget(mainBudget);
+    setBudgetEditorOpen(true);
+  };
+
+  const handleBudgetSave = () => {
+    if (!confirm("Are you sure you want to update the main budget?")) return;
+    
+    // Convert tempBudget to a number and update state
+    const newBudget = Number(tempBudget);
+    setMainBudget(newBudget);
+    setBudgetEditorOpen(false);
+  };
 
   // --- API Functions ---
   
@@ -188,7 +226,7 @@ const ExpenseTrackerPage: React.FC = () => {
   };
 
   const toggleSelectExpense = (id: string) => {
-    setSelectedExpensesToPay(prev => 
+    setSelectedExpensesToPay(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -206,28 +244,35 @@ const ExpenseTrackerPage: React.FC = () => {
     expCopy.shop = expCopy.shop || '';
     expCopy.subtasks = expCopy.subtasks || [];
     setLocalExpCopy(expCopy);
+    setNewSubExpenseTitle('');
+    setNewSubExpenseAmount('');
+    setNewSubExpenseDate(new Date().toISOString().split('T')[0]);
   };
   
-  const addSubtaskToLocal = () => {
+  const addSubExpenseToLocal = () => {
     if (!localExpCopy) return;
-    const desc = newSubtaskTitle.trim();
+    const desc = newSubExpenseTitle.trim();
     if (!desc) {
-      alert('Subtask description is required.');
+      alert('Sub Expense description is required.');
       return;
+    }
+    if (!newSubExpenseDate) {
+        alert('Sub Expense date is required.');
+        return;
     }
     
     let amt: number | undefined = undefined;
-    if (newSubtaskAmount !== '') {
-      const parsed = Number(newSubtaskAmount);
+    if (newSubExpenseAmount !== '') {
+      const parsed = Number(newSubExpenseAmount);
       if (!Number.isNaN(parsed)) amt = parsed;
     }
     
-    const today = new Date().toISOString().split('T')[0];
-    const newSub = { id: uid(), title: desc, done: false, amount: amt, date: today };
+    const newSub = { id: uid(), title: desc, done: false, amount: amt, date: newSubExpenseDate };
     setLocalExpCopy({ ...localExpCopy, subtasks: [...(localExpCopy.subtasks || []), newSub] });
 
-    setNewSubtaskTitle('');
-    setNewSubtaskAmount('');
+    setNewSubExpenseTitle('');
+    setNewSubExpenseAmount('');
+    setNewSubExpenseDate(new Date().toISOString().split('T')[0]);
   };
 
   // --- Filtering Logic (useMemo) ---
@@ -274,6 +319,7 @@ const ExpenseTrackerPage: React.FC = () => {
   }, [expenses, dateFilter, customStartDate, customEndDate, shopFilter]);
 
   const isFilterActive = useMemo(() => {
+    // If the date filter is 'all', it's considered active, even if no other filter is set.
     const isDateFilterSet = dateFilter !== '';
     const isShopFilterSet = shopFilter.trim() !== '';
     
@@ -292,13 +338,16 @@ const ExpenseTrackerPage: React.FC = () => {
         });
     }
 
-    if (!isFilterActive) {
+    // Only filter by unpaid if NO filter (date or shop) is set AND dateFilter is the default empty string.
+    if (!isFilterActive && dateFilter === '') {
         filtered = filtered.filter(exp => !exp.paid);
     }
 
     return filtered;
-  }, [dateFilteredExpenses, shopFilter, isFilterActive]);
+  }, [dateFilteredExpenses, shopFilter, isFilterActive, dateFilter]);
   
+  const paidExpenses = useMemo(() => expenses.filter(e => e.paid), [expenses]);
+
   const expensesByWeek = useMemo(() => {
     const map = new Map<string, Expense[]>();
     for (const e of finalFilteredExpenses) {
@@ -314,6 +363,7 @@ const ExpenseTrackerPage: React.FC = () => {
     const totals = new Map<string, number>();
 
     finalFilteredExpenses.forEach(exp => {
+      // Only count unpaid expenses for the breakdown total
       if (!exp.paid) {
         const shopName = exp.shop && exp.shop.trim() ? exp.shop.trim() : 'Unassigned Shop';
         const totalAmount = getExpenseTotal(exp);
@@ -333,7 +383,7 @@ const ExpenseTrackerPage: React.FC = () => {
       <div className="w-full max-w-7xl">
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-gray-900 mb-2">Expense Manager</h1>
-          <p className="text-gray-700">Track weekly expenses with subtasks and mark payments complete</p>
+          <p className="text-gray-700">Track weekly expenses with sub expenses and manage budget</p>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -360,25 +410,59 @@ const ExpenseTrackerPage: React.FC = () => {
             />
           </div>
 
-          <SummaryAndFilter
-            unpaidTotalsByShop={unpaidTotalsByShop}
-            finalFilteredExpenses={finalFilteredExpenses}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-            customStartDate={customStartDate}
-            setCustomStartDate={setCustomStartDate}
-            customEndDate={customEndDate}
-            setCustomEndDate={setCustomEndDate}
-            shopFilter={shopFilter}
-            setShopFilter={setShopFilter}
-            fetchExpenses={fetchExpenses}
-            isFilterActive={isFilterActive}
-            getExpenseTotal={getExpenseTotal}
-          />
+          <div className="xl:col-span-1 space-y-6">
+            <BudgetDisplay
+              mainBudget={mainBudget}
+              paidExpenses={paidExpenses}
+              getExpenseTotal={getExpenseTotal}
+              openBudgetEditor={openBudgetEditor}
+            />
+            
+            <SummaryAndFilter
+              unpaidTotalsByShop={unpaidTotalsByShop}
+              finalFilteredExpenses={finalFilteredExpenses}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              customStartDate={customStartDate}
+              setCustomStartDate={setCustomStartDate}
+              customEndDate={customEndDate}
+              setCustomEndDate={setCustomEndDate}
+              shopFilter={shopFilter}
+              setShopFilter={setShopFilter}
+              fetchExpenses={fetchExpenses}
+              isFilterActive={isFilterActive}
+              getExpenseTotal={getExpenseTotal}
+            />
+          </div>
         </div>
       </div>
 
-      {/* --- Delete Confirmation Modal (page.tsx) --- */}
+      {/* --- Budget Editor Modal (Password Removed, Confirmation Popup Only) --- */}
+      {budgetEditorOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => { setBudgetEditorOpen(false); }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-gray-900" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-2xl font-bold mb-4">Edit Main Budget</h3>
+            <p className="text-sm text-gray-700 mb-4">The budget amount will be stored locally in your browser.</p>
+            <div className="space-y-4">
+                <input
+                    type="number"
+                    placeholder="New Budget Amount"
+                    value={tempBudget}
+                    onChange={(e) => setTempBudget(Number(e.target.value) || 0)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    min="0"
+                    step="0.01"
+                />
+            </div>
+            <div className="mt-6 flex gap-3 justify-end">
+              <button onClick={() => setBudgetEditorOpen(false)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-100 transition-colors">Cancel</button>
+              <button onClick={handleBudgetSave} className="px-4 py-2.5 rounded-lg font-semibold transition-colors bg-indigo-700 text-white hover:bg-indigo-600">Save Budget</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Delete Confirmation Modal --- */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setDeleteConfirm(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -392,7 +476,7 @@ const ExpenseTrackerPage: React.FC = () => {
         </div>
       )}
 
-      {/* --- Week Editor Modal (page.tsx) --- */}
+      {/* --- Week Editor Modal --- */}
       {weekEditorOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setWeekEditorOpen(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -409,16 +493,16 @@ const ExpenseTrackerPage: React.FC = () => {
                 return (
                   <div key={exp._id} className="flex items-center justify-between p-4 rounded-lg border border-gray-300 bg-gray-50">
                     <div className="flex-1">
-                      <input value={exp.description} onChange={(e) => updateExpense(exp._id!, { description: e.target.value })} className="w-full mb-2 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
+                      <input value={exp.description} onChange={(e) => updateExpense(exp._id!, { description: e.target.value })} className="w-full mb-2 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
                       <div className="flex gap-2">
-                        <input type="date" value={exp.date} onChange={(e) => updateExpense(exp._id!, { date: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                        <input value={exp.shop || ''} onChange={(e) => updateExpense(exp._id!, { shop: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" placeholder="Shop" />
-                        <input type="number" value={String(exp.amount)} onChange={(e) => updateExpense(exp._id!, { amount: Number(e.target.value) })} className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
+                        <input type="date" value={exp.date} onChange={(e) => updateExpense(exp._id!, { date: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+                        <input value={exp.shop || ''} onChange={(e) => updateExpense(exp._id!, { shop: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" placeholder="Shop" />
+                        <input type="number" value={String(exp.amount)} onChange={(e) => updateExpense(exp._id!, { amount: Number(e.target.value) })} className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
                       </div>
 
                       {exp.subtasks && exp.subtasks.length > 0 && (
                         <div className="mt-2 text-xs text-gray-700">
-                          Subtasks: {exp.subtasks.length} — {exp.subtasks.filter(s => s.done).length} done
+                          Sub Expenses: {exp.subtasks.length} — {exp.subtasks.filter(s => s.done).length} done
                         </div>
                       )}
                     </div>
@@ -432,7 +516,7 @@ const ExpenseTrackerPage: React.FC = () => {
                             type="checkbox" 
                             checked={isSelected}
                             onChange={() => toggleSelectExpense(exp._id!)}
-                            className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-600"
+                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-600"
                           />
                           <label className="text-sm text-gray-900">Mark Paid</label>
                         </div>
@@ -441,7 +525,7 @@ const ExpenseTrackerPage: React.FC = () => {
                       {!exp.paid && weekEditorOpen === currentWeekStart && (
                         <button onClick={() => setDeleteConfirm(exp._id || null)} className="text-sm text-rose-600 hover:text-rose-800 font-medium">Delete</button>
                       )}
-                      <button onClick={() => openExpenseEditor(exp)} className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg text-gray-900 hover:bg-gray-100 transition-colors">Open task</button>
+                      <button onClick={() => openExpenseEditor(exp)} className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg text-gray-900 hover:bg-gray-100 transition-colors">Open details</button>
                     </div>
                   </div>
                 );
@@ -467,7 +551,7 @@ const ExpenseTrackerPage: React.FC = () => {
         </div>
       )}
 
-      {/* --- Expense Editor Modal (page.tsx) --- */}
+      {/* --- Expense Editor Modal (Sub Expenses) --- */}
       {localExpCopy && editingExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => { setEditingExpense(null); setLocalExpCopy(null); }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -477,69 +561,80 @@ const ExpenseTrackerPage: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <input value={localExpCopy.description} onChange={(e) => setLocalExpCopy({ ...localExpCopy, description: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
+              <input value={localExpCopy.description} onChange={(e) => setLocalExpCopy({ ...localExpCopy, description: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
               <div className="flex gap-2">
-                <input type="date" value={localExpCopy.date} onChange={(e) => setLocalExpCopy({ ...localExpCopy, date: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                <input value={localExpCopy.shop || ''} onChange={(e) => setLocalExpCopy({ ...localExpCopy, shop: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" placeholder="Shop" />
-                <input type="number" value={String(localExpCopy.amount)} onChange={(e) => setLocalExpCopy({ ...localExpCopy, amount: Number(e.target.value) })} className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
+                <input type="date" value={localExpCopy.date} onChange={(e) => setLocalExpCopy({ ...localExpCopy, date: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+                <input value={localExpCopy.shop || ''} onChange={(e) => setLocalExpCopy({ ...localExpCopy, shop: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" placeholder="Shop" />
+                <input type="number" value={String(localExpCopy.amount)} onChange={(e) => setLocalExpCopy({ ...localExpCopy, amount: Number(e.target.value) })} className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
               </div>
 
               <div className="pt-4 border-t border-gray-300">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900">Subtasks</h4>
+                  <h4 className="font-semibold text-gray-900">Sub Expenses</h4>
                 </div>
 
                 <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
-                  {(localExpCopy.subtasks || []).map((st) => (
+                  {(localExpCopy.subtasks || []).slice().sort((a, b) => new Date(b.date || '1970-01-01').getTime() - new Date(a.date || '1970-01-01').getTime()).map((st) => (
                     <div key={st.id} className="flex items-center gap-2 border border-gray-300 rounded-lg p-3 bg-gray-50">
                       <input type="checkbox" checked={st.done} onChange={(e) => {
                         setLocalExpCopy(prev => {
                           if (!prev) return prev;
                           return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, done: e.target.checked } : s) };
                         });
-                      }} className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-600" />
+                      }} className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-600" />
                       <input value={st.title} onChange={(e) => {
                         setLocalExpCopy(prev => {
                           if (!prev) return prev;
                           return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, title: e.target.value } : s) };
                         });
-                      }} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
+                      }} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
                       <input type="number" value={st.amount ?? ''} onChange={(e) => {
                         const v = e.target.value === '' ? undefined : Number(e.target.value);
                         setLocalExpCopy(prev => {
                           if (!prev) return prev;
                           return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, amount: v } : s) };
                         });
-                      }} placeholder="amt" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-                      <div className="text-xs text-gray-600 mr-2">
-                        <span className="text-[10px]">{st.date || ''}</span>
+                      }} placeholder="amt" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+                      <div className="text-xs text-gray-600 mr-2 w-20">
+                         <input type="date" value={st.date || new Date().toISOString().split('T')[0]} onChange={(e) => {
+                            setLocalExpCopy(prev => {
+                                if (!prev) return prev;
+                                return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, date: e.target.value } : s) };
+                            });
+                         }} className="text-[10px] w-full border border-gray-300 rounded-lg px-1 py-1 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
                       </div>
                       <button onClick={() => {
                         setLocalExpCopy(prev => prev ? { ...prev, subtasks: prev.subtasks!.filter(s => s.id !== st.id) } : prev);
                       }} className="text-rose-600 hover:text-rose-800 px-2 font-medium">Del</button>
                     </div>
                   ))}
-                  {(!localExpCopy.subtasks || localExpCopy.subtasks.length === 0) && <div className="text-sm text-gray-700 text-center py-4">No subtasks</div>}
+                  {(!localExpCopy.subtasks || localExpCopy.subtasks.length === 0) && <div className="text-sm text-gray-700 text-center py-4">No sub expenses</div>}
                 </div>
                 
                 <div className="border border-gray-300 rounded-lg p-4 bg-gray-100 space-y-2">
-                  <h5 className="font-semibold text-sm text-gray-900">Add New Subtask</h5>
+                  <h5 className="font-semibold text-sm text-gray-900">Add New Sub Expense</h5>
                   <input
                     type="text"
-                    value={newSubtaskTitle}
-                    onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                    placeholder="Subtask description (required)"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-gray-600"
+                    value={newSubExpenseTitle}
+                    onChange={(e) => setNewSubExpenseTitle(e.target.value)}
+                    placeholder="Sub expense description (required)"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
                   />
-                  <div className="flex gap-2 items-center">
+                  <div className="grid grid-cols-3 gap-2 items-center">
                     <input
                       type="number"
-                      value={newSubtaskAmount as any}
-                      onChange={(e) => setNewSubtaskAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      value={newSubExpenseAmount as any}
+                      onChange={(e) => setNewSubExpenseAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
                       placeholder="Amount (optional)"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-gray-600"
+                      className="col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     />
-                    <button onClick={addSubtaskToLocal} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-700 transition-colors">Add</button>
+                    <input
+                      type="date"
+                      value={newSubExpenseDate}
+                      onChange={(e) => setNewSubExpenseDate(e.target.value)}
+                      className="col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    />
+                    <button onClick={addSubExpenseToLocal} className="col-span-1 px-4 py-2 bg-indigo-700 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors">Add</button>
                   </div>
                 </div>
               </div>
@@ -549,7 +644,7 @@ const ExpenseTrackerPage: React.FC = () => {
               <button onClick={() => { setEditingExpense(null); setLocalExpCopy(null); }} className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-900 font-semibold transition-colors">Cancel</button>
               <button onClick={async () => {
                 if (!localExpCopy || !editingExpense) return;
-                const newWeekStart = getWeekStartISO(new Date(localExpCopy.date)); 
+                const newWeekStart = getWeekStartISO(new Date(localExpCopy.date));
                 const updates: Partial<Expense> = {
                   description: localExpCopy.description,
                   date: localExpCopy.date,
@@ -561,13 +656,13 @@ const ExpenseTrackerPage: React.FC = () => {
                 await updateExpense(editingExpense._id!, updates);
                 setEditingExpense(null);
                 setLocalExpCopy(null);
-              }} className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors">Save</button>
+              }} className="px-6 py-2.5 bg-indigo-700 text-white rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Save</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- Expense Details Modal (page.tsx) --- */}
+      {/* --- Expense Details Modal (Sub Expenses) --- */}
       {showExpenseTotalId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowExpenseTotalId(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -588,9 +683,9 @@ const ExpenseTrackerPage: React.FC = () => {
 
                     {(exp.subtasks || []).length > 0 && (
                       <div className="mt-3 border-t border-gray-300 pt-3">
-                        <div className="text-sm font-semibold text-gray-900 mb-2">Subtasks</div>
+                        <div className="text-sm font-semibold text-gray-900 mb-2">Sub Expenses</div>
                         <ul className="space-y-2 max-h-40 overflow-y-auto">
-                          {(exp.subtasks || []).map((st: any) => {
+                          {(exp.subtasks || []).slice().sort((a, b) => new Date(b.date || '1970-01-01').getTime() - new Date(a.date || '1970-01-01').getTime()).map((st: any) => {
                             const a = (typeof st.amount === 'number' && !Number.isNaN(st.amount)) ? st.amount : Number(st.amount) || 0;
                             return (
                               <li key={st.id} className="flex justify-between text-sm text-gray-800 p-2 bg-gray-100 rounded-lg">
@@ -608,7 +703,7 @@ const ExpenseTrackerPage: React.FC = () => {
                   </div>
 
                   <div className="text-right border-t border-gray-300 pt-4">
-                    <div className="text-sm text-gray-700">Total (Base + Subtasks)</div>
+                    <div className="text-sm text-gray-700">Total (Base + Sub Expenses)</div>
                     <div className="text-3xl font-bold text-gray-900">₹ {total.toFixed(2)}</div>
                   </div>
 

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongoose";
 import Expense from "@/models/Expense";
 
-type RawSubtask = {
+type RawSubExpense = {
   id?: unknown;
   title?: unknown;
   done?: unknown;
@@ -23,7 +23,7 @@ async function ensureConnected() {
   }
 }
 
-function normalizeSubtask(raw: RawSubtask) {
+function normalizeSubExpense(raw: RawSubExpense) {
   const id = raw.id !== undefined ? String(raw.id) : Math.random().toString(36).slice(2, 9);
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
   const done = typeof raw.done === "boolean" ? raw.done : Boolean(raw.done);
@@ -41,10 +41,10 @@ function normalizeSubtask(raw: RawSubtask) {
   } as Record<string, unknown>;
 }
 
-function normalizeSubtasks(arr: unknown): Record<string, unknown>[] {
+function normalizeSubExpenses(arr: unknown): Record<string, unknown>[] {
   if (!Array.isArray(arr)) return [];
   return arr
-    .map((r) => normalizeSubtask(r as RawSubtask))
+    .map((r) => normalizeSubExpense(r as RawSubExpense))
     .filter(s => typeof s.title === "string" && (s.title as string).length > 0);
 }
 
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const category = typeof body.category === "string" ? body.category.trim() : "";
     const date = typeof body.date === "string" ? body.date : "";
     const weekStart = typeof body.weekStart === "string" ? body.weekStart : "";
-    const subtasks = normalizeSubtasks(body.subtasks);
+    const subtasks = normalizeSubExpenses(body.subtasks);
     const shop = body.shop === undefined || body.shop === null ? "" : String(body.shop);
 
     if (!description || !category || !date || !weekStart || !(typeof amount === "number" && !Number.isNaN(amount))) {
@@ -158,7 +158,7 @@ export async function PATCH(request: Request) {
         const am = typeof updates.amount === "number" ? updates.amount : Number(updates.amount);
         if (!Number.isNaN(am)) payload.amount = am;
       } else if (key === "subtasks") {
-        payload.subtasks = normalizeSubtasks(updates.subtasks);
+        payload.subtasks = normalizeSubExpenses(updates.subtasks);
       } else if (key === "date" || key === "category" || key === "description" || key === "weekStart") {
         payload[key] = typeof updates[key] === "string" ? (updates[key] as string).trim() : String(updates[key] || "");
       } else if (key === "paid") {

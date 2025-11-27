@@ -1,5 +1,3 @@
-// ExpenseList.tsx
-
 import React from 'react';
 import { Expense } from './interfaces';
 import { getWeekStartISO } from './utils';
@@ -33,12 +31,12 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
         const weekLabel = `${wk}${isCurrentWeek ? ' • This week' : ''}`;
         
         return (
-          <div key={wk} className={`bg-white rounded-2xl shadow-lg border p-5 ${isCurrentWeek ? 'border-gray-500 ring-2 ring-gray-300' : 'border-gray-200'}`}>
+          <div key={wk} className={`bg-white rounded-2xl shadow-lg border p-5 ${isCurrentWeek ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">{weekLabel}</h3>
                 <div className="text-sm text-gray-700">
-                  {wkExpenses.length} items • ₹ {weekTotal.toFixed(2)} 
+                  {wkExpenses.length} items • ₹ {weekTotal.toFixed(2)}
                   {isFilterActive ? ` • ${wkExpenses.filter(e => e.paid).length} paid` : ''}
                   {!isFilterActive && unpaidCount > 0 ? ` • ${unpaidCount} unpaid` : ''}
                   {!isFilterActive && unpaidCount === 0 && wkExpenses.length > 0 && ` • All paid`}
@@ -67,14 +65,14 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
                     <div className="text-2xl">{categoryIcons[exp.category]}</div>
                     <div>
                       <div className="font-semibold text-gray-900">
-                        {exp.description} 
+                        {exp.description}
                         {exp.shop ? (
                             <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded ml-2">
                                 @{exp.shop}
                             </span>
                         ) : null}
                       </div>
-                      <div className="text-xs text-gray-600">{exp.date} • {exp.category} {exp.subtasks && exp.subtasks.length > 0 ? `• ${exp.subtasks.filter(s => s.done).length}/${exp.subtasks.length} subtasks` : ''}</div>
+                      <div className="text-xs text-gray-600">{exp.date} • {exp.category} {exp.subtasks && exp.subtasks.length > 0 ? `• ${exp.subtasks.filter(s => s.done).length}/${exp.subtasks.length} sub expenses` : ''}</div>
                     </div>
                   </div>
 

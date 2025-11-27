@@ -1,5 +1,3 @@
-// utils.ts
-
 import { Expense, DateFilter } from './interfaces';
 
 export const uid = () => Math.random().toString(36).slice(2, 9);

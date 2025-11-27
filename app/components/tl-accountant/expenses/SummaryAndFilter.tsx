@@ -1,5 +1,3 @@
-// SummaryAndFilter.tsx
-
 import React from 'react';
 import { Expense, DateFilter } from './interfaces';
 import { downloadCSV } from './utils';
@@ -30,41 +28,41 @@ const SummaryAndFilter: React.FC<SummaryAndFilterProps> = ({
 
   return (
     <div className="xl:col-span-1 space-y-4">
-      <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-xl">
-        <h3 className="text-lg font-semibold mb-1">Total Unpaid Breakdown</h3>
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-xl">
+        <h3 className="text-xl font-bold mb-1 text-gray-900">Total Unpaid Breakdown</h3>
         
         <div className="space-y-2 mt-4">
             {unpaidTotalsByShop.map(({ shop, total }) => (
-                <div key={shop} className="flex justify-between items-center bg-gray-700 p-3 rounded-lg">
-                    <div className="text-sm font-medium">{shop}</div>
-                    <div className="text-xl font-bold">₹ {total.toFixed(2)}</div>
+                <div key={shop} className="flex justify-between items-center bg-gray-100 p-3 rounded-lg border border-gray-200">
+                    <div className="text-sm font-medium text-gray-800">{shop}</div>
+                    <div className="text-xl font-bold text-indigo-700">₹ {total.toFixed(2)}</div>
                 </div>
             ))}
         </div>
 
-        <hr className="border-gray-600 my-4" />
+        <hr className="border-gray-300 my-4" />
 
         <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold">Grand Total</h3>
-            <p className="text-4xl font-bold">
+            <h3 className="text-xl font-bold text-gray-900">Grand Total (Unpaid in View)</h3>
+            <p className="text-4xl font-bold text-indigo-700">
                 ₹ {grandTotal.toFixed(2)}
             </p>
         </div>
-        <p className="text-sm opacity-90 mt-1">
-          {finalFilteredExpenses.length} total items in view. 
+        <p className="text-sm text-gray-600 mt-1">
+          {finalFilteredExpenses.length} total items in view.
           {isFilterActive ? ' Showing filtered items.' : ' Showing only unpaid items.'}
         </p>
 
         <div className="flex gap-2 mt-4">
-          <button onClick={() => downloadCSV(finalFilteredExpenses, `expense_report_${dateFilter || 'all'}_${shopFilter || 'all'}.csv`)} className="px-4 py-2 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex-1">Export</button>
-          <button onClick={fetchExpenses} className="px-4 py-2 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex-1">Refresh</button>
+          <button onClick={() => downloadCSV(finalFilteredExpenses, `expense_report_${dateFilter || 'all'}_${shopFilter || 'all'}.csv`)} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-200 transition-colors flex-1">Export</button>
+          <button onClick={fetchExpenses} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-200 transition-colors flex-1">Refresh</button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-lg">
         <h4 className="font-bold mb-3 text-gray-900">Filters</h4>
-        <select value={dateFilter} onChange={(e) => { setDateFilter(e.target.value as DateFilter); if (e.target.value !== 'custom') { setCustomStartDate(''); setCustomEndDate(''); } }} className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mb-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600">
-          <option value="">No Date Filter (Show Unpaid)</option>
+        <select value={dateFilter} onChange={(e) => { setDateFilter(e.target.value as DateFilter); if (e.target.value !== 'custom') { setCustomStartDate(''); setCustomEndDate(''); } }} className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mb-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+          <option value="">Show Only Unpaid</option>
           <option value="all">All Time (Show Paid & Unpaid)</option>
           <option value="yesterday">Yesterday</option>
           <option value="last_month">Last Month</option>
@@ -77,8 +75,8 @@ const SummaryAndFilter: React.FC<SummaryAndFilterProps> = ({
 
         {dateFilter === 'custom' && (
           <div className="grid grid-cols-1 gap-2">
-            <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
-            <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600" />
+            <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+            <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
           </div>
         )}
         
@@ -86,7 +84,7 @@ const SummaryAndFilter: React.FC<SummaryAndFilterProps> = ({
             value={shopFilter}
             onChange={(e) => setShopFilter(e.target.value)}
             placeholder="Filter by Shop name"
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mt-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-600"
+            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mt-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
         />
       </div>
     </div>

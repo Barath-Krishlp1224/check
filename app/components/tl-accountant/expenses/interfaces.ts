@@ -1,6 +1,4 @@
-// interfaces.ts
-
-export interface Subtask {
+export interface SubExpense {
   id: string;
   title: string;
   done: boolean;
@@ -18,7 +16,7 @@ export interface Expense {
   shop?: string;
   paid?: boolean;
   weekStart?: string;
-  subtasks?: Subtask[];
+  subtasks?: SubExpense[]; // Still uses 'subtasks' key for MongoDB field name
 }
 
 export type DateFilter =

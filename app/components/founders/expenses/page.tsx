@@ -1,34 +1,62 @@
-'use client';
+'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
 
-// --- Interfaces (kept consistent) ---
+// --- Consolidated Interfaces (From interfaces.ts) ---
+interface SubExpense {
+  id: string;
+  title: string;
+  done: boolean;
+  amount?: number;
+  date?: string;
+}
+
 interface Expense {
   _id?: string;
-  id?: number;
   description: string;
   amount: number;
   category: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   createdAt?: string;
+  shop?: string;
+  paid?: boolean;
+  weekStart?: string;
+  subtasks?: SubExpense[];
 }
 
-type ApiResponse = {
-  success: boolean;
-  data?: Expense[];
-  error?: string;
+type DateFilter =
+  | 'all'
+  | 'yesterday'
+  | 'last_month'
+  | 'last_3_months'
+  | 'last_6_months'
+  | 'last_9_months'
+  | 'last_year'
+  | 'custom'
+  | '';
+
+// --- Consolidated Utils (From utils.ts) ---
+const BUDGET_STORAGE_KEY = 'expense_tracker_budget';
+const DEFAULT_BUDGET = 50000.00;
+
+const getWeekStartISO = (d: Date) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diffToMonday = ((day + 6) % 7);
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0];
 };
 
-type DateFilter = 'all' | 'yesterday' | 'last_month' | 'last_3_months' | 'last_6_months' | 'last_9_months' | 'last_year' | 'custom' | '';
-
-// --- Utility Functions (kept consistent) ---
 const getFilterDates = (filter: DateFilter): { startDate: string | null; endDate: string | null } => {
   const today = new Date();
   let startDate: Date | null = null;
   let endDate: Date = new Date();
 
   switch (filter) {
-    case 'all': return { startDate: null, endDate: null };
+    case 'all':
+      return { startDate: null, endDate: null };
     case 'yesterday':
       startDate = new Date(today);
       startDate.setDate(today.getDate() - 1);
@@ -57,62 +85,55 @@ const getFilterDates = (filter: DateFilter): { startDate: string | null; endDate
   return { startDate: startDate ? formatDate(startDate) : null, endDate: formatDate(endDate) };
 };
 
-const downloadCSV = (data: Expense[], filename: string = 'expense_report.csv') => {
-  if (data.length === 0) {
-    alert('No data to download.');
-    return;
-  }
-  const headers = ['ID', 'Date', 'Category', 'Description', 'Amount'];
-  // Added an ID column for better identification in the report
-  const csvRows = data.map((expense, idx) =>
-    `${idx + 1},"${expense.date}","${expense.category}","${(expense.description || '').replace(/"/g, '""')}",${expense.amount.toFixed(2)}`
-  );
-  const csvString = [headers.join(','), ...csvRows].join('\n');
-  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
-    alert('Your browser does not support downloading files directly.');
-  }
+const categoryIcons: Record<string, string> = {
+  Food: '🍔',
+  Transport: '🚗',
+  Utilities: '💡',
+  Entertainment: '🎬',
+  Other: '📦',
 };
 
-// --- Main Component ---
-const ExpenseTrackerPage: React.FC = () => {
+// --- START COMPONENT ---
+const ExpenseDashboard: React.FC = () => {
+  // Load budget from localStorage on initial load
+  const [mainBudget, setMainBudget] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+        const savedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
+        // NOTE: Budget is now fixed and only editable by changing this code or localStorage directly
+        return savedBudget ? parseFloat(savedBudget) : DEFAULT_BUDGET;
+    }
+    return DEFAULT_BUDGET;
+  });
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Filter States
-  const [dateFilter, setDateFilter] = useState<DateFilter | ''>('last_month'); // Default to last month
+  
+  // Filter state (set to 'all' to show all expenses by default)
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all'); 
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [shopFilter, setShopFilter] = useState('');
+  const [showExpenseTotalId, setShowExpenseTotalId] = useState<string | null>(null);
 
+  const currentWeekStart = getWeekStartISO(new Date());
+  
+  // Removed: isBudgetVisible state, budgetEditorOpen state, tempBudget state
+  // Removed: Persistence effect for budget (already in useState initializer)
+
+  // --- Data Fetching (Retained for Initial Load/Refresh) ---
   const fetchExpenses = async () => {
     setLoading(true);
-    setError(null);
-
     try {
+      // NOTE: Actual API endpoint is '/api/expenses' (assuming Next.js setup)
       const res = await fetch('/api/expenses');
-      const json = (await res.json()) as ApiResponse;
-
-      if (!res.ok || !json.success) {
-        const errMsg = json?.error ?? `Failed to fetch (status ${res.status})`;
-        setError(errMsg);
-        setExpenses([]);
+      const json = await res.json();
+      if (json.success) {
+        setExpenses(json.data);
       } else {
-        setExpenses(Array.isArray(json.data) ? json.data : []);
+        console.error('Failed to fetch expenses', json);
       }
     } catch (err) {
-      console.error('Fetch error:', err);
-      setError('Network error while loading expenses. Please check your connection.');
-      setExpenses([]);
+      console.error('Fetch error', err);
     } finally {
       setLoading(false);
     }
@@ -122,275 +143,365 @@ const ExpenseTrackerPage: React.FC = () => {
     fetchExpenses();
   }, []);
 
-  const handleFilterChange = (newFilter: DateFilter | '') => {
-    setDateFilter(newFilter);
-    // Reset custom date values whenever a non-custom filter is selected.
-    if (newFilter !== 'custom') {
-      setCustomStartDate('');
-      setCustomEndDate('');
-    }
+
+  // --- Core Calculation Logic ---
+  const getExpenseTotal = (e: Expense): number => {
+    const expenseAmount = typeof e.amount === 'number' && !Number.isNaN(e.amount) ? e.amount : Number(e.amount) || 0;
+    const subtasksTotal = (e.subtasks || []).reduce((ss, st) => {
+      const a = (st as any).amount;
+      return ss + (typeof a === 'number' && !Number.isNaN(a) ? a : Number(a) || 0);
+    }, 0);
+    return expenseAmount + subtasksTotal;
   };
 
-  const filteredExpenses = useMemo(() => {
-    // Return all expenses if no filter is selected (though dateFilter defaults to 'last_month')
-    if (!dateFilter || dateFilter === 'all') {
-      return expenses.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-
+  // --- Filtering Logic ---
+  const dateFilteredExpenses = useMemo(() => {
     let startDate: string | null = null;
     let endDate: string | null = null;
 
     if (dateFilter === 'custom') {
       startDate = customStartDate;
       endDate = customEndDate;
-    } else {
+    } else if (dateFilter !== '' && dateFilter !== 'all') {
       const d = getFilterDates(dateFilter as DateFilter);
       startDate = d.startDate;
       endDate = d.endDate;
-    }
+    } 
 
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(23,59,59,999);
+    if (end) end.setHours(23, 59, 59, 999);
 
     return expenses
       .filter(exp => {
         const expenseDate = new Date(exp.date);
-        expenseDate.setHours(0,0,0,0);
-        if (!start && !end) return true;
+        expenseDate.setHours(0, 0, 0, 0);
+        
         const isAfterStart = !start || expenseDate >= start;
         const isBeforeEnd = !end || expenseDate <= end;
+        
         return isAfterStart && isBeforeEnd;
       })
-      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [expenses, dateFilter, customStartDate, customEndDate]);
 
-  const totalExpense = filteredExpenses.reduce((s, e) => s + e.amount, 0);
+  const isFilterActive = useMemo(() => {
+    const isDateFilterSet = dateFilter !== '';
+    const isShopFilterSet = shopFilter.trim() !== '';
+    return isDateFilterSet || isShopFilterSet;
+  }, [dateFilter, shopFilter]);
 
-  // Filter and sort for the "Recent Activity" sidebar panel
-  const lastFive = useMemo(() => {
-    return expenses.slice().sort((a,b) => {
-      // Prioritize sorting by createdAt (when the expense was recorded), falling back to date if createdAt is missing
-      const ta = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
-      const tb = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
-      return tb - ta;
-    }).slice(0,5);
-  }, [expenses]);
-
-  const handleDownloadReport = () => {
-    if (filteredExpenses.length === 0) {
-        alert('No data to download for the current filter period.');
-        return;
+  const finalFilteredExpenses = useMemo(() => {
+    let filtered = dateFilteredExpenses;
+    
+    const lowerCaseShopFilter = shopFilter.toLowerCase().trim();
+    if (lowerCaseShopFilter) {
+        filtered = filtered.filter(exp => {
+            const expShop = exp.shop ? exp.shop.toLowerCase() : '';
+            return expShop.includes(lowerCaseShopFilter);
+        });
     }
-    // Simple filter name for the filename
-    const filenameFilter = dateFilter === 'custom' ? `custom_${customStartDate}_to_${customEndDate}` : dateFilter;
-    downloadCSV(filteredExpenses, `expense_report_${filenameFilter}.csv`);
-  };
 
-  // Icons for better visual appeal
-  const categoryIcons: Record<string, string> = {
-    Food: '🍔',
-    Transport: '🚗',
-    Utilities: '💡',
-    Entertainment: '🎬',
-    Other: '📦'
+    if (dateFilter === '') {
+        filtered = filtered.filter(exp => !exp.paid);
+    }
+
+    return filtered;
+  }, [dateFilteredExpenses, shopFilter, dateFilter]);
+  
+  const paidExpenses = useMemo(() => expenses.filter(e => e.paid), [expenses]);
+
+  const expensesByWeek = useMemo(() => {
+    const map = new Map<string, Expense[]>();
+    for (const e of finalFilteredExpenses) {
+        const wk = e.weekStart || getWeekStartISO(new Date(e.date));
+        if (!map.has(wk)) map.set(wk, []);
+        map.get(wk)!.push(e);
+    }
+    const sorted = Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+    return sorted;
+  }, [finalFilteredExpenses]);
+
+  const unpaidTotalsByShop = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    finalFilteredExpenses.forEach(exp => {
+      if (!exp.paid) {
+        const shopName = exp.shop && exp.shop.trim() ? exp.shop.trim() : 'Unassigned Shop';
+        const totalAmount = getExpenseTotal(exp);
+        const currentTotal = totals.get(shopName) || 0;
+        totals.set(shopName, currentTotal + totalAmount);
+      }
+    });
+
+    return Array.from(totals.entries()).map(([shop, total]) => ({ shop, total }));
+  }, [finalFilteredExpenses]);
+
+  const grandTotal = finalFilteredExpenses.reduce((s, e) => s + (e.paid && dateFilter === '' ? 0 : getExpenseTotal(e)), 0);
+
+  // --- Render Functions (Simplified UI) ---
+
+  const renderBudgetDisplay = () => {
+    const totalPaid = paidExpenses.reduce((sum, e) => sum + getExpenseTotal(e), 0);
+    const remainingBalance = mainBudget - totalPaid;
+    const isOverBudget = remainingBalance < 0;
+
+    return (
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-xl">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Overall Budget Status</h3>
+          {/* Removed Edit Budget Button */}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex justify-between items-center p-3 rounded-lg border border-gray-200 bg-gray-50">
+            <div className="font-medium text-lg text-gray-700">Initial Budget</div>
+            {/* Budget always visible */}
+            <div className="text-2xl font-bold text-indigo-700">₹ {mainBudget.toFixed(2)}</div>
+          </div>
+          <div className="flex justify-between items-center p-3 rounded-lg border border-gray-200 bg-gray-50">
+            <div className="font-medium text-lg text-gray-700">Total Paid Expenses</div>
+            <div className="text-2xl font-bold text-indigo-700">₹ {totalPaid.toFixed(2)}</div>
+          </div>
+          <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+            <div className="font-bold text-2xl text-gray-900">Remaining Balance</div>
+            <div className={`text-4xl font-extrabold ${isOverBudget ? 'text-rose-600' : 'text-emerald-600'}`}>
+              ₹ {remainingBalance.toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  const renderSummaryAndFilter = () => (
+    <>
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-xl">
+            <h3 className="text-xl font-bold mb-1 text-gray-900">Total Unpaid Breakdown</h3>
+            
+            <div className="space-y-2 mt-4">
+                {unpaidTotalsByShop.map(({ shop, total }) => (
+                    <div key={shop} className="flex justify-between items-center bg-gray-100 p-3 rounded-lg border border-gray-200">
+                        <div className="text-sm font-medium text-gray-800">{shop}</div>
+                        <div className="text-xl font-bold text-indigo-700">₹ {total.toFixed(2)}</div>
+                    </div>
+                ))}
+            </div>
+
+            <hr className="border-gray-300 my-4" />
+
+            <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-900">Grand Total (Unpaid in View)</h3>
+                <p className="text-4xl font-bold text-indigo-700">
+                    ₹ {grandTotal.toFixed(2)}
+                </p>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              {finalFilteredExpenses.length} total items in view.
+              {isFilterActive ? ' Showing filtered items.' : ' Showing only unpaid items.'}
+            </p>
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={fetchExpenses} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-200 transition-colors flex-1">Refresh</button>
+            </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-lg">
+            <h4 className="font-bold mb-3 text-gray-900">Filters</h4>
+            <select 
+                value={dateFilter} 
+                onChange={(e) => { 
+                    setDateFilter(e.target.value as DateFilter); 
+                    if (e.target.value !== 'custom') { 
+                        setCustomStartDate(''); 
+                        setCustomEndDate(''); 
+                    } 
+                }} 
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mb-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            >
+              <option value="">Show Only Unpaid</option>
+              <option value="all">All Time (Show Paid & Unpaid)</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="last_month">Last Month</option>
+              <option value="last_3_months">Last 3 Months</option>
+              <option value="last_6_months">Last 6 Months</option>
+              <option value="last_9_months">Last 9 Months</option>
+              <option value="last_year">Last 1 Year</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {dateFilter === 'custom' && (
+              <div className="grid grid-cols-1 gap-2">
+                <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+                <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+              </div>
+            )}
+            
+            <input
+                value={shopFilter}
+                onChange={(e) => setShopFilter(e.target.value)}
+                placeholder="Filter by Shop name"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 mt-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            />
+        </div>
+    </>
+  );
+
+  const renderExpenseList = () => (
+    <div className="space-y-4">
+      {expensesByWeek.map(([wk, wkExpenses]) => {
+        const weekTotal = wkExpenses.reduce((sum, e) => {
+          return sum + getExpenseTotal(e);
+        }, 0);
+        const unpaidCount = wkExpenses.filter(e => !e.paid).length;
+        const isCurrentWeek = wk === currentWeekStart;
+        const weekLabel = `${wk}${isCurrentWeek ? ' • This week' : ''}`;
+        
+        return (
+          <div key={wk} className={`bg-white rounded-2xl shadow-lg border p-5 ${isCurrentWeek ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">{weekLabel}</h3>
+                <div className="text-sm text-gray-700">
+                  {wkExpenses.length} items • ₹ {weekTotal.toFixed(2)}
+                  {isFilterActive ? ` • ${wkExpenses.filter(e => e.paid).length} paid` : ''}
+                  {!isFilterActive && unpaidCount > 0 ? ` • ${unpaidCount} unpaid` : ''}
+                  {!isFilterActive && unpaidCount === 0 && wkExpenses.length > 0 && ` • All paid`}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!isFilterActive && unpaidCount > 0 && <div className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">Pending</div>}
+                {!isFilterActive && unpaidCount === 0 && wkExpenses.length > 0 && <div className="px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium">Paid</div>}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {wkExpenses.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
+                <div key={exp._id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">{categoryIcons[exp.category]}</div>
+                    <div>
+                      <div className="font-semibold text-gray-900">
+                        {exp.description}
+                        {exp.shop ? (
+                            <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded ml-2">
+                                @{exp.shop}
+                            </span>
+                        ) : null}
+                      </div>
+                      <div className="text-xs text-gray-600">{exp.date} • {exp.category} {exp.subtasks && exp.subtasks.length > 0 ? `• ${exp.subtasks.filter(s => s.done).length}/${exp.subtasks.length} sub expenses` : ''}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className={`font-bold ${exp.paid ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      ₹ {getExpenseTotal(exp).toFixed(2)}
+                    </div>
+                    {/* Show Paid/Unpaid Status */}
+                    <div className={`text-xs px-2 py-1 rounded ${exp.paid ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                        {exp.paid ? 'PAID' : 'UNPAID'}
+                    </div>
+
+                    <button
+                      onClick={() => setShowExpenseTotalId(exp._id || null)}
+                      className="px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm font-medium transition-colors"
+                    >
+                      Details
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      
+      {expensesByWeek.length === 0 && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 text-center text-gray-600">
+              No expenses found matching the current filters.
+          </div>
+      )}
+    </div>
+  );
+
+  const renderExpenseDetailsModal = () => {
+    const exp = expenses.find(x => x._id === showExpenseTotalId);
+    if (!exp) return null;
+    const total = getExpenseTotal(exp);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowExpenseTotalId(null)}>
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-xl font-bold mb-2 text-gray-900">{exp.description}</h3>
+                <div className="text-sm text-gray-700 mb-4">{exp.date} • {exp.shop ? `@${exp.shop}` : exp.category}</div>
+
+                <div className="mb-4">
+                  <div className="flex justify-between text-gray-900 py-2">
+                    <div>Expense base amount</div>
+                    <div className="font-semibold">₹ { (typeof exp.amount === 'number' ? exp.amount : Number(exp.amount) || 0).toFixed(2) }</div>
+                  </div>
+
+                  {(exp.subtasks || []).length > 0 && (
+                    <div className="mt-3 border-t border-gray-300 pt-3">
+                      <div className="text-sm font-semibold text-gray-900 mb-2">Sub Expenses</div>
+                      <ul className="space-y-2 max-h-40 overflow-y-auto">
+                        {(exp.subtasks || []).slice().sort((a, b) => new Date(b.date || '1970-01-01').getTime() - new Date(a.date || '1970-01-01').getTime()).map((st: any) => {
+                          const a = (typeof st.amount === 'number' && !Number.isNaN(st.amount)) ? st.amount : Number(st.amount) || 0;
+                          return (
+                            <li key={st.id} className="flex justify-between text-sm text-gray-800 p-2 bg-gray-100 rounded-lg">
+                              <div>
+                                <div className="font-medium">{st.title}</div>
+                                <div className="text-[11px] text-gray-600">{st.date || ''}</div>
+                              </div>
+                              <div className="font-semibold">₹ {a.toFixed(2)}</div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-right border-t border-gray-300 pt-4">
+                  <div className="text-sm text-gray-700">Total (Base + Sub Expenses)</div>
+                  <div className="text-3xl font-bold text-gray-900">₹ {total.toFixed(2)}</div>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button onClick={() => setShowExpenseTotalId(null)} className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-900 font-semibold transition-colors">Close</button>
+                </div>
+            </div>
+        </div>
+    );
   };
 
   return (
-    <div className='min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-8'>
-      <div className='w-full max-w-7xl'>
-        <div className='text-center mt-10 mb-10'>
-         
-          <p className='text-xs sm:text-6xl font-black text-gray-900 mb-3 tracking-tight'>Expense Dashboard</p>
-          
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6 py-12">
+      <div className="w-full mt-20 max-w-7xl">
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-gray-900 mb-2">Expense Dashboard</h1>
+          <p className="text-gray-700">View expenses, track budget, and apply filters (Read-Only Mode)</p>
         </div>
 
-        {error && !loading && (
-          <div className="p-5 mb-6 bg-red-50 text-red-800 rounded-2xl border-2 border-red-200 flex items-center justify-between shadow-lg">
-            <div className='flex items-center gap-3'>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-              <div>
-                <span className='font-bold block'>Error Loading Data</span>
-                <span className='text-sm text-red-700'>{error}</span>
-              </div>
-            </div>
-            <button
-              onClick={fetchExpenses}
-              className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition duration-200 shadow-lg"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        <div className='grid grid-cols-1 xl:grid-cols-4 gap-6'>
-          <div className='xl:col-span-3 space-y-6'>
-            <div className='bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-6 sm:p-8'>
-              <div className='flex items-center gap-3 mb-6'>
-                <div className='w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg'>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                </div>
-                <h2 className='text-2xl font-bold text-gray-900'>Filter & Export</h2>
-              </div>
-              <div className='flex flex-col lg:flex-row lg:items-end gap-4'>
-                <div className='flex-1'>
-                  <label className='block text-sm font-bold text-gray-700 mb-2.5'>Time Period</label>
-                  <select value={dateFilter} onChange={(e) => handleFilterChange(e.target.value as DateFilter | '')}
-                          className='w-full px-5 py-3.5 rounded-xl border-2 border-gray-300 bg-white text-gray-900 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition shadow-sm font-medium'
-                          required>
-                    <option value=''>Select Filter</option>
-                    <option value='all'>All Time</option>
-                    <option value='yesterday'>Yesterday</option>
-                    <option value='last_month'>Last Month</option>
-                    <option value='last_3_months'>Last 3 Months</option>
-                    <option value='last_6_months'>Last 6 Months</option>
-                    <option value='last_9_months'>Last 9 Months</option>
-                    <option value='last_year'>Last 1 Year</option>
-                    <option value='custom'>Custom Range</option>
-                  </select>
-                </div>
-
-                <button onClick={handleDownloadReport}
-                        className='px-8 py-3.5 bg-green-600 text-white font-black rounded-xl shadow-lg hover:bg-green-700 hover:shadow-xl transform hover:scale-105 transition duration-200 flex items-center justify-center gap-2.5 whitespace-nowrap'>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                  Export ({filteredExpenses.length})
-                </button>
-              </div>
-
-              {dateFilter === 'custom' && (
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-6'>
-                  <div>
-                    <label className='block text-sm font-bold text-gray-700 mb-2.5'>From Date</label>
-                    <input type='date' value={customStartDate} onChange={(e)=>setCustomStartDate(e.target.value)}
-                           className='w-full px-5 py-3.5 rounded-xl border-2 border-gray-300 bg-white text-gray-900 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition shadow-sm' />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-bold text-gray-700 mb-2.5'>To Date</label>
-                    <input type='date' value={customEndDate} onChange={(e)=>setCustomEndDate(e.target.value)}
-                           className='w-full px-5 py-3.5 rounded-xl border-2 border-gray-300 bg-white text-gray-900 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 transition shadow-sm' />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className='bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-6 sm:p-8'>
-              <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6'>
-                <h2 className='text-2xl font-bold text-gray-900 flex items-center gap-3'>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-                  Transactions
-                </h2>
-                <span className='px-5 py-2.5 bg-indigo-600 text-white font-black rounded-full text-sm shadow-lg'>{filteredExpenses.length} records</span>
-              </div>
-
-              {loading && !error ? (
-                <div className='text-center py-24'>
-                  <div className='inline-block animate-spin rounded-full h-20 w-20 border-4 border-gray-200 border-t-indigo-600'></div>
-                  <p className='mt-6 text-gray-600 font-semibold text-lg'>Loading expenses...</p>
-                </div>
-              ) : 
-              !error && filteredExpenses.length === 0 ? (
-                <div className='text-center py-24 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50'>
-                  <div className='text-7xl mb-5'>📊</div>
-                  <p className='text-2xl font-bold text-gray-800'>No Data Found</p>
-                  <p className='text-gray-500 mt-2 text-lg'>Adjust your filters to view expenses</p>
-                </div>
-              ) : (
-                <div className='space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar'>
-                  {filteredExpenses.map(expense => (
-                    <div key={expense._id} className='group flex items-center justify-between p-5 bg-gray-50 hover:bg-indigo-50 border-2 border-gray-200 hover:border-indigo-400 rounded-xl transition-all duration-200 shadow-md hover:shadow-xl'>
-                      <div className='flex items-center gap-4 flex-1'>
-                        <div className='w-14 h-14 bg-white rounded-xl flex items-center justify-center text-3xl border-2 border-gray-200 group-hover:border-indigo-400 transition-colors shadow-md'>
-                          {categoryIcons[expense.category]}
-                        </div>
-                        <div className='flex-1 min-w-0'>
-                          <p className='font-bold text-gray-900 text-lg truncate'>{expense.description}</p>
-                          <div className='flex items-center gap-3 mt-1.5 flex-wrap'>
-                            <span className='text-sm text-gray-600 font-medium'>{expense.date}</span>
-                            <span className='px-3 py-1 bg-white border-2 border-gray-200 rounded-lg text-xs font-bold text-indigo-600'>{expense.category}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className='flex items-center ml-4'>
-                        <span className='text-2xl font-black text-red-600'>- ₹ {expense.amount.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Expense List</h2>
+            {renderExpenseList()}
           </div>
 
-          <div className='xl:col-span-1 space-y-6'>
-            <div className='bg-indigo-600 rounded-2xl shadow-2xl p-6 sm:p-8 text-white sticky top-6'>
-              <div className='flex items-center gap-3 mb-5'>
-                <div className='w-14 h-14 bg-white bg-opacity-20 rounded-xl flex items-center justify-center shadow-lg'>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                  </svg>
-                </div>
-                <h3 className='text-lg font-black'>Total Spending</h3>
-              </div>
-              <p className='text-5xl font-black mb-3'>₹ {totalExpense.toFixed(2)}</p>
-              <p className='text-white font-bold text-sm'>{filteredExpenses.length} transactions</p>
-              <p className='text-white text-opacity-80 text-xs mt-1'>{dateFilter === 'all' ? 'All time' : dateFilter === 'custom' ? 'Custom Range' : (dateFilter || '').replace('_', ' ')}</p>
-            </div>
-
-            <div className='bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-6'>
-              <h3 className='text-xl font-bold text-gray-900 mb-5 flex items-center gap-2.5'>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Recent Activity
-              </h3>
-              {lastFive.length === 0 ? (
-                <div className='text-center py-12 text-gray-500'>
-                  <div className='text-5xl mb-3'>💤</div>
-                  <p className='text-sm font-semibold'>No recent activity</p>
-                </div>
-              ) : (
-                <ul className='space-y-3'>
-                  {lastFive.map(item => (
-                    <li key={item._id} className='flex justify-between items-start p-4 bg-gray-50 rounded-xl border-2 border-gray-200 hover:border-indigo-300 transition-all duration-200 shadow-sm'>
-                      <div className='flex-1 min-w-0'>
-                        <div className='flex items-center gap-2 mb-1.5'>
-                          <span className='text-xl'>{categoryIcons[item.category]}</span>
-                          <div className='text-sm font-bold text-gray-900 truncate'>{item.description}</div>
-                        </div>
-                        <div className='text-xs text-gray-600 font-medium'>{item.date}</div>
-                      </div>
-                      <div className='text-sm font-bold text-red-600 ml-3 whitespace-nowrap'>- ₹ {item.amount.toFixed(2)}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <button onClick={() => fetchExpenses()} 
-                    className='w-full px-6 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 font-bold hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-xl'>
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-              Refresh Data
-            </button>
+          <div className="xl:col-span-1 space-y-6">
+            {renderBudgetDisplay()}
+            {renderSummaryAndFilter()}
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f3f4f6;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #4f46e5;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #4338ca;
-        }
-      `}</style>
+      {/* --- Modals --- */}
+      {showExpenseTotalId && renderExpenseDetailsModal()}
+      {/* Removed Budget Editor Modal */}
     </div>
   );
 };
 
-export default ExpenseTrackerPage;
+export default ExpenseDashboard;

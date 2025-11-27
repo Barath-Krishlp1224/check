@@ -1,12 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
-
-export interface Subtask {
-  id: string;
-  title: string;
-  done: boolean;
-  amount?: number;
-  date?: string;
-}
+import { SubExpense } from "../app/components/tl-accountant/expenses/interfaces";
 
 export interface IExpense extends Document {
   description: string;
@@ -17,10 +10,10 @@ export interface IExpense extends Document {
   shop?: string;
   paid: boolean;
   weekStart: string;
-  subtasks?: Subtask[];
+  subtasks?: SubExpense[];
 }
 
-const SubtaskSchema = new Schema<Subtask>({
+const SubExpenseSchema = new Schema<SubExpense>({
   id: { type: String, required: true },
   title: { type: String, required: true },
   done: { type: Boolean, default: false },
@@ -36,7 +29,7 @@ const ExpenseSchema = new Schema<IExpense>({
   shop: { type: String, default: "", trim: true },
   paid: { type: Boolean, default: false },
   weekStart: { type: String, required: true },
-  subtasks: { type: [SubtaskSchema], default: [] },
+  subtasks: { type: [SubExpenseSchema], default: [] },
 }, { timestamps: true });
 
 export default mongoose.models.Expense || mongoose.model<IExpense>("Expense", ExpenseSchema);
