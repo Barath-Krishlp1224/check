@@ -1,4 +1,3 @@
-// ./components/SubtaskModal.tsx
 import React from "react";
 import { X, Clock, CheckCircle2, Pause, AlertCircle } from "lucide-react";
 import { Subtask } from "./types";
@@ -67,6 +66,14 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
             <div>
               <p className="text-xs font-medium text-slate-500 mb-1">Progress</p>
               <p className="text-slate-800 font-mono">{subtask.completion}%</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 mb-1">Time Spent</p>
+              <p className="text-slate-800 font-mono">{subtask.timeSpent || "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 mb-1">Story Points</p>
+              <p className="text-slate-800 font-mono">{subtask.storyPoints || 0}</p>
             </div>
             <div className='col-span-2'>
               <p className="text-xs font-medium text-slate-500 mb-1">Status</p>

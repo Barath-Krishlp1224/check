@@ -5,6 +5,8 @@ export interface Subtask {
   status: string;
   completion: number;
   remarks: string;
+  timeSpent?: string;
+  storyPoints: number;
   subtasks?: Subtask[];
   isEditing?: boolean;
   isExpanded?: boolean;
@@ -35,6 +37,9 @@ export interface Task {
   remarks?: string;
   subtasks?: Subtask[];
   department?: "Tech" | "Accounts" | string;
+  // New/Updated fields
+  taskTimeSpent?: string;
+  taskStoryPoints: number;
 }
 
 export interface Employee {

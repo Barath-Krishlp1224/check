@@ -363,7 +363,7 @@ const ExpenseDashboard: React.FC = () => {
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">{weekLabel}</h3>
                 <div className="text-sm text-gray-700">
-                  {wkExpenses.length} items • ₹ {weekTotal.toFixed(2)}
+                  {wkExpenses.length} items • **₹ {weekTotal.toFixed(2)}**
                   {isFilterActive ? ` • ${wkExpenses.filter(e => e.paid).length} paid` : ''}
                   {!isFilterActive && unpaidCount > 0 ? ` • ${unpaidCount} unpaid` : ''}
                   {!isFilterActive && unpaidCount === 0 && wkExpenses.length > 0 && ` • All paid`}
@@ -383,20 +383,20 @@ const ExpenseDashboard: React.FC = () => {
                     <div className="text-2xl">{categoryIcons[exp.category]}</div>
                     <div>
                       <div className="font-semibold text-gray-900">
-                        {exp.description}
+                        **{exp.description}**
                         {exp.shop ? (
                             <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded ml-2">
                                 @{exp.shop}
                             </span>
                         ) : null}
                       </div>
-                      <div className="text-xs text-gray-600">{exp.date} • {exp.category} {exp.subtasks && exp.subtasks.length > 0 ? `• ${exp.subtasks.filter(s => s.done).length}/${exp.subtasks.length} sub expenses` : ''}</div>
+                      <div className="text-xs text-gray-600">**{exp.date}** • {exp.category} {exp.subtasks && exp.subtasks.length > 0 ? `• ${exp.subtasks.filter(s => s.done).length}/${exp.subtasks.length} sub expenses` : ''}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div className={`font-bold ${exp.paid ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      ₹ {getExpenseTotal(exp).toFixed(2)}
+                      **₹ {getExpenseTotal(exp).toFixed(2)}**
                     </div>
                     {/* Show Paid/Unpaid Status */}
                     <div className={`text-xs px-2 py-1 rounded ${exp.paid ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
@@ -434,7 +434,7 @@ const ExpenseDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowExpenseTotalId(null)}>
             <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-xl font-bold mb-2 text-gray-900">{exp.description}</h3>
-                <div className="text-sm text-gray-700 mb-4">{exp.date} • {exp.shop ? `@${exp.shop}` : exp.category}</div>
+                <div className="text-sm text-gray-700 mb-4">**{exp.date}** • {exp.shop ? `@${exp.shop}` : exp.category}</div>
 
                 <div className="mb-4">
                   <div className="flex justify-between text-gray-900 py-2">
@@ -478,7 +478,7 @@ const ExpenseDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6 py-12">
-      <div className="w-full mt-20 max-w-7xl">
+      <div className="w-full max-w-7xl">
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-gray-900 mb-2">Expense Dashboard</h1>
           <p className="text-gray-700">View expenses, track budget, and apply filters (Read-Only Mode)</p>

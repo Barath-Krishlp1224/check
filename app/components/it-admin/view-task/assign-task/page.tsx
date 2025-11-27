@@ -9,6 +9,7 @@ import TaskBoardView from "./components/TaskBoardView";
 import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
+import { getAggregatedTaskData } from "./utils/aggregation";
 export type ViewType = "card" | "board";
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 const allTaskStatuses = [
@@ -42,6 +43,7 @@ const TasksPage: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
+  
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
       id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
       title: "",
@@ -52,7 +54,9 @@ const TasksPage: React.FC = () => {
       subtasks: [],
       isEditing: true,
       isExpanded: true,
-      date: new Date().toISOString().split('T')[0], // ✨ Added initialization for date field
+      date: new Date().toISOString().split('T')[0],
+      timeSpent: "",
+      storyPoints: 0,
   });
   const updateSubtaskState = (
     currentSubs: Subtask[],
@@ -134,6 +138,9 @@ const TasksPage: React.FC = () => {
       console.warn("Error calling reminders API:", err);
     }
   };
+    const handleCreateTask = () => {
+    router.push("/components/it-admin/create-task");
+  };
   useEffect(() => {
     import("xlsx")
       .then((XLSX) => {
@@ -214,12 +221,13 @@ const TasksPage: React.FC = () => {
   }, [visibleTasks, downloadFilterType, downloadFilterValue]);
   
   const openTaskModal = (task: Task) => {
-    setSelectedTaskForModal(task);
+    const aggregatedTask = getAggregatedTaskData(task);
+    setSelectedTaskForModal(aggregatedTask);
     setIsModalOpen(true);
     setIsEditing(false);
     setDraftTask({});
-    setSubtasks(task.subtasks || []);
-    setCurrentProjectPrefix(task.projectId);
+    setSubtasks(aggregatedTask.subtasks || []);
+    setCurrentProjectPrefix(aggregatedTask.projectId);
   };
   const closeTaskModal = () => {
     setIsModalOpen(false);
@@ -244,7 +252,7 @@ const TasksPage: React.FC = () => {
     const { name, value, type } = e.target;
     let finalValue: string | string[] | number = value;
 
-    if (name === "completion") {
+    if (name === "completion" || name === "taskStoryPoints") {
       finalValue = Number(value);
     } else if (name === "assigneeNames" && type === "select-multiple") {
         const select = e.target as HTMLSelectElement;
@@ -370,10 +378,16 @@ const TasksPage: React.FC = () => {
         });
     }
     const validSubs = filterEmptySubs(subtasks);
+    
+    // Server expects only taskTimeSpent/taskStoryPoints that are explicitly logged on the main task.
+    // The aggregation is for client-side display only (Jira model).
     const updatedTask = {
       ...draftTask,
       subtasks: validSubs,
       projectId: currentProjectPrefix,
+      // Ensure only explicitly edited fields are sent to API for update
+      taskTimeSpent: draftTask.taskTimeSpent,
+      taskStoryPoints: draftTask.taskStoryPoints
     };
     try {
       const url = getApiUrl(`/api/tasks/${selectedTaskForModal._id}`);
@@ -434,9 +448,6 @@ const TasksPage: React.FC = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       router.push("/");
     }
-  };
-  const handleCreateTask = () => {
-    router.push("/components/it-admin/create-task");
   };
   if (loading)
     return (
@@ -567,6 +578,7 @@ const TasksPage: React.FC = () => {
         </div>
       </div>
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
+         <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
       <button
         onClick={handleCreateTask}
         className="fixed bottom-6 right-6 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 z-50"

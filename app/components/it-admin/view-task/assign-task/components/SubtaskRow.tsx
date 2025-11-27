@@ -1,4 +1,3 @@
-// ./components/SubtaskRow.tsx
 import React from "react";
 import { Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./types";
 import { Eye, ChevronDown, ChevronRight, Edit, Save, Trash2, PlusCircle, Clock, CheckCircle2, Pause, AlertCircle } from "lucide-react";
@@ -15,7 +14,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = true) => {
     icon = <Clock className="w-3 h-3" />;
   } else if (status === "Paused" || status === "Pending") {
     colorClasses = isSubtask ? "bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700 border border-amber-200";
-    icon = <Pause className="w-3 h-3" />;
+    icon = <Pause className="w-4 h-4" />;
   } else {
     colorClasses = isSubtask ? "bg-gray-100 text-gray-800" : "bg-gray-50 text-gray-700 border border-gray-200";
     icon = <AlertCircle className="w-3 h-3" />;
@@ -102,6 +101,29 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         disabled={!isEditing}
     />
   );
+
+  const TimeSpentInput = (
+    <input
+        type="text"
+        value={subtask.timeSpent || ""}
+        onChange={(e) => onSubtaskChange(path, "timeSpent", e.target.value)}
+        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+        placeholder="e.g., 2h 30m"
+        disabled={!isEditing}
+    />
+  );
+
+  const StoryPointsInput = (
+    <input
+        type="number"
+        value={subtask.storyPoints ?? 0}
+        onChange={(e) => onSubtaskChange(path, "storyPoints", Number(e.target.value))}
+        className="w-16 px-3 py-2 border border-slate-300 rounded-lg text-center focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+        placeholder="0"
+        min={0}
+        disabled={!isEditing}
+    />
+  );
   
   const TextInput = (field: keyof Subtask, placeholder: string) => (
     <input
@@ -127,7 +149,7 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
   );
   
   const DisplayText = (field: keyof Subtask) => (
-    <span className="text-gray-700 block px-3 py-2">{String(subtask[field] ?? "-")}</span>
+    <span className="text-gray-700 block px-3 py-2">{String(subtask[field] ?? (field === 'storyPoints' ? 0 : "-"))}</span>
   );
   
   return (
@@ -148,8 +170,11 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         <td className="px-4 py-3">{isEditing ? TextInput("title", "Subtask Title") : DisplayText("title")}</td>
         <td className="px-4 py-3">{isEditing ? AssigneeSelect : DisplayText("assigneeName")}</td>
         
-        {/* ✨ ADDED DATE COLUMN */}
         <td className="px-4 py-3">{isEditing ? DateInput : DisplayText("date")}</td> 
+
+        <td className="px-4 py-3 text-center">{isEditing ? StoryPointsInput : DisplayText("storyPoints")}</td>
+
+        <td className="px-4 py-3">{isEditing ? TimeSpentInput : DisplayText("timeSpent")}</td> 
         
         <td className="px-4 py-3">{isEditing ? StatusSelect : getStatusBadge(subtask.status)}</td>
         <td className="px-4 py-3 text-center">{isEditing ? ProgressInput : <span className="text-gray-700 block px-3 py-2">{subtask.completion ?? 0}%</span>}</td>
