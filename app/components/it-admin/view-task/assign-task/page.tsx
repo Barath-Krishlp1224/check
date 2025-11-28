@@ -444,11 +444,7 @@ const TasksPage: React.FC = () => {
       alert("Server error during deletion.");
     }
   };
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      router.push("/");
-    }
-  };
+
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -596,16 +592,8 @@ const TasksPage: React.FC = () => {
             </span>
           </button>
           
-          <button
-            onClick={handleLogout}
-            className="group p-4 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 relative"
-            title="Logout"
-          >
-            <LogOut className="w-6 h-6" />
-             <span className="absolute right-full mr-4 p-2 text-sm bg-gray-800 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                Logout
-            </span>
-          </button>
+      
+      
       </div>
     </div>
   );
