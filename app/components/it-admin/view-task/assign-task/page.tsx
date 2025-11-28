@@ -10,8 +10,10 @@ import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
+
 export type ViewType = "card" | "board";
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
+
 const allTaskStatuses = [
   "Backlog",
   "In Progress",
@@ -24,6 +26,7 @@ const allTaskStatuses = [
   "Completed",
   "Paused",
 ];
+
 const TasksPage: React.FC = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -138,7 +141,7 @@ const TasksPage: React.FC = () => {
       console.warn("Error calling reminders API:", err);
     }
   };
-    const handleCreateTask = () => {
+  const handleCreateTask = () => {
     router.push("/components/it-admin/create-task");
   };
   useEffect(() => {
@@ -379,13 +382,10 @@ const TasksPage: React.FC = () => {
     }
     const validSubs = filterEmptySubs(subtasks);
     
-    // Server expects only taskTimeSpent/taskStoryPoints that are explicitly logged on the main task.
-    // The aggregation is for client-side display only (Jira model).
     const updatedTask = {
       ...draftTask,
       subtasks: validSubs,
       projectId: currentProjectPrefix,
-      // Ensure only explicitly edited fields are sent to API for update
       taskTimeSpent: draftTask.taskTimeSpent,
       taskStoryPoints: draftTask.taskStoryPoints
     };
@@ -451,8 +451,8 @@ const TasksPage: React.FC = () => {
   };
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen bg-white">
-        <div className="text-center">
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center bg-white rounded-xl shadow-lg p-8">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
           <p className="text-slate-700 font-medium">Loading tasks...</p>
         </div>
@@ -460,7 +460,7 @@ const TasksPage: React.FC = () => {
     );
   if (error)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white p-8">
+      <div className="min-h-screen flex items-center justify-center p-8">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full border border-red-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-red-100 rounded-full">
@@ -473,48 +473,54 @@ const TasksPage: React.FC = () => {
       </div>
     );
   return (
-    <div className="flex min-h-screen bg-white">
-      <aside className="fixed left-0 top-0 h-full w-20 bg-white shadow-xl pt-28 flex flex-col items-center space-y-4 z-20">
+    <div className="flex flex-col min-h-screen">
+      <aside className="fixed bottom-0 left-0 w-full h-16 bg-white shadow-2xl flex items-center justify-center px-4 z-50 border-t border-gray-200 space-x-8">
         <button
           onClick={() => setViewType("card")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
+          className={`p-2 rounded-lg transition-all duration-200 flex items-center text-sm ${
             viewType === "card"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+              ? "text-indigo-600 font-bold bg-indigo-50/50"
+              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100"
           }`}
           title="Card View (3 in a row)"
         >
           <LayoutGrid className="w-6 h-6" />
+          {viewType === "card" && (
+            <span className="ml-2">Card View</span>
+          )}
         </button>
         <button
           onClick={() => setViewType("board")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
+          className={`p-2 rounded-lg transition-all duration-200 flex items-center text-sm ${
             viewType === "board"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:hover:text-indigo-600"
+              ? "text-indigo-600 font-bold bg-indigo-50/50"
+              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100"
           }`}
           title="Board View (Kanban)"
         >
           <ListTodo className="w-6 h-6" />
+          {viewType === "board" && (
+            <span className="ml-2">Board View</span>
+          )}
         </button>
         <button
           onClick={() => setIsHolidaysOpen(true)}
-          className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+          className={`p-2 rounded-lg transition-all duration-200 flex items-center text-sm ${
+            isHolidaysOpen
+              ? "text-indigo-600 font-bold bg-indigo-50/50" // Apply active style if modal is open
+              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100"
+          }`}
           title="National Holidays"
         >
           <Calendar className="w-6 h-6" />
-        </button>
-        <div className="flex-grow"></div>
-        <button
-          onClick={handleLogout}
-          className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-          title="Logout"
-        >
-          <LogOut className="w-6 h-6" />
+          {isHolidaysOpen && (
+            <span className="ml-2">Holidays</span>
+          )}
         </button>
       </aside>
-      <div className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8 bg-white" style={{ marginLeft: "5rem" }}>
-        <div className="max-w-[1800px] mx-auto bg-white">
+      
+      <main className="flex-1 min-h-screen pt-8 px-4 sm:px-6 lg:px-8 pb-20">
+        <div className="max-w-full mx-auto">
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
             employees={employees}
@@ -526,7 +532,7 @@ const TasksPage: React.FC = () => {
             handleExcelDownload={() => {}}
           />
           {filteredTasks.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mt-6">
               <div className="text-center py-16">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
                   <AlertCircle className="w-8 h-8 text-slate-400" />
@@ -538,7 +544,7 @@ const TasksPage: React.FC = () => {
           ) : (
             <>
               {viewType === "card" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
                   {filteredTasks.map((task) => (
                     <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
                   ))}
@@ -576,16 +582,31 @@ const TasksPage: React.FC = () => {
             />
           )}
         </div>
-      </div>
+      </main>
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
-         <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
-      <button
-        onClick={handleCreateTask}
-        className="fixed bottom-6 right-6 p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 z-50"
-        title="Create New Task"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      <div className="fixed bottom-20 right-6 flex flex-col items-end space-y-4 z-50">
+          <button
+            onClick={handleCreateTask}
+            className="group p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 relative"
+            title="Create New Task"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="absolute right-full mr-4 p-2 text-sm bg-gray-800 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                Create Task
+            </span>
+          </button>
+          
+          <button
+            onClick={handleLogout}
+            className="group p-4 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 relative"
+            title="Logout"
+          >
+            <LogOut className="w-6 h-6" />
+             <span className="absolute right-full mr-4 p-2 text-sm bg-gray-800 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                Logout
+            </span>
+          </button>
+      </div>
     </div>
   );
 };

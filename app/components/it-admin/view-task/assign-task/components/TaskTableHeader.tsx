@@ -25,7 +25,7 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
 }) => {
   const isDownloadDisabled = !xlsxLoaded || (downloadFilterType !== "all" && !downloadFilterValue);
   return (
-    <div className="mb-8">
+    <div className="mb-8 mt-30">
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-4xl font-bold text-black mb-2">Project Tasks</h1> 
