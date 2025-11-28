@@ -1,723 +1,557 @@
-'use client'
+// components/expenses/ExpensesContent.tsx
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Expense, DateFilter } from './interfaces';
-import { getWeekStartISO, getFilterDates, uid } from './utils';
-import NewExpenseForm from './NewExpenseForm';
-import ExpenseList from './ExpenseList';
-import SummaryAndFilter from './SummaryAndFilter';
-import BudgetDisplay from './BudgetDisplay';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Employee,
+  Expense,
+  Role,
+  Subtask,
+} from "./types";
+import {
+  getWeekStart,
+  isExpensePaid,
+  INITIAL_AMOUNT_CONSTANT,
+} from "./utils";
+import ExpensesHeader from "./ExpensesHeader";
+import ExpenseForm from "./ExpenseForm";
+import ExpensesFilters from "./ExpensesFilters";
+import ExpensesTable from "./ExpensesTable";
+import ExpensesHistory from "./ExpensesHistory";
 
-// Placeholder for Budget Key in Local Storage
-const BUDGET_STORAGE_KEY = 'expense_tracker_budget';
-const DEFAULT_BUDGET = 50000.00;
-
-const categoryIcons: Record<string, string> = {
-  Food: '🍔',
-  Transport: '🚗',
-  Utilities: '💡',
-  Entertainment: '🎬',
-  Other: '📦',
-};
-
-const ExpenseTrackerPage: React.FC = () => {
-  // Load budget from localStorage on initial load, otherwise use default
-  const [mainBudget, setMainBudget] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-        const savedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
-        return savedBudget ? parseFloat(savedBudget) : DEFAULT_BUDGET;
-    }
-    return DEFAULT_BUDGET;
-  });
-
+const ExpensesContent: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // New Expense Form state
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState<number | ''>('');
-  const [category, setCategory] = useState('');
-  const [shop, setShop] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filter state (set to 'all' to show all expenses by default)
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all'); 
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [shopFilter, setShopFilter] = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
 
-  // Modals/Edit state
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [weekEditorOpen, setWeekEditorOpen] = useState<string | null>(null);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [localExpCopy, setLocalExpCopy] = useState<Expense | null>(null);
-  
-  const [selectedExpensesToPay, setSelectedExpensesToPay] = useState<string[]>([]);
-  const [showExpenseTotalId, setShowExpenseTotalId] = useState<string | null>(null);
-  
-  // Budget Editor State
-  const [budgetEditorOpen, setBudgetEditorOpen] = useState(false);
-  const [tempBudget, setTempBudget] = useState(mainBudget);
-  
-  // Sub Expense State
-  const [newSubExpenseTitle, setNewSubExpenseTitle] = useState('');
-  const [newSubExpenseAmount, setNewSubExpenseAmount] = useState<number | ''>('');
-  const [newSubExpenseDate, setNewSubExpenseDate] = useState(new Date().toISOString().split('T')[0]);
-  
-  const currentWeekStart = getWeekStartISO(new Date());
-
-  // --- Persistence Effect for Budget ---
-  useEffect(() => {
-    localStorage.setItem(BUDGET_STORAGE_KEY, mainBudget.toString());
-  }, [mainBudget]);
-
-  // --- Budget Control Functions ---
-  const openBudgetEditor = () => {
-    setTempBudget(mainBudget);
-    setBudgetEditorOpen(true);
-  };
-
-  const handleBudgetSave = () => {
-    if (!confirm("Are you sure you want to update the main budget?")) return;
-    
-    // Convert tempBudget to a number and update state
-    const newBudget = Number(tempBudget);
-    setMainBudget(newBudget);
-    setBudgetEditorOpen(false);
-  };
-
-  // --- API Functions ---
-  
-  const fetchExpenses = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/expenses');
-      const json = await res.json();
-      if (json.success) {
-        setExpenses(json.data);
-      } else {
-        console.error('Failed to fetch expenses', json);
-      }
-    } catch (err) {
-      console.error('Fetch error', err);
-    } finally {
-      setLoading(false);
+  const [initialAmount, setInitialAmount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const storedAmount = localStorage.getItem("initialWalletAmount");
+      return storedAmount ? Number(storedAmount) : INITIAL_AMOUNT_CONSTANT;
     }
-  };
+    return INITIAL_AMOUNT_CONSTANT;
+  });
+  const [isEditingInitialAmount, setIsEditingInitialAmount] = useState(false);
+  const [initialAmountInput, setInitialAmountInput] = useState(
+    initialAmount.toString()
+  );
 
+  const [shopName, setShopName] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("General");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [role, setRole] = useState<Role>("founder");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Sub expense controls (for currently expanded row)
+  const [subTitle, setSubTitle] = useState("");
+  const [subAmount, setSubAmount] = useState("");
+  const [subDate, setSubDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [subRole, setSubRole] = useState<Role>("founder");
+  const [subEmployeeId, setSubEmployeeId] = useState("");
+
+  const [filterRole, setFilterRole] = useState<"all" | Role>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "unpaid">(
+    "all"
+  );
+  const [filterEmployee, setFilterEmployee] = useState<string>("all");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyEmployeeId, setHistoryEmployeeId] = useState<string>("");
+
+  // Fetch expenses
   useEffect(() => {
+    const fetchExpenses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch("/api/expenses");
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || "Failed to fetch");
+
+        setExpenses(
+          (json.data || []).map((e: any) => {
+            const paid = typeof e.paid === "boolean" ? e.paid : false;
+            const subtasks: Subtask[] = Array.isArray(e.subtasks)
+              ? e.subtasks
+              : [];
+            return {
+              ...e,
+              paid,
+              subtasks,
+            } as Expense;
+          })
+        );
+      } catch (err: any) {
+        setError(err.message || "Failed to load expenses");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchExpenses();
   }, []);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!description.trim() || amount === '' || Number(amount) <= 0 || !category) {
-      alert('Please enter a valid description, amount, and select a category.');
-      return;
-    }
-    const expenseDate = date || new Date().toISOString().split('T')[0];
-    const weekStart = getWeekStartISO(new Date(expenseDate));
-    const payload = {
-      description: description.trim(),
-      amount: Number(amount),
-      category,
-      date: expenseDate,
-      shop,
-      weekStart,
+  // Fetch employees
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setEmployeesLoading(true);
+        const res = await fetch("/api/employees");
+        const data = await res.json();
+        const arr: Employee[] = Array.isArray(data)
+          ? data
+          : data.employees || [];
+        setEmployees(arr);
+      } catch {
+      } finally {
+        setEmployeesLoading(false);
+      }
     };
-    try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setExpenses(prev => [json.data, ...prev]);
-        setDescription('');
-        setAmount('');
-        setCategory('');
-        setShop('');
-        setDate(new Date().toISOString().split('T')[0]);
-      } else {
-        alert(json.error || 'Failed to add expense');
+    fetchEmployees();
+  }, []);
+
+  const handleUpdateInitialAmount = () => {
+    const newAmount = Number(initialAmountInput);
+    if (!Number.isNaN(newAmount) && newAmount >= 0) {
+      setInitialAmount(newAmount);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("initialWalletAmount", newAmount.toString());
       }
-    } catch (err) {
-      console.error('Add error', err);
-      alert('Failed to add expense');
-    }
-  };
-
-  const handleDelete = async (id?: string) => {
-    if (!id) return;
-    try {
-      const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (json.success) {
-        setExpenses(prev => prev.filter(e => e._id !== id));
-        setDeleteConfirm(null);
-      } else {
-        alert(json.error || 'Failed to delete');
-      }
-    } catch (err) {
-      console.error('Delete error', err);
-      alert('Failed to delete');
-    }
-  };
-
-  const updateExpense = async (id: string, updates: Partial<Expense>) => {
-    try {
-      setExpenses(prev => prev.map(p => (p._id === id ? { ...p, ...updates } : p)));
-      const res = await fetch('/api/expenses', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, updates }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        console.error('Patch failed', json);
-        await fetchExpenses();
-      } else {
-        setExpenses(prev => prev.map(p => (p._id === id ? json.data : p)));
-      }
-    } catch (err) {
-      console.error('Update error', err);
-      await fetchExpenses();
-    }
-  };
-
-  const markSelectedPaid = async () => {
-    const ids = selectedExpensesToPay.filter(id => id);
-    if (ids.length === 0) {
-      alert('Please select at least one expense to mark as paid.');
-      return;
-    }
-    if (!confirm(`Mark ${ids.length} selected expenses as PAID?`)) return;
-    
-    try {
-      const res = await fetch('/api/expenses', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setSelectedExpensesToPay([]);
-        setWeekEditorOpen(null);
-        await fetchExpenses();
-      } else {
-        alert(json.error || 'Failed to mark paid');
-      }
-    } catch (err) {
-      console.error('Mark paid error', err);
-      alert('Failed to mark paid');
-    }
-  };
-
-  // --- Helper/Logic Functions ---
-
-  const getExpenseTotal = (e: Expense) => {
-    const expenseAmount = typeof e.amount === 'number' && !Number.isNaN(e.amount) ? e.amount : Number(e.amount) || 0;
-    const subtasksTotal = (e.subtasks || []).reduce((ss, st) => {
-      const a = (st as any).amount;
-      return ss + (typeof a === 'number' && !Number.isNaN(a) ? a : Number(a) || 0);
-    }, 0);
-    return expenseAmount + subtasksTotal;
-  };
-
-  const toggleSelectExpense = (id: string) => {
-    setSelectedExpensesToPay(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-  
-  const openWeekEditor = (wk: string) => {
-    const wkExpenses = expensesByWeek.find(([weekStart]) => weekStart === wk)?.[1] || [];
-    const unpaidIds = wkExpenses.filter(e => !e.paid && e._id).map(e => e._id!);
-    setSelectedExpensesToPay(unpaidIds);
-    setWeekEditorOpen(wk);
-  };
-
-  const openExpenseEditor = (exp: Expense) => {
-    setEditingExpense(exp);
-    const expCopy: Expense = JSON.parse(JSON.stringify(exp));
-    expCopy.shop = expCopy.shop || '';
-    expCopy.subtasks = expCopy.subtasks || [];
-    setLocalExpCopy(expCopy);
-    setNewSubExpenseTitle('');
-    setNewSubExpenseAmount('');
-    setNewSubExpenseDate(new Date().toISOString().split('T')[0]);
-  };
-  
-  const addSubExpenseToLocal = () => {
-    if (!localExpCopy) return;
-    const desc = newSubExpenseTitle.trim();
-    if (!desc) {
-      alert('Sub Expense description is required.');
-      return;
-    }
-    if (!newSubExpenseDate) {
-        alert('Sub Expense date is required.');
-        return;
-    }
-    
-    let amt: number | undefined = undefined;
-    if (newSubExpenseAmount !== '') {
-      const parsed = Number(newSubExpenseAmount);
-      if (!Number.isNaN(parsed)) amt = parsed;
-    }
-    
-    const newSub = { id: uid(), title: desc, done: false, amount: amt, date: newSubExpenseDate };
-    setLocalExpCopy({ ...localExpCopy, subtasks: [...(localExpCopy.subtasks || []), newSub] });
-
-    setNewSubExpenseTitle('');
-    setNewSubExpenseAmount('');
-    setNewSubExpenseDate(new Date().toISOString().split('T')[0]);
-  };
-
-  // --- Filtering Logic (useMemo) ---
-
-  const dateFilteredExpenses = useMemo(() => {
-    if (dateFilter === '' && shopFilter.trim() === '') {
-      return expenses.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-    
-    let startDate: string | null = null;
-    let endDate: string | null = null;
-
-    if (dateFilter === 'custom') {
-      startDate = customStartDate;
-      endDate = customEndDate;
-    } else if (dateFilter !== 'all' && dateFilter !== '') {
-      const d = getFilterDates(dateFilter as DateFilter);
-      startDate = d.startDate;
-      endDate = d.endDate;
-    } else if (dateFilter === 'all') {
-      startDate = null;
-      endDate = null;
+      setIsEditingInitialAmount(false);
     } else {
-        startDate = null;
-        endDate = null;
+      alert("Please enter a valid amount.");
     }
+  };
 
+  const walletStats = useMemo(() => {
+    let spent = 0;
+    let pending = 0;
 
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(23, 59, 59, 999);
+    expenses.forEach((e) => {
+      const base = e.amount;
+      const subsTotal = (e.subtasks || []).reduce(
+        (sum, s) => sum + (s.amount || 0),
+        0
+      );
+      const full = base + subsTotal;
 
-    return expenses
-      .filter(exp => {
-        const expenseDate = new Date(exp.date);
-        expenseDate.setHours(0, 0, 0, 0);
-        
-        const isAfterStart = !start || expenseDate >= start;
-        const isBeforeEnd = !end || expenseDate <= end;
-        
-        return isAfterStart && isBeforeEnd;
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses, dateFilter, customStartDate, customEndDate, shopFilter]);
+      const paid = isExpensePaid(e);
 
-  const isFilterActive = useMemo(() => {
-    // If the date filter is 'all', it's considered active, even if no other filter is set.
-    const isDateFilterSet = dateFilter !== '';
-    const isShopFilterSet = shopFilter.trim() !== '';
-    
-    return isDateFilterSet || isShopFilterSet;
-    
-  }, [dateFilter, shopFilter]);
-
-  const finalFilteredExpenses = useMemo(() => {
-    let filtered = dateFilteredExpenses;
-    
-    const lowerCaseShopFilter = shopFilter.toLowerCase().trim();
-    if (lowerCaseShopFilter) {
-        filtered = filtered.filter(exp => {
-            const expShop = exp.shop ? exp.shop.toLowerCase() : '';
-            return expShop.includes(lowerCaseShopFilter);
-        });
-    }
-
-    // Only filter by unpaid if NO filter (date or shop) is set AND dateFilter is the default empty string.
-    if (!isFilterActive && dateFilter === '') {
-        filtered = filtered.filter(exp => !exp.paid);
-    }
-
-    return filtered;
-  }, [dateFilteredExpenses, shopFilter, isFilterActive, dateFilter]);
-  
-  const paidExpenses = useMemo(() => expenses.filter(e => e.paid), [expenses]);
-
-  const expensesByWeek = useMemo(() => {
-    const map = new Map<string, Expense[]>();
-    for (const e of finalFilteredExpenses) {
-        const wk = e.weekStart || getWeekStartISO(new Date(e.date));
-        if (!map.has(wk)) map.set(wk, []);
-        map.get(wk)!.push(e);
-    }
-    const sorted = Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
-    return sorted;
-  }, [finalFilteredExpenses]);
-
-  const unpaidTotalsByShop = useMemo(() => {
-    const totals = new Map<string, number>();
-
-    finalFilteredExpenses.forEach(exp => {
-      // Only count unpaid expenses for the breakdown total
-      if (!exp.paid) {
-        const shopName = exp.shop && exp.shop.trim() ? exp.shop.trim() : 'Unassigned Shop';
-        const totalAmount = getExpenseTotal(exp);
-        
-        const currentTotal = totals.get(shopName) || 0;
-        totals.set(shopName, currentTotal + totalAmount);
+      if (paid) {
+        spent += full;
+      } else {
+        pending += full;
       }
     });
 
-    return Array.from(totals.entries()).map(([shop, total]) => ({ shop, total }));
-  }, [finalFilteredExpenses, getExpenseTotal]);
+    const remaining = initialAmount - spent;
+    return { spent, pending, remaining };
+  }, [expenses, initialAmount]);
 
-  // --- Render ---
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((e) => {
+      const paid = isExpensePaid(e);
+
+      if (filterRole !== "all" && e.role !== filterRole) return false;
+
+      if (filterStatus === "paid" && !paid) return false;
+      if (filterStatus === "unpaid" && paid) return false;
+
+      if (
+        filterEmployee !== "all" &&
+        filterEmployee &&
+        e.employeeId !== filterEmployee
+      )
+        return false;
+
+      if (filterFrom && e.date < filterFrom) return false;
+      if (filterTo && e.date > filterTo) return false;
+
+      if (filterSearch) {
+        const s = filterSearch.toLowerCase();
+        if (
+          !(
+            e.description.toLowerCase().includes(s) ||
+            (e.shop || "").toLowerCase().includes(s)
+          )
+        )
+          return false;
+      }
+
+      return true;
+    });
+  }, [
+    expenses,
+    filterRole,
+    filterStatus,
+    filterEmployee,
+    filterFrom,
+    filterTo,
+    filterSearch,
+  ]);
+
+  const filterEmployeeTotal = useMemo(() => {
+    if (filterEmployee === "all" || !filterEmployee) return 0;
+
+    return expenses.reduce((sum, e) => {
+      if (e.employeeId !== filterEmployee || !isExpensePaid(e)) return sum;
+      const base = e.amount;
+      const subs = (e.subtasks || []).reduce(
+        (s, sub) => s + (sub.amount || 0),
+        0
+      );
+      return sum + base + subs;
+    }, 0);
+  }, [filterEmployee, expenses]);
+
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim() || !amount || !category.trim() || !date) {
+      alert("Description, category, amount, date required");
+      return;
+    }
+
+    if (role === "manager" && !selectedEmployeeId) {
+      alert("Select employee for Manager role");
+      return;
+    }
+
+    const payload = {
+      description: description.trim(),
+      amount: Number(amount),
+      category: category.trim(),
+      date,
+      weekStart: getWeekStart(date),
+      shop: shopName.trim(),
+      role,
+      employeeId: selectedEmployeeId || undefined,
+      employeeName:
+        selectedEmployeeId &&
+        employees.find((e) => e._id === selectedEmployeeId)?.name,
+      subtasks: [],
+    };
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || "Failed to add expense");
+        return;
+      }
+
+      const created: Expense = {
+        ...json.data,
+        paid: typeof json.data.paid === "boolean" ? json.data.paid : false,
+        subtasks: Array.isArray(json.data.subtasks)
+          ? json.data.subtasks
+          : [],
+      };
+
+      setExpenses((prev) => [created, ...prev]);
+      setShopName("");
+      setDescription("");
+      setCategory("General");
+      setAmount("");
+      setDate(new Date().toISOString().slice(0, 10));
+      setRole("founder");
+      setSelectedEmployeeId("");
+    } catch (err: any) {
+      alert(err.message || "Failed");
+    }
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+    setSubTitle("");
+    setSubAmount("");
+    setSubDate(new Date().toISOString().slice(0, 10));
+    setSubRole("founder");
+    setSubEmployeeId("");
+  };
+
+  const handleAddSubtask = async (
+    e: React.FormEvent,
+    parent: Expense
+  ) => {
+    e.preventDefault();
+    if (!expandedId) return;
+    if (!subTitle.trim() || !subAmount) {
+      alert("Sub description and amount required");
+      return;
+    }
+
+    if (subRole === "manager" && !subEmployeeId) {
+      alert("Select employee for Manager");
+      return;
+    }
+
+    const newSub: Subtask = {
+      id: Math.random().toString(36).slice(2, 9),
+      title: subTitle.trim(),
+      done: subRole === "founder" || isExpensePaid(parent),
+      amount: Number(subAmount),
+      date: subDate,
+      role: subRole,
+      employeeId: subEmployeeId || undefined,
+      employeeName:
+        subEmployeeId &&
+        employees.find((e) => e._id === subEmployeeId)?.name,
+    };
+
+    const updatedSubtasks = [newSub, ...(parent.subtasks || [])];
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: parent._id,
+          updates: {
+            subtasks: updatedSubtasks,
+            paid: false,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || "Failed to add sub expense");
+        return;
+      }
+
+      setExpenses((prev) =>
+        prev.map((exp) =>
+          exp._id === parent._id
+            ? {
+                ...exp,
+                subtasks: updatedSubtasks,
+                paid: false,
+              }
+            : exp
+        )
+      );
+      setSubTitle("");
+      setSubAmount("");
+      setSubDate(new Date().toISOString().slice(0, 10));
+      setSubRole("founder");
+      setSubEmployeeId("");
+    } catch (err: any) {
+      alert(err.message || "Failed");
+    }
+  };
+
+  const handleUpdateSubtaskStatus = async (
+    parentExp: Expense,
+    subtaskId: string,
+    isDone: boolean
+  ) => {
+    const updatedSubtasks = (parentExp.subtasks || []).map((sub) =>
+      sub.id === subtaskId ? { ...sub, done: isDone } : sub
+    );
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: parentExp._id,
+          updates: {
+            subtasks: updatedSubtasks,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || "Failed to update subtask status");
+        return;
+      }
+
+      setExpenses((prev) =>
+        prev.map((exp) =>
+          exp._id === parentExp._id
+            ? { ...exp, subtasks: updatedSubtasks }
+            : exp
+        )
+      );
+    } catch (err: any) {
+      alert(err.message || "Failed");
+    }
+  };
+
+  const handleUpdatePaidStatus = async (exp: Expense, isPaid: boolean) => {
+    const updatedSubtasks = (exp.subtasks || []).map((sub) => ({
+      ...sub,
+      done: isPaid,
+    }));
+
+    const updates = {
+      paid: isPaid,
+      subtasks: updatedSubtasks,
+    };
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: exp._id,
+          updates,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || "Failed to update status");
+        return;
+      }
+
+      const updatedExpense: Expense = {
+        ...exp,
+        paid: isPaid,
+        subtasks: updatedSubtasks,
+      };
+
+      setExpenses((prev) =>
+        prev.map((e) => (e._id === exp._id ? updatedExpense : e))
+      );
+    } catch (err: any) {
+      alert(err.message || "Failed");
+    }
+  };
+
+  const historyExpenses = useMemo(
+    () =>
+      expenses
+        .filter((e) => isExpensePaid(e))
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [expenses]
+  );
+
+  const employeeHistory = useMemo(() => {
+    if (!historyEmployeeId) return [];
+    return historyExpenses.filter((e) => e.employeeId === historyEmployeeId);
+  }, [historyEmployeeId, historyExpenses]);
+
+  const employeeHistoryTotal = useMemo(
+    () =>
+      employeeHistory.reduce((sum, e) => {
+        const base = e.amount;
+        const subs = (e.subtasks || []).reduce(
+          (s, sub) => s + (sub.amount || 0),
+          0
+        );
+        return sum + base + subs;
+      }, 0),
+    [employeeHistory]
+  );
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6 py-12">
-      <div className="w-full max-w-7xl">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-2">Expense Manager</h1>
-          <p className="text-gray-700">Track weekly expenses with sub expenses and manage budget</p>
-        </div>
+    <div className="space-y-6 p-4 text-black [&_*]:text-black">
+      <ExpensesHeader
+        initialAmount={initialAmount}
+        isEditingInitialAmount={isEditingInitialAmount}
+        initialAmountInput={initialAmountInput}
+        onInitialAmountInputChange={setInitialAmountInput}
+        onStartEditInitialAmount={() => {
+          setIsEditingInitialAmount(true);
+          setInitialAmountInput(initialAmount.toString());
+        }}
+        onCancelEditInitialAmount={() => {
+          setIsEditingInitialAmount(false);
+          setInitialAmountInput(initialAmount.toString());
+        }}
+        onSaveInitialAmount={handleUpdateInitialAmount}
+        walletStats={walletStats}
+      />
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-            <NewExpenseForm
-              shop={shop} setShop={setShop}
-              description={description} setDescription={setDescription}
-              amount={amount} setAmount={setAmount}
-              category={category} setCategory={setCategory}
-              date={date} setDate={setDate}
-              handleSubmit={handleSubmit}
-            />
+      <ExpenseForm
+        shopName={shopName}
+        setShopName={setShopName}
+        category={category}
+        setCategory={setCategory}
+        date={date}
+        setDate={setDate}
+        description={description}
+        setDescription={setDescription}
+        amount={amount}
+        setAmount={setAmount}
+        role={role}
+        setRole={setRole}
+        selectedEmployeeId={selectedEmployeeId}
+        setSelectedEmployeeId={setSelectedEmployeeId}
+        employees={employees}
+        onSubmit={handleAddExpense}
+      />
 
-            <ExpenseList
-              expensesByWeek={expensesByWeek}
-              currentWeekStart={currentWeekStart}
-              isFilterActive={isFilterActive}
-              categoryIcons={categoryIcons}
-              getExpenseTotal={getExpenseTotal}
-              openWeekEditor={openWeekEditor}
-              setShowExpenseTotalId={setShowExpenseTotalId}
-              openExpenseEditor={openExpenseEditor}
-              setDeleteConfirm={setDeleteConfirm}
-            />
-          </div>
+      <ExpensesFilters
+        filterRole={filterRole}
+        setFilterRole={setFilterRole}
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+        filterEmployee={filterEmployee}
+        setFilterEmployee={setFilterEmployee}
+        filterFrom={filterFrom}
+        setFilterFrom={setFilterFrom}
+        filterTo={filterTo}
+        setFilterTo={setFilterTo}
+        filterSearch={filterSearch}
+        setFilterSearch={setFilterSearch}
+        filterEmployeeTotal={filterEmployeeTotal}
+        employees={employees}
+        showHistory={showHistory}
+        setShowHistory={setShowHistory}
+      />
 
-          <div className="xl:col-span-1 space-y-6">
-            <BudgetDisplay
-              mainBudget={mainBudget}
-              paidExpenses={paidExpenses}
-              getExpenseTotal={getExpenseTotal}
-              openBudgetEditor={openBudgetEditor}
-            />
-            
-            <SummaryAndFilter
-              unpaidTotalsByShop={unpaidTotalsByShop}
-              finalFilteredExpenses={finalFilteredExpenses}
-              dateFilter={dateFilter}
-              setDateFilter={setDateFilter}
-              customStartDate={customStartDate}
-              setCustomStartDate={setCustomStartDate}
-              customEndDate={customEndDate}
-              setCustomEndDate={setCustomEndDate}
-              shopFilter={shopFilter}
-              setShopFilter={setShopFilter}
-              fetchExpenses={fetchExpenses}
-              isFilterActive={isFilterActive}
-              getExpenseTotal={getExpenseTotal}
-            />
-          </div>
-        </div>
-      </div>
+      <ExpensesTable
+        loading={loading}
+        error={error}
+        filteredExpenses={filteredExpenses}
+        expenses={expenses}
+        expandedId={expandedId}
+        onToggleExpand={toggleExpand}
+        employees={employees}
+        subTitle={subTitle}
+        setSubTitle={setSubTitle}
+        subAmount={subAmount}
+        setSubAmount={setSubAmount}
+        subDate={subDate}
+        setSubDate={setSubDate}
+        subRole={subRole}
+        setSubRole={setSubRole}
+        subEmployeeId={subEmployeeId}
+        setSubEmployeeId={setSubEmployeeId}
+        onAddSubtask={handleAddSubtask}
+        onUpdateSubtaskStatus={handleUpdateSubtaskStatus}
+        onUpdatePaidStatus={handleUpdatePaidStatus}
+      />
 
-      {/* --- Budget Editor Modal (Password Removed, Confirmation Popup Only) --- */}
-      {budgetEditorOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => { setBudgetEditorOpen(false); }}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-gray-900" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-2xl font-bold mb-4">Edit Main Budget</h3>
-            <p className="text-sm text-gray-700 mb-4">The budget amount will be stored locally in your browser.</p>
-            <div className="space-y-4">
-                <input
-                    type="number"
-                    placeholder="New Budget Amount"
-                    value={tempBudget}
-                    onChange={(e) => setTempBudget(Number(e.target.value) || 0)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    min="0"
-                    step="0.01"
-                />
-            </div>
-            <div className="mt-6 flex gap-3 justify-end">
-              <button onClick={() => setBudgetEditorOpen(false)} className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-100 transition-colors">Cancel</button>
-              <button onClick={handleBudgetSave} className="px-4 py-2.5 rounded-lg font-semibold transition-colors bg-indigo-700 text-white hover:bg-indigo-600">Save Budget</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- Delete Confirmation Modal --- */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-2 text-gray-900">Delete expense?</h3>
-            <p className="text-sm text-gray-700 mb-6">This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-100 transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm!)} className="flex-1 px-4 py-2.5 rounded-lg bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- Week Editor Modal --- */}
-      {weekEditorOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setWeekEditorOpen(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">Edit Week — {weekEditorOpen} {weekEditorOpen === currentWeekStart ? '(This week)' : ''}</h3>
-              <button onClick={() => setWeekEditorOpen(null)} className="text-gray-600 hover:text-gray-800 font-semibold">Close</button>
-            </div>
-            
-            <p className="text-sm text-gray-700 mb-4">Select expenses below to mark as paid, or edit details directly.</p>
-
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-              {(expensesByWeek.find(([wk]) => wk === weekEditorOpen)?.[1] || []).map(exp => {
-                const isSelected = selectedExpensesToPay.includes(exp._id!);
-                return (
-                  <div key={exp._id} className="flex items-center justify-between p-4 rounded-lg border border-gray-300 bg-gray-50">
-                    <div className="flex-1">
-                      <input value={exp.description} onChange={(e) => updateExpense(exp._id!, { description: e.target.value })} className="w-full mb-2 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                      <div className="flex gap-2">
-                        <input type="date" value={exp.date} onChange={(e) => updateExpense(exp._id!, { date: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                        <input value={exp.shop || ''} onChange={(e) => updateExpense(exp._id!, { shop: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" placeholder="Shop" />
-                        <input type="number" value={String(exp.amount)} onChange={(e) => updateExpense(exp._id!, { amount: Number(e.target.value) })} className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                      </div>
-
-                      {exp.subtasks && exp.subtasks.length > 0 && (
-                        <div className="mt-2 text-xs text-gray-700">
-                          Sub Expenses: {exp.subtasks.length} — {exp.subtasks.filter(s => s.done).length} done
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2 ml-4">
-                      <div className={`text-sm font-semibold ${exp.paid ? 'text-emerald-600' : 'text-rose-600'}`}>{exp.paid ? 'Paid' : 'Unpaid'}</div>
-                      
-                      {!exp.paid && exp._id && (
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
-                            checked={isSelected}
-                            onChange={() => toggleSelectExpense(exp._id!)}
-                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-600"
-                          />
-                          <label className="text-sm text-gray-900">Mark Paid</label>
-                        </div>
-                      )}
-                      
-                      {!exp.paid && weekEditorOpen === currentWeekStart && (
-                        <button onClick={() => setDeleteConfirm(exp._id || null)} className="text-sm text-rose-600 hover:text-rose-800 font-medium">Delete</button>
-                      )}
-                      <button onClick={() => openExpenseEditor(exp)} className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg text-gray-900 hover:bg-gray-100 transition-colors">Open details</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 flex justify-between gap-3 items-center pt-4 border-t border-gray-300">
-              <div className="font-semibold text-gray-900">
-                Selected to Pay: {selectedExpensesToPay.length}
-              </div>
-              <div className="flex gap-2">
-                <button 
-                    onClick={markSelectedPaid} 
-                    disabled={selectedExpensesToPay.length === 0}
-                    className={`px-6 py-2.5 rounded-lg font-semibold transition-colors ${selectedExpensesToPay.length > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                >
-                    Done Payment
-                </button>
-                <button onClick={() => setWeekEditorOpen(null)} className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-900 font-semibold transition-colors">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- Expense Editor Modal (Sub Expenses) --- */}
-      {localExpCopy && editingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => { setEditingExpense(null); setLocalExpCopy(null); }}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">Edit Expense</h3>
-              <button onClick={() => { setEditingExpense(null); setLocalExpCopy(null); }} className="text-gray-600 hover:text-gray-800 font-semibold">Close</button>
-            </div>
-
-            <div className="space-y-3">
-              <input value={localExpCopy.description} onChange={(e) => setLocalExpCopy({ ...localExpCopy, description: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-              <div className="flex gap-2">
-                <input type="date" value={localExpCopy.date} onChange={(e) => setLocalExpCopy({ ...localExpCopy, date: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                <input value={localExpCopy.shop || ''} onChange={(e) => setLocalExpCopy({ ...localExpCopy, shop: e.target.value })} className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" placeholder="Shop" />
-                <input type="number" value={String(localExpCopy.amount)} onChange={(e) => setLocalExpCopy({ ...localExpCopy, amount: Number(e.target.value) })} className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-              </div>
-
-              <div className="pt-4 border-t border-gray-300">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900">Sub Expenses</h4>
-                </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
-                  {(localExpCopy.subtasks || []).slice().sort((a, b) => new Date(b.date || '1970-01-01').getTime() - new Date(a.date || '1970-01-01').getTime()).map((st) => (
-                    <div key={st.id} className="flex items-center gap-2 border border-gray-300 rounded-lg p-3 bg-gray-50">
-                      <input type="checkbox" checked={st.done} onChange={(e) => {
-                        setLocalExpCopy(prev => {
-                          if (!prev) return prev;
-                          return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, done: e.target.checked } : s) };
-                        });
-                      }} className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-600" />
-                      <input value={st.title} onChange={(e) => {
-                        setLocalExpCopy(prev => {
-                          if (!prev) return prev;
-                          return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, title: e.target.value } : s) };
-                        });
-                      }} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                      <input type="number" value={st.amount ?? ''} onChange={(e) => {
-                        const v = e.target.value === '' ? undefined : Number(e.target.value);
-                        setLocalExpCopy(prev => {
-                          if (!prev) return prev;
-                          return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, amount: v } : s) };
-                        });
-                      }} placeholder="amt" className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                      <div className="text-xs text-gray-600 mr-2 w-20">
-                         <input type="date" value={st.date || new Date().toISOString().split('T')[0]} onChange={(e) => {
-                            setLocalExpCopy(prev => {
-                                if (!prev) return prev;
-                                return { ...prev, subtasks: prev.subtasks!.map(s => s.id === st.id ? { ...s, date: e.target.value } : s) };
-                            });
-                         }} className="text-[10px] w-full border border-gray-300 rounded-lg px-1 py-1 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-                      </div>
-                      <button onClick={() => {
-                        setLocalExpCopy(prev => prev ? { ...prev, subtasks: prev.subtasks!.filter(s => s.id !== st.id) } : prev);
-                      }} className="text-rose-600 hover:text-rose-800 px-2 font-medium">Del</button>
-                    </div>
-                  ))}
-                  {(!localExpCopy.subtasks || localExpCopy.subtasks.length === 0) && <div className="text-sm text-gray-700 text-center py-4">No sub expenses</div>}
-                </div>
-                
-                <div className="border border-gray-300 rounded-lg p-4 bg-gray-100 space-y-2">
-                  <h5 className="font-semibold text-sm text-gray-900">Add New Sub Expense</h5>
-                  <input
-                    type="text"
-                    value={newSubExpenseTitle}
-                    onChange={(e) => setNewSubExpenseTitle(e.target.value)}
-                    placeholder="Sub expense description (required)"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                  />
-                  <div className="grid grid-cols-3 gap-2 items-center">
-                    <input
-                      type="number"
-                      value={newSubExpenseAmount as any}
-                      onChange={(e) => setNewSubExpenseAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      placeholder="Amount (optional)"
-                      className="col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    />
-                    <input
-                      type="date"
-                      value={newSubExpenseDate}
-                      onChange={(e) => setNewSubExpenseDate(e.target.value)}
-                      className="col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    />
-                    <button onClick={addSubExpenseToLocal} className="col-span-1 px-4 py-2 bg-indigo-700 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors">Add</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-300">
-              <button onClick={() => { setEditingExpense(null); setLocalExpCopy(null); }} className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-900 font-semibold transition-colors">Cancel</button>
-              <button onClick={async () => {
-                if (!localExpCopy || !editingExpense) return;
-                const newWeekStart = getWeekStartISO(new Date(localExpCopy.date));
-                const updates: Partial<Expense> = {
-                  description: localExpCopy.description,
-                  date: localExpCopy.date,
-                  shop: localExpCopy.shop || '',
-                  amount: localExpCopy.amount,
-                  subtasks: localExpCopy.subtasks || [],
-                  weekStart: newWeekStart,
-                };
-                await updateExpense(editingExpense._id!, updates);
-                setEditingExpense(null);
-                setLocalExpCopy(null);
-              }} className="px-6 py-2.5 bg-indigo-700 text-white rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- Expense Details Modal (Sub Expenses) --- */}
-      {showExpenseTotalId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowExpenseTotalId(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {(() => {
-              const exp = expenses.find(x => x._id === showExpenseTotalId);
-              if (!exp) return <div className="text-gray-900">Expense not found</div>;
-              const total = getExpenseTotal(exp);
-              return (
-                <>
-                  <h3 className="text-xl font-bold mb-2 text-gray-900">{exp.description}</h3>
-                  <div className="text-sm text-gray-700 mb-4">{exp.date} • {exp.shop ? `@${exp.shop}` : exp.category}</div>
-
-                  <div className="mb-4">
-                    <div className="flex justify-between text-gray-900 py-2">
-                      <div>Expense base amount</div>
-                      <div className="font-semibold">₹ { (typeof exp.amount === 'number' ? exp.amount : Number(exp.amount) || 0).toFixed(2) }</div>
-                    </div>
-
-                    {(exp.subtasks || []).length > 0 && (
-                      <div className="mt-3 border-t border-gray-300 pt-3">
-                        <div className="text-sm font-semibold text-gray-900 mb-2">Sub Expenses</div>
-                        <ul className="space-y-2 max-h-40 overflow-y-auto">
-                          {(exp.subtasks || []).slice().sort((a, b) => new Date(b.date || '1970-01-01').getTime() - new Date(a.date || '1970-01-01').getTime()).map((st: any) => {
-                            const a = (typeof st.amount === 'number' && !Number.isNaN(st.amount)) ? st.amount : Number(st.amount) || 0;
-                            return (
-                              <li key={st.id} className="flex justify-between text-sm text-gray-800 p-2 bg-gray-100 rounded-lg">
-                                <div>
-                                  <div className="font-medium">{st.title}</div>
-                                  <div className="text-[11px] text-gray-600">{st.date || ''}</div>
-                                </div>
-                                <div className="font-semibold">₹ {a.toFixed(2)}</div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-right border-t border-gray-300 pt-4">
-                    <div className="text-sm text-gray-700">Total (Base + Sub Expenses)</div>
-                    <div className="text-3xl font-bold text-gray-900">₹ {total.toFixed(2)}</div>
-                  </div>
-
-                  <div className="mt-6 flex justify-end">
-                    <button onClick={() => setShowExpenseTotalId(null)} className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-900 font-semibold transition-colors">Close</button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+      <ExpensesHistory
+        showHistory={showHistory}
+        employees={employees}
+        historyEmployeeId={historyEmployeeId}
+        setHistoryEmployeeId={setHistoryEmployeeId}
+        historyExpenses={historyExpenses}
+        employeeHistory={employeeHistory}
+        employeeHistoryTotal={employeeHistoryTotal}
+      />
     </div>
   );
 };
 
-export default ExpenseTrackerPage;
+export default ExpensesContent;
