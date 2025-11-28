@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -441,11 +441,6 @@ const TasksPage: React.FC = () => {
       alert("Server error during deletion.");
     }
   };
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      router.push("/");
-    }
-  };
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
@@ -471,46 +466,38 @@ const TasksPage: React.FC = () => {
     );
   return (
     <div className="flex min-h-screen bg-white">
-      <aside className="fixed left-0 top-0 h-full w-20 bg-white shadow-xl pt-28 flex flex-col items-center space-y-4 z-20">
-        <button
-          onClick={() => setViewType("card")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "card"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
-          title="Card View (3 in a row)"
-        >
-          <LayoutGrid className="w-6 h-6" />
-        </button>
-        <button
-          onClick={() => setViewType("board")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "board"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:hover:text-indigo-600"
-          }`}
-          title="Board View (Kanban)"
-        >
-          <ListTodo className="w-6 h-6" />
-        </button>
-        <button
-          onClick={() => setIsHolidaysOpen(true)}
-          className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          title="National Holidays"
-        >
-          <Calendar className="w-6 h-6" />
-        </button>
-        <div className="flex-grow"></div>
-        <button
-          onClick={handleLogout}
-          className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-          title="Logout"
-        >
-          <LogOut className="w-6 h-6" />
-        </button>
-      </aside>
-      <div className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8 bg-white" style={{ marginLeft: "5rem" }}>
+      <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
+        <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
+          <button
+            onClick={() => setViewType("card")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              viewType === "card"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+            }`}
+            title="Card View (3 in a row)"
+          >
+            <LayoutGrid className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setViewType("board")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              viewType === "board"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:hover:text-indigo-600"
+            }`}
+            title="Board View (Kanban)"
+          >
+            <ListTodo className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setIsHolidaysOpen(true)}
+            className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+            title="National Holidays"
+          >
+            <Calendar className="w-6 h-6" />
+          </button>
+        </nav>
         <div className="max-w-[1800px] mx-auto bg-white">
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
@@ -567,7 +554,7 @@ const TasksPage: React.FC = () => {
               removeSubtask={removeSubtask}
               onToggleEdit={handleToggleEdit}
               onToggleExpansion={handleToggleExpansion}
-              handleStartSprint={handleStartSprint} 
+              handleStartSprint={handleStartSprint}
               onTaskStatusChange={onTaskStatusChange}
               onSubtaskStatusChange={onSubtaskStatusChange}
             />

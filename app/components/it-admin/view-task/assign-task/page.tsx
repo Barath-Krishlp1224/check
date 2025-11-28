@@ -470,13 +470,13 @@ const TasksPage: React.FC = () => {
     );
   return (
     <div className="flex flex-col min-h-screen">
-      <aside className="fixed bottom-0 left-0 w-full h-16 bg-white shadow-2xl flex items-center justify-center px-4 z-50 border-t border-gray-200 space-x-8">
+      <aside className="fixed top-40 left-1/2 transform -translate-x-1/2 w-[300px] h-16 bg-white rounded-full shadow-2xl flex items-center justify-center px-4 z-50 border-b border-gray-200 space-x-8">
         <button
           onClick={() => setViewType("card")}
-          className={`p-2 rounded-lg transition-all duration-200 flex items-center text-sm ${
+          className={`p-2 rounded-full transition-all duration-200 flex items-center text-sm ${
             viewType === "card"
-              ? "text-indigo-600 font-bold bg-indigo-50/50"
-              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100"
+              ? "text-indigo-600 font-bold bg-indigo-100"
+              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full"
           }`}
           title="Card View (3 in a row)"
         >
@@ -487,10 +487,10 @@ const TasksPage: React.FC = () => {
         </button>
         <button
           onClick={() => setViewType("board")}
-          className={`p-2 rounded-lg transition-all duration-200 flex items-center text-sm ${
+          className={`p-2 rounded-full transition-all duration-200 flex items-center text-sm ${
             viewType === "board"
-              ? "text-indigo-600 font-bold bg-indigo-50/50"
-              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100"
+              ? "text-indigo-600 font-bold bg-indigo-100"
+              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full"
           }`}
           title="Board View (Kanban)"
         >
@@ -501,10 +501,10 @@ const TasksPage: React.FC = () => {
         </button>
         <button
           onClick={() => setIsHolidaysOpen(true)}
-          className={`p-2 rounded-lg transition-all duration-200 flex items-center text-sm ${
+          className={`p-2 rounded-full transition-all duration-200 flex items-center text-sm ${
             isHolidaysOpen
-              ? "text-indigo-600 font-bold bg-indigo-50/50" // Apply active style if modal is open
-              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100"
+              ? "text-indigo-600 font-bold bg-indigo-100"
+              : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full"
           }`}
           title="National Holidays"
         >
@@ -515,7 +515,7 @@ const TasksPage: React.FC = () => {
         </button>
       </aside>
       
-      <main className="flex-1 min-h-screen pt-8 px-4 sm:px-6 lg:px-8 pb-20">
+      <main className="flex-1 min-h-screen pt-24 px-4 sm:px-6 lg:px-8 pb-8">
         <div className="max-w-full mx-auto">
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
@@ -580,7 +580,7 @@ const TasksPage: React.FC = () => {
         </div>
       </main>
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
-      <div className="fixed bottom-20 right-6 flex flex-col items-end space-y-4 z-50">
+      <div className="fixed bottom-6 right-6 flex flex-col items-end space-y-4 z-50">
           <button
             onClick={handleCreateTask}
             className="group p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 relative"
@@ -591,9 +591,6 @@ const TasksPage: React.FC = () => {
                 Create Task
             </span>
           </button>
-          
-      
-      
       </div>
     </div>
   );
