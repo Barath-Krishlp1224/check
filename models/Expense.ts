@@ -1,5 +1,3 @@
-// models/Expense.ts
-
 import mongoose, { Schema, Document } from "mongoose";
 
 export type Role = "founder" | "manager" | "other";
@@ -21,12 +19,12 @@ export interface IExpense extends Document {
   category: string;
   date: string;
   createdAt: Date;
-  shop: string; // Changed to non-optional based on default in schema
+  shop: string;
   paid: boolean;
   weekStart: string;
-  subtasks: SubExpense[]; // Changed to non-optional based on default in schema
+  subtasks: SubExpense[];
 
-  role: Role; // Changed to non-optional based on default in schema
+  role: Role;
   employeeId?: string;
   employeeName?: string;
 }
@@ -55,14 +53,14 @@ const ExpenseSchema = new Schema<IExpense>(
     amount: { type: Number, required: true },
     category: { type: String, required: true, trim: true },
     date: { type: String, required: true },
-    shop: { type: String, default: "", trim: true }, // Defaulted to empty string
+    shop: { type: String, default: "", trim: true },
     paid: { type: Boolean, default: false },
     weekStart: { type: String, required: true },
-    subtasks: { type: [SubExpenseSchema], default: [] }, // Defaulted to empty array
+    subtasks: { type: [SubExpenseSchema], default: [] },
     role: {
       type: String,
       enum: ["founder", "manager", "other"],
-      default: "other", // Defaulted to "other"
+      default: "other",
     },
     employeeId: { type: String, required: false },
     employeeName: { type: String, required: false, trim: true },

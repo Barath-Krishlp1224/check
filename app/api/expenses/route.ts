@@ -1,11 +1,8 @@
-// app/api/expenses/route.ts
-
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongoose";
-import Expense, { IExpense, Role, SubExpense } from "@/models/Expense"; // Import IExpense and SubExpense
+import Expense, { IExpense, Role, SubExpense } from "@/models/Expense";
 
-// Updated type for normalization functions
 type RawSubExpense = {
   id?: unknown;
   title?: unknown;
@@ -17,7 +14,6 @@ type RawSubExpense = {
   employeeName?: unknown;
 };
 
-// Utility to ensure connection is established
 async function ensureConnected() {
   await connectToDatabase();
   let tries = 0;
@@ -30,12 +26,10 @@ async function ensureConnected() {
   }
 }
 
-// Normalized one sub-expense item
 function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
-  if (!title) return null; // Require a title
+  if (!title) return null;
 
-  // Generate ID if missing
   const id =
     typeof raw.id === "string" && raw.id.length > 0
       ? raw.id
@@ -43,7 +37,6 @@ function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
       
   const done = typeof raw.done === "boolean" ? raw.done : Boolean(raw.done);
 
-  // Parse amount safely
   const amount =
     raw.amount === undefined || raw.amount === null
       ? undefined
@@ -89,7 +82,6 @@ function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
   return subExpense;
 }
 
-// Normalizes an array of raw sub-expenses
 function normalizeSubExpenses(arr: unknown): SubExpense[] {
   if (!Array.isArray(arr)) return [];
   return arr
@@ -97,7 +89,6 @@ function normalizeSubExpenses(arr: unknown): SubExpense[] {
     .filter((s): s is SubExpense => s !== null);
 }
 
-// Computes the total amount including subtasks - Type fix applied here
 function computeExpenseTotal(e: IExpense): number {
   const expenseAmount =
     typeof e.amount === "number" && !Number.isNaN(e.amount)
@@ -112,9 +103,6 @@ function computeExpenseTotal(e: IExpense): number {
   return expenseAmount + subtasksTotal;
 }
 
-/**
- * GET handler: Fetches expenses. Supports filtering by weekStart.
- */
 export async function GET(request: Request) {
   try {
     await ensureConnected();
@@ -123,7 +111,6 @@ export async function GET(request: Request) {
     const weekStart = url.searchParams.get("weekStart");
 
     if (weekStart) {
-      // FIX: Double cast applied
       const wkItems = (await Expense.find({ weekStart })
         .sort({ date: -1 })
         .lean() as unknown) as IExpense[];
@@ -138,7 +125,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // FIX: Double cast applied
     const expenses = (await Expense.find({}).sort({ createdAt: -1 }).lean() as unknown) as IExpense[];
     return NextResponse.json(
       { success: true, data: expenses },
@@ -153,9 +139,6 @@ export async function GET(request: Request) {
   }
 }
 
-/**
- * POST handler: Creates a new expense.
- */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
@@ -210,7 +193,6 @@ export async function POST(request: Request) {
       );
     }
     
-    // Validation for Manager role
     if (role === "manager" && (!employeeId || !employeeName)) {
       return NextResponse.json(
         {
@@ -252,9 +234,6 @@ export async function POST(request: Request) {
   }
 }
 
-/**
- * PUT handler: Marks expenses as paid based on weekStart or a list of IDs.
- */
 export async function PUT(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -305,14 +284,11 @@ export async function PUT(request: Request) {
   }
 }
 
-/**
- * PATCH handler: Updates a single expense by ID.
- */
 export async function PATCH(request: Request) {
   try {
     const body = (await request.json()) as {
       id?: string;
-      updates?: Record<string, unknown>; // Use Record<string, unknown>
+      updates?: Record<string, unknown>;
     };
     const { id, updates } = body;
 
@@ -392,10 +368,7 @@ export async function PATCH(request: Request) {
       );
     }
     
-    // Conditional validation (check if role is being set to manager without employee details)
     if (payload.role === "manager" && !payload.employeeId && !payload.employeeName) {
-        // We need to fetch the existing expense to check if employee details exist
-        // FIX: Double cast applied
         const existing = (await Expense.findById(id).lean() as unknown) as IExpense | null;
         if (existing && existing.role !== "manager" && (!existing.employeeId || !existing.employeeName)) {
             return NextResponse.json(
@@ -405,7 +378,6 @@ export async function PATCH(request: Request) {
         }
     }
 
-    // FIX: Double cast applied
     const updated = (await Expense.findByIdAndUpdate(
       id,
       { $set: payload },
@@ -429,9 +401,6 @@ export async function PATCH(request: Request) {
   }
 }
 
-/**
- * DELETE handler: Deletes a single expense by ID from query params.
- */
 export async function DELETE(request: Request) {
   try {
     const url = new URL(request.url);
