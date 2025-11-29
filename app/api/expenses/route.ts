@@ -1,8 +1,11 @@
+// app/api/expenses/route.ts
+
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongoose";
-import Expense from "@/models/Expense";
+import Expense, { IExpense, Role, SubExpense } from "@/models/Expense"; // Import IExpense and SubExpense
 
+// Updated type for normalization functions
 type RawSubExpense = {
   id?: unknown;
   title?: unknown;
@@ -14,6 +17,7 @@ type RawSubExpense = {
   employeeName?: unknown;
 };
 
+// Utility to ensure connection is established
 async function ensureConnected() {
   await connectToDatabase();
   let tries = 0;
@@ -26,18 +30,24 @@ async function ensureConnected() {
   }
 }
 
-function normalizeSubExpense(raw: RawSubExpense) {
-  const id =
-    raw.id !== undefined
-      ? String(raw.id)
-      : Math.random().toString(36).slice(2, 9);
+// Normalized one sub-expense item
+function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
+  if (!title) return null; // Require a title
+
+  // Generate ID if missing
+  const id =
+    typeof raw.id === "string" && raw.id.length > 0
+      ? raw.id
+      : Math.random().toString(36).slice(2, 9);
+      
   const done = typeof raw.done === "boolean" ? raw.done : Boolean(raw.done);
 
+  // Parse amount safely
   const amount =
     raw.amount === undefined || raw.amount === null
       ? undefined
-      : typeof raw.amount === "number"
+      : typeof raw.amount === "number" && !Number.isNaN(raw.amount)
       ? raw.amount
       : Number(raw.amount);
 
@@ -51,7 +61,7 @@ function normalizeSubExpense(raw: RawSubExpense) {
   const role =
     typeof raw.role === "string" &&
     ["founder", "manager", "other"].includes(raw.role)
-      ? (raw.role as string)
+      ? (raw.role as Role)
       : undefined;
 
   const employeeId =
@@ -64,41 +74,47 @@ function normalizeSubExpense(raw: RawSubExpense) {
       ? raw.employeeName.trim()
       : undefined;
 
-  return {
+  const subExpense: SubExpense = {
     id,
     title,
     done,
-    ...(amount !== undefined && !Number.isNaN(amount) ? { amount } : {}),
-    ...(date ? { date } : {}),
-    ...(role ? { role } : {}),
-    ...(employeeId ? { employeeId } : {}),
-    ...(employeeName ? { employeeName } : {}),
-  } as Record<string, unknown>;
+  };
+
+  if (amount !== undefined && !Number.isNaN(amount)) subExpense.amount = amount;
+  if (date) subExpense.date = date;
+  if (role) subExpense.role = role;
+  if (employeeId) subExpense.employeeId = employeeId;
+  if (employeeName) subExpense.employeeName = employeeName;
+
+  return subExpense;
 }
 
-function normalizeSubExpenses(arr: unknown): Record<string, unknown>[] {
+// Normalizes an array of raw sub-expenses
+function normalizeSubExpenses(arr: unknown): SubExpense[] {
   if (!Array.isArray(arr)) return [];
   return arr
     .map((r) => normalizeSubExpense(r as RawSubExpense))
-    .filter(
-      (s) => typeof s.title === "string" && (s.title as string).length > 0
-    );
+    .filter((s): s is SubExpense => s !== null);
 }
 
-function computeExpenseTotal(e: any) {
+// Computes the total amount including subtasks - Type fix applied here
+function computeExpenseTotal(e: IExpense): number {
   const expenseAmount =
     typeof e.amount === "number" && !Number.isNaN(e.amount)
       ? e.amount
       : Number(e.amount) || 0;
 
-  const subtasksTotal = (e.subtasks || []).reduce((ss: number, st: any) => {
-    const a = (st as any).amount;
-    return ss + (typeof a === "number" && !Number.isNaN(a) ? a : Number(a) || 0);
+  const subtasksTotal = (e.subtasks || []).reduce((ss: number, st: SubExpense) => {
+    const a = st.amount;
+    return ss + (typeof a === "number" && !Number.isNaN(a) ? a : 0);
   }, 0);
 
   return expenseAmount + subtasksTotal;
 }
 
+/**
+ * GET handler: Fetches expenses. Supports filtering by weekStart.
+ */
 export async function GET(request: Request) {
   try {
     await ensureConnected();
@@ -107,11 +123,13 @@ export async function GET(request: Request) {
     const weekStart = url.searchParams.get("weekStart");
 
     if (weekStart) {
-      const wkItems = await Expense.find({ weekStart })
+      // FIX: Double cast applied
+      const wkItems = (await Expense.find({ weekStart })
         .sort({ date: -1 })
-        .lean();
+        .lean() as unknown) as IExpense[];
+        
       const weekTotal = wkItems.reduce(
-        (s: number, e: any) => s + computeExpenseTotal(e),
+        (s: number, e: IExpense) => s + computeExpenseTotal(e),
         0
       );
       return NextResponse.json(
@@ -120,62 +138,84 @@ export async function GET(request: Request) {
       );
     }
 
-    const expenses = await Expense.find({}).sort({ createdAt: -1 }).lean();
+    // FIX: Double cast applied
+    const expenses = (await Expense.find({}).sort({ createdAt: -1 }).lean() as unknown) as IExpense[];
     return NextResponse.json(
       { success: true, data: expenses },
       { status: 200 }
     );
   } catch (err: any) {
+    console.error("GET Expense Error:", err);
     return NextResponse.json(
-      { success: false, error: err?.message || String(err) },
+      { success: false, error: err?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
 }
 
+/**
+ * POST handler: Creates a new expense.
+ */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
 
     const description =
       typeof body.description === "string" ? body.description.trim() : "";
+      
     const amount =
       typeof body.amount === "number" ? body.amount : Number(body.amount);
+      
     const category =
       typeof body.category === "string" ? body.category.trim() : "";
+      
     const date = typeof body.date === "string" ? body.date : "";
     const weekStart = typeof body.weekStart === "string" ? body.weekStart : "";
-    const subtasks = normalizeSubExpenses(body.subtasks);
+    
     const shop =
       body.shop === undefined || body.shop === null ? "" : String(body.shop);
 
     const roleRaw =
       typeof body.role === "string" ? body.role.trim() : "other";
-    const role = ["founder", "manager", "other"].includes(roleRaw)
+    const role: Role = (["founder", "manager", "other"].includes(roleRaw)
       ? roleRaw
-      : "other";
+      : "other") as Role;
 
     const employeeId =
       body.employeeId === undefined || body.employeeId === null
         ? undefined
         : String(body.employeeId);
+        
     const employeeName =
       typeof body.employeeName === "string"
         ? body.employeeName.trim()
         : undefined;
+        
+    const subtasks = normalizeSubExpenses(body.subtasks);
 
     if (
       !description ||
       !category ||
       !date ||
       !weekStart ||
-      !(typeof amount === "number" && !Number.isNaN(amount))
+      !(typeof amount === "number" && !Number.isNaN(amount) && amount >= 0)
     ) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "Missing or invalid fields. Required: description (string), amount (number), category (string), date (string), weekStart (string)",
+            "Missing or invalid fields. Required: description (string), amount (number >= 0), category (string), date (string), weekStart (string)",
+        },
+        { status: 400 }
+      );
+    }
+    
+    // Validation for Manager role
+    if (role === "manager" && (!employeeId || !employeeName)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Employee ID and Name are required for Manager role.",
         },
         { status: 400 }
       );
@@ -204,13 +244,17 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (err: any) {
+    console.error("POST Expense Error:", err);
     return NextResponse.json(
-      { success: false, error: err?.message || String(err) },
+      { success: false, error: err?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
 }
 
+/**
+ * PUT handler: Marks expenses as paid based on weekStart or a list of IDs.
+ */
 export async function PUT(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -227,52 +271,54 @@ export async function PUT(request: Request) {
     }
 
     await ensureConnected();
+    let res: mongoose.UpdateWriteOpResult | undefined;
 
     if (weekStart) {
-      const res = await Expense.updateMany(
+      res = await Expense.updateMany(
         { weekStart, paid: false },
         { $set: { paid: true } }
       );
-      return NextResponse.json(
-        { success: true, modifiedCount: (res as any).modifiedCount ?? 0 },
-        { status: 200 }
-      );
-    }
-
-    if (Array.isArray(ids) && ids.length > 0) {
-      const res = await Expense.updateMany(
+    } else if (Array.isArray(ids) && ids.length > 0) {
+      res = await Expense.updateMany(
         { _id: { $in: ids }, paid: false },
         { $set: { paid: true } }
       );
-      return NextResponse.json(
-        { success: true, modifiedCount: (res as any).modifiedCount ?? 0 },
-        { status: 200 }
-      );
+    }
+    
+    if (res) {
+        return NextResponse.json(
+          { success: true, modifiedCount: res.modifiedCount ?? 0 },
+          { status: 200 }
+        );
     }
 
     return NextResponse.json(
-      { success: false, error: "No valid action performed" },
+      { success: false, error: "No valid update criteria provided" },
       { status: 400 }
     );
   } catch (err: any) {
+    console.error("PUT Expense Error:", err);
     return NextResponse.json(
-      { success: false, error: err?.message || String(err) },
+      { success: false, error: err?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
 }
 
+/**
+ * PATCH handler: Updates a single expense by ID.
+ */
 export async function PATCH(request: Request) {
   try {
     const body = (await request.json()) as {
       id?: string;
-      updates?: Record<string, any>;
+      updates?: Record<string, unknown>; // Use Record<string, unknown>
     };
     const { id, updates } = body;
 
     if (!id || !updates || typeof updates !== "object") {
       return NextResponse.json(
-        { success: false, error: "Provide id and updates" },
+        { success: false, error: "Provide id and updates object" },
         { status: 400 }
       );
     }
@@ -294,50 +340,48 @@ export async function PATCH(request: Request) {
     ];
 
     const payload: Record<string, unknown> = {};
+    
     for (const key of Object.keys(updates)) {
       if (!allowed.includes(key)) continue;
 
-      if (key === "shop") {
-        payload[key] =
-          updates[key] === undefined || updates[key] === null
-            ? ""
-            : String(updates[key]);
-      } else if (key === "amount") {
-        const am =
-          typeof updates.amount === "number"
-            ? updates.amount
-            : Number(updates.amount);
-        if (!Number.isNaN(am)) payload.amount = am;
-      } else if (key === "subtasks") {
-        payload.subtasks = normalizeSubExpenses(updates.subtasks);
-      } else if (
-        key === "date" ||
-        key === "category" ||
-        key === "description" ||
-        key === "weekStart" ||
-        key === "employeeName"
-      ) {
-        payload[key] =
-          typeof updates[key] === "string"
-            ? (updates[key] as string).trim()
-            : String(updates[key] || "");
-      } else if (key === "paid") {
-        payload.paid = Boolean(updates.paid);
-      } else if (key === "role") {
-        const roleRaw =
-          typeof updates.role === "string"
-            ? updates.role.trim()
+      switch (key) {
+        case "shop":
+          payload[key] = String(updates[key] || "").trim();
+          break;
+        case "amount":
+          const am = Number(updates.amount);
+          if (!Number.isNaN(am) && am >= 0) payload.amount = am;
+          break;
+        case "subtasks":
+          payload.subtasks = normalizeSubExpenses(updates.subtasks);
+          break;
+        case "date":
+        case "category":
+        case "description":
+        case "weekStart":
+          payload[key] = String(updates[key] || "").trim();
+          break;
+        case "employeeName":
+          payload.employeeName = String(updates[key] || "").trim();
+          break;
+        case "paid":
+          payload.paid = Boolean(updates.paid);
+          break;
+        case "role":
+          const roleRaw = String(updates.role || "other").trim();
+          payload.role = ["founder", "manager", "other"].includes(roleRaw)
+            ? roleRaw
             : "other";
-        payload.role = ["founder", "manager", "other"].includes(roleRaw)
-          ? roleRaw
-          : "other";
-      } else if (key === "employeeId") {
-        payload.employeeId =
-          updates.employeeId === undefined || updates.employeeId === null
-            ? undefined
-            : String(updates.employeeId);
-      } else {
-        payload[key] = updates[key];
+          break;
+        case "employeeId":
+          payload.employeeId =
+            updates.employeeId === undefined || updates.employeeId === null
+              ? undefined
+              : String(updates.employeeId);
+          break;
+        default:
+          payload[key] = updates[key];
+          break;
       }
     }
 
@@ -347,12 +391,26 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+    
+    // Conditional validation (check if role is being set to manager without employee details)
+    if (payload.role === "manager" && !payload.employeeId && !payload.employeeName) {
+        // We need to fetch the existing expense to check if employee details exist
+        // FIX: Double cast applied
+        const existing = (await Expense.findById(id).lean() as unknown) as IExpense | null;
+        if (existing && existing.role !== "manager" && (!existing.employeeId || !existing.employeeName)) {
+            return NextResponse.json(
+              { success: false, error: "Employee details are required when setting role to manager." },
+              { status: 400 }
+            );
+        }
+    }
 
-    const updated = await Expense.findByIdAndUpdate(
+    // FIX: Double cast applied
+    const updated = (await Expense.findByIdAndUpdate(
       id,
       { $set: payload },
       { new: true }
-    ).lean();
+    ).lean() as unknown) as IExpense | null;
 
     if (!updated) {
       return NextResponse.json(
@@ -363,13 +421,17 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, data: updated }, { status: 200 });
   } catch (err: any) {
+    console.error("PATCH Expense Error:", err);
     return NextResponse.json(
-      { success: false, error: err?.message || String(err) },
+      { success: false, error: err?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
 }
 
+/**
+ * DELETE handler: Deletes a single expense by ID from query params.
+ */
 export async function DELETE(request: Request) {
   try {
     const url = new URL(request.url);
@@ -393,8 +455,9 @@ export async function DELETE(request: Request) {
       { status: 200 }
     );
   } catch (err: any) {
+    console.error("DELETE Expense Error:", err);
     return NextResponse.json(
-      { success: false, error: err?.message || String(err) },
+      { success: false, error: err?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
