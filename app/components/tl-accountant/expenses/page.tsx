@@ -9,12 +9,11 @@ import {
   INITIAL_AMOUNT_CONSTANT,
   getWeekStart,
   isExpensePaid,
-} from "./types"; // Assuming './types' is available
+} from "./types";
 
-// New Type for Storing Initial Amount History
 interface InitialAmountHistoryEntry {
   amount: number;
-  date: string; // ISO date string for when it was set
+  date: string;
 }
 
 interface ExpenseFormProps {
@@ -370,7 +369,6 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
               </div>
             </div>
 
-            {/* History Table */}
             {initialAmountHistory.length > 0 && (
               <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-lg bg-gray-50 p-2">
                 <p className="text-xs font-semibold text-black mb-2">History of Initial Amounts</p>
@@ -782,7 +780,6 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
 
   const list = historyEmployeeId ? employeeHistory : historyExpenses;
   
-  // Slice the list to show only the latest 5 entries
   const historyListToShow = list.slice(0, 5);
 
   return (
@@ -887,8 +884,6 @@ const ExpensesContent: React.FC = () => {
         }
       }
     }
-    // Fallback logic, assuming INITIAL_AMOUNT_CONSTANT is defined in './types'
-    // If not, replace with a default number like 50000
     return [{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }];
   });
 
@@ -936,8 +931,7 @@ const ExpensesContent: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        // Replace with your actual API endpoint for expenses
-        const res = await fetch("/api/expenses"); 
+        const res = await fetch("/api/expenses");
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "Failed to fetch");
 
@@ -968,8 +962,7 @@ const ExpensesContent: React.FC = () => {
     const fetchEmployees = async () => {
       try {
         setEmployeesLoading(true);
-        // Replace with your actual API endpoint for employees
-        const res = await fetch("/api/employees"); 
+        const res = await fetch("/api/employees");
         const data = await res.json();
         const arr: Employee[] = Array.isArray(data)
           ? data
@@ -991,7 +984,6 @@ const ExpensesContent: React.FC = () => {
         date: new Date().toISOString(), 
       };
       
-      // Check if the amount actually changed before saving a new history entry
       if (newAmount !== initialAmountHistory[0]?.amount) {
           const newHistory = [newEntry, ...initialAmountHistory];
           setInitialAmountHistory(newHistory);
@@ -1104,8 +1096,7 @@ const ExpensesContent: React.FC = () => {
       amount: Number(amount),
       category: category.trim(),
       date,
-      // Assuming getWeekStart is defined in './types' and works correctly
-      weekStart: getWeekStart(date), 
+      weekStart: getWeekStart(date),
       shop: shopName.trim(),
       role,
       employeeId: selectedEmployeeId || undefined,
@@ -1116,8 +1107,7 @@ const ExpensesContent: React.FC = () => {
     };
 
     try {
-      // Replace with your actual API endpoint for posting expenses
-      const res = await fetch("/api/expenses", { 
+      const res = await fetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1130,7 +1120,6 @@ const ExpensesContent: React.FC = () => {
 
       const created: Expense = {
         ...json.data,
-        // Ensure required fields are set correctly after API response
         paid: typeof json.data.paid === "boolean" ? json.data.paid : false,
         subtasks: Array.isArray(json.data.subtasks)
           ? json.data.subtasks
@@ -1152,7 +1141,6 @@ const ExpensesContent: React.FC = () => {
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
-    // Reset sub-expense form fields when toggling
     setSubTitle("");
     setSubAmount("");
     setSubDate(new Date().toISOString().slice(0, 10));
@@ -1177,11 +1165,9 @@ const ExpensesContent: React.FC = () => {
     }
 
     const newSub: Subtask = {
-      // Use a proper unique ID generation method in a real application
-      id: Math.random().toString(36).slice(2, 9), 
+      id: Math.random().toString(36).slice(2, 9),
       title: subTitle.trim(),
-      // Subtask is done if the parent expense is already paid, or if the role is founder
-      done: subRole === "founder" || isExpensePaid(parent), 
+      done: subRole === "founder" || isExpensePaid(parent),
       amount: Number(subAmount),
       date: subDate,
       role: subRole,
@@ -1192,16 +1178,14 @@ const ExpensesContent: React.FC = () => {
     };
 
     const updatedSubtasks = [newSub, ...(parent.subtasks || [])];
-    
-    // If a subtask is added, the parent expense is considered unpaid until manually marked paid
+
     const updates = {
         subtasks: updatedSubtasks,
-        paid: false, 
+        paid: false,
     };
 
     try {
-      // Replace with your actual API endpoint for updating expenses
-      const res = await fetch("/api/expenses", { 
+      const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1221,7 +1205,7 @@ const ExpensesContent: React.FC = () => {
             ? {
                 ...exp,
                 subtasks: updatedSubtasks,
-                paid: false, // Explicitly set paid to false when adding a new subtask
+                paid: false,
               }
             : exp
         )
@@ -1246,8 +1230,7 @@ const ExpensesContent: React.FC = () => {
     );
 
     try {
-      // Replace with your actual API endpoint for updating expenses
-      const res = await fetch("/api/expenses", { 
+      const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1262,16 +1245,12 @@ const ExpensesContent: React.FC = () => {
         alert(json.error || "Failed to update subtask status");
         return;
       }
-
-      // Check if all subtasks are now done to potentially update parent paid status
+      
       const allSubtasksDone = updatedSubtasks.every(sub => sub.done);
       let newPaidStatus = parentExp.paid;
       
-      // If parent was already paid, status change is ignored, but if it was unpaid, 
-      // check if all are done now.
       if (!parentExp.paid && allSubtasksDone) {
           newPaidStatus = true;
-          // You might want to trigger an API call to update the parent paid status here if needed
       }
 
       setExpenses((prev) =>
@@ -1282,8 +1261,6 @@ const ExpensesContent: React.FC = () => {
         )
       );
       
-      // If the subtask update implicitly changed the parent's paid status, 
-      // we need to update it in the database too.
       if (newPaidStatus !== parentExp.paid) {
           await handleUpdatePaidStatus({...parentExp, subtasks: updatedSubtasks}, newPaidStatus, false);
       }
@@ -1293,15 +1270,21 @@ const ExpensesContent: React.FC = () => {
     }
   };
   
-  // Added a flag to prevent infinite recursion between handleUpdateSubtaskStatus and handleUpdatePaidStatus
   const handleUpdatePaidStatus = async (exp: Expense, isPaid: boolean, updateSubtasks: boolean = true) => {
+    
+    const action = isPaid ? "Done" : "Pending";
+    const confirmMessage = `Are you sure you want to mark the expense "${exp.description}" as ${action}?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
     let updatedSubtasks = exp.subtasks || [];
     
-    // Logic to update subtasks when parent paid status is changed (if flag is true)
     if (updateSubtasks) {
         updatedSubtasks = (exp.subtasks || []).map((sub) => ({
           ...sub,
-          done: isPaid ? true : sub.done, // Mark subtasks as done if parent is marked paid
+          done: isPaid ? true : sub.done,
         }));
     }
 
@@ -1311,7 +1294,6 @@ const ExpensesContent: React.FC = () => {
     };
 
     try {
-      // Replace with your actual API endpoint for updating expenses
       const res = await fetch("/api/expenses", { 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
