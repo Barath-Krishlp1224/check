@@ -4,7 +4,7 @@ import LeaveRequest, { LeaveStatus } from "@/models/LeaveRequest";
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // ⬅️ changed here
 ) {
   try {
     await connectToDatabase();
@@ -18,7 +18,10 @@ export async function PUT(
       );
     }
 
-    const leave = await LeaveRequest.findById(params.id);
+    // ⬅️ await params to get the id in Next 15
+    const { id } = await params;
+
+    const leave = await LeaveRequest.findById(id);
 
     if (!leave) {
       return NextResponse.json(
