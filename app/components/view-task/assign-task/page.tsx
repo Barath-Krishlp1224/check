@@ -2,20 +2,20 @@
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
 import { AlertCircle, LayoutGrid, ListTodo, Calendar, CalendarCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
-// 🎯 IMPORT THE LEAVE COMPONENT
-import EmpLeave from "../../emp-leave/page"; 
+import EmpLeave from "../../emp-leave/page";
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
 export type ViewType = "card" | "board";
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
-// Define screen types for conditional rendering
 type ScreenType = "tasks" | "leave";
 
 const allTaskStatuses = [
@@ -50,7 +50,6 @@ const TasksPage: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
-  // State to manage the active view/screen
   const [currentScreen, setCurrentScreen] = useState<ScreenType>("tasks");
 
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
@@ -160,11 +159,17 @@ const TasksPage: React.FC = () => {
     }
 
     const init = async () => {
-      setLoading(true);
+      setLoading(true); 
       setError("");
+      
       await Promise.all([fetchTasks(), fetchEmployees()]);
       await triggerDueDateNotifications();
-      setLoading(false);
+      
+      const minLoadTime = 2000; 
+
+      setTimeout(() => {
+        setLoading(false);
+      }, minLoadTime);
     };
 
     init();
@@ -296,8 +301,7 @@ const TasksPage: React.FC = () => {
 
   const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
     try {
-      const url = getApiUrl(`/api/tasks/${
-taskId}`);
+      const url = getApiUrl(`/api/tasks/${taskId}`);
       const res = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -307,11 +311,12 @@ taskId}`);
       if (res.ok && data.success) {
         setTasks((prev) => prev.map((t) => (t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t)));
         fetchTasks();
+        toast.success("Task status updated successfully!", { position: "bottom-right" });
       } else {
-        alert(data.error || "Failed to update task");
+        toast.error(data.error || "Failed to update task status.", { position: "bottom-right" });
       }
     } catch {
-      alert("Server error during status update.");
+      toast.error("Server error during status update.", { position: "bottom-right" });
     }
   }, []);
 
@@ -339,11 +344,12 @@ taskId}`);
         const data = await res.json();
         if (res.ok && data.success) {
           fetchTasks();
+          toast.success("Subtask status updated successfully!", { position: "bottom-right" });
         } else {
-          alert(data.error || "Failed to update subtask");
+          toast.error(data.error || "Failed to update subtask status.", { position: "bottom-right" });
         }
       } catch {
-        alert("Server error during subtask update.");
+        toast.error("Server error during subtask status update.", { position: "bottom-right" });
       }
     },
     [tasks]
@@ -379,14 +385,14 @@ taskId}`);
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("Task updated!");
+        toast.success("Task updated successfully!", { position: "bottom-right" });
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to update task");
+        toast.error(data.error || "Failed to update task.", { position: "bottom-right" });
       }
     } catch {
-      alert("Server error during update.");
+      toast.error("Server error during task update.", { position: "bottom-right" });
     }
   };
 
@@ -402,13 +408,14 @@ taskId}`);
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        toast.success("Sprint started! Task status set to 'In Progress'.", { position: "bottom-right" });
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to start sprint");
+        toast.error(data.error || "Failed to start sprint.", { position: "bottom-right" });
       }
     } catch {
-      alert("Server error during sprint start.");
+      toast.error("Server error during sprint start.", { position: "bottom-right" });
     }
   };
 
@@ -420,13 +427,14 @@ taskId}`);
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
+        toast.success("Task deleted successfully!", { position: "bottom-right" });
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to delete task");
+        toast.error(data.error || "Failed to delete task.", { position: "bottom-right" });
       }
     } catch {
-      alert("Server error during deletion.");
+      toast.error("Server error during deletion.", { position: "bottom-right" });
     }
   };
 
@@ -434,8 +442,12 @@ taskId}`);
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-          <p className="text-slate-700 font-medium">Loading tasks...</p>
+          <img 
+            src="/load.gif" 
+            alt="Loading..." 
+            className="h-70 w-100 mx-auto mb-4" 
+          />
+          
         </div>
       </div>
     );
@@ -457,18 +469,17 @@ taskId}`);
 
   return (
     <div className="flex min-h-screen bg-white">
+      <ToastContainer /> 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
 
-        {/* ---------- UPDATED NAVBAR WITH SCREEN SELECTOR ---------- */}
         <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
           
           <button
-            // Change screen to tasks, view to card
             onClick={() => { setCurrentScreen("tasks"); setViewType("card"); }}
             className={`p-3 rounded-xl transition-all duration-200 ${
               currentScreen === "tasks" && viewType === "card"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}
             title="Card View"
           >
@@ -476,25 +487,23 @@ taskId}`);
           </button>
 
           <button
-            // Change screen to tasks, view to board
             onClick={() => { setCurrentScreen("tasks"); setViewType("board"); }}
             className={`p-3 rounded-xl transition-all duration-200 ${
               currentScreen === "tasks" && viewType === "board"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}
             title="Board View"
           >
             <ListTodo className="w-6 h-6" />
           </button>
 
-          {/* 🚀 LEAVE PAGE ICON - Switches to 'leave' screen */}
           <button
             onClick={() => setCurrentScreen("leave")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               currentScreen === "leave"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}
             title="Leaves"
           >
@@ -503,7 +512,7 @@ taskId}`);
 
           <button
             onClick={() => setIsHolidaysOpen(true)}
-            className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+            className="p-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-gray-100 hover:text-green-600"
             title="National Holidays"
           >
             <Calendar className="w-6 h-6" />
@@ -512,7 +521,6 @@ taskId}`);
 
         <div className="max-w-[1800px] mx-auto bg-white">
             
-          {/* CONDITIONAL RENDERING */}
           {currentScreen === "tasks" ? (
             <>
               <TaskTableHeader
@@ -539,7 +547,7 @@ taskId}`);
               ) : (
                 <>
                   {viewType === "card" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                       {filteredTasks.map((task) => (
                         <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
                       ))}
@@ -584,7 +592,6 @@ taskId}`);
               )}
             </>
           ) : (
-            // 🎯 RENDER THE IMPORTED EmpLeave COMPONENT
             <EmpLeave />
           )}
         </div>

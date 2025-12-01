@@ -41,7 +41,7 @@ interface HolidaysModalProps {
 const HolidaysModal: React.FC<HolidaysModalProps> = ({ open, onClose }) => {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 mt-20 flex items-center justify-center p-4 bg-white/10 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="relative max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in duration-200">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">

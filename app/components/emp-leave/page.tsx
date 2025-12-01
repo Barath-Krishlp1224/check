@@ -164,7 +164,7 @@ const LeaveForm = () => {
     } finally {
       setLoadingRequests(false);
     }
-  }, [isLoggedIn]); // Dependencies for useCallback
+  }, [isLoggedIn]);
 
   // --- Effects for Data Management (Initial Load and Polling) ---
 
@@ -184,7 +184,7 @@ const LeaveForm = () => {
     const intervalId = setInterval(() => {
       console.log('Polling for updated leave requests...');
       fetchUserRequests(empIdOrEmail);
-    }, 30000); // 30 seconds
+    }, 30000); 
 
     // 3. Cleanup function to clear the interval when the component unmounts
     return () => {
@@ -339,12 +339,12 @@ const LeaveForm = () => {
     isPending?: boolean;
   }) => (
     <div
-      className={`p-3 rounded-xl border ${colorClass} shadow-sm w-1/2 flex items-center justify-between transition-all duration-300 hover:shadow-lg`}
+      className={`p-3 rounded-xl border ${colorClass} shadow-md w-1/2 flex items-center justify-between transition-all duration-300 hover:shadow-lg`}
     >
       <div className="flex flex-col">
         <p
           className={`text-xl font-extrabold ${
-            isPending ? "text-gray-700" : "text-indigo-600"
+            isPending ? "text-gray-700" : "text-black"
           }`}
         >
           {value}
@@ -453,22 +453,22 @@ const LeaveForm = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="bg-white rounded-2xl shadow-xl p-6"> 
               <div className="space-y-4">
-                <h2 className="text-lg font-extrabold text-indigo-700 uppercase tracking-wide border-b pb-2">
+                <h2 className="text-lg font-extrabold text-black uppercase tracking-wide border-b pb-2">
                   Available Balance
                 </h2>
 
                 <div className="flex space-x-4">
                   <CompactStatusBox
-                    title="Sick Leave (12 days/year)"
+                    title="SL (12 days/year)"
                     value={summary.sick}
-                    colorClass="bg-blue-50 border-indigo-100"
+                    colorClass="bg-white border-grey-100"
                   />
                   <CompactStatusBox
-                    title="Casual Leave (12 days/year)"
+                    title="CL (12 days/year)"
                     value={summary.casual}
-                    colorClass="bg-purple-50 border-purple-100"
+                    colorClass="bg-white border-grey-100"
                   />
                 </div>
 
@@ -505,23 +505,10 @@ const LeaveForm = () => {
           </div>
 
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">
-                Application Form
-              </h2>
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+
 
               <div className="space-y-6">
-                
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Applying For:
-                  </label>
-                  <div className="w-full px-4 py-3 bg-indigo-50 border border-indigo-300 rounded-lg text-indigo-800 font-bold flex items-center">
-                    <User className="w-5 h-5 mr-3 flex-shrink-0" />
-                    <span>{employeeName}</span>
-                    <span className="text-xs font-normal ml-2 text-indigo-600">({empIdOrEmail})</span>
-                  </div>
-                </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -533,10 +520,10 @@ const LeaveForm = () => {
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-700"
                   >
                     <option value="sick">
-                      Sick Leave (1 day Auto-Approved, {'>'}1 day Approval Required)
+                      Sick Leave (1 day Auto-Approved, {'>'} 1 day Approval Required)
                     </option>
                     <option value="casual">
-                      Casual Leave (1 day Auto-Approved, {'>'}1 day Approval Required)
+                      Casual Leave (1 day Auto-Approved, {'>'} 1 day Approval Required)
                     </option>
                     <option value="planned">
                       Planned Leave (Approval Required)
@@ -632,7 +619,7 @@ const LeaveForm = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             My Leave Requests
           </h2>

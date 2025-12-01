@@ -1,8 +1,12 @@
+"use client";
+
 import React, { useCallback, useState } from "react";
 import { X, Edit2, Trash2, Save, AlertCircle, Clock, CheckCircle2, Pause, Play, ChevronRight, Eye, Calendar, User } from "lucide-react";
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler, SubtaskStatusChangeFunc } from "./types";
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
+
+// Assuming getStatusBadge, TaskModalProps, and SubtaskViewer are defined as in your original file
 
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
@@ -165,13 +169,15 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     const finalOptions = name === 'status' ? allTaskStatuses : options;
 
     const renderInput = () => {
+        const inputWidthClass = 'w-full max-w-sm'; // Class to reduce max width
+
         if (name === 'assigneeNames') {
             return (
                 <select
                 name={name}
                 value={(current.assigneeNames && current.assigneeNames.length > 0) ? current.assigneeNames[0] : ""}
                 onChange={handleDraftChange}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900"
+                className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900`}
                 >
                 <option value="">Select Assignee</option>
                 {employees.map(employee => (
@@ -187,7 +193,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     name="status"
                     value={currentValue || ""}
                     onChange={onChangeHandler}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
+                    className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white`}
                 >
                     {finalOptions?.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -201,9 +207,20 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     name={name}
                     value={(current[name] as number) || 0}
                     onChange={handleDraftChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+                    className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
                     min={0}
                     max={name === 'completion' ? 100 : undefined}
+                />
+            );
+        } else if (name === 'remarks') {
+            return (
+                <input
+                    type='text'
+                    name={name}
+                    value={(current[name] as string) || ""}
+                    onChange={handleDraftChange}
+                    className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
+                    placeholder="Add remarks"
                 />
             );
         } else {
@@ -213,7 +230,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                     name={name}
                     value={(current[name] as string | number) || ""}
                     onChange={handleDraftChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+                    className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
                     min={type === 'number' ? 0 : undefined}
                     max={type === 'number' ? 100 : undefined}
                 />
@@ -221,11 +238,13 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         }
     }
 
-    // Special handling for read-only TaskTimeSpent (aggregated)
     const isAggregatedField = name === 'taskTimeSpent' || name === 'taskStoryPoints';
     const displayValueForAggregated = (isAggregatedField && !isEditing) 
         ? (task[name] as string | number) || (name === 'taskStoryPoints' ? 0 : 'N/A')
         : displayString;
+    
+    // Adjusted styling for the Remarks field when not editing to ensure it fits well in the grid
+    const remarksReadonlyClasses = "px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium max-h-12 overflow-y-auto";
 
     return (
         <div className="mb-4">
@@ -233,7 +252,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         {isEditing || (name === 'status' && !isEditing) ? (
             renderInput()
         ) : (
-            <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
+            <p className={name === 'remarks' ? remarksReadonlyClasses : "px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium"}>
             {displayValueForAggregated || <span className="text-gray-500">N/A</span>}
             </p>
         )}
@@ -243,11 +262,16 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
   return (
     <div
-        className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60 flex items-center justify-center p-4 sm:p-6"
+        className="fixed inset-0 z-50 mt-17 overflow-y-auto flex items-center justify-center p-4 sm:p-6"
+        style={{ 
+            backgroundColor: 'rgba(255, 255, 255, 0.3)', 
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)' 
+        }}
         onClick={onClose}
     >
       <div
-        className="bg-white rounded-4xl shadow-2xl w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
+        className="bg-white rounded-4xl shadow-[0_0_30px_rgba(0,0,0,0.25)] ring-1 ring-black/10 w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
         <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0  bg-white z-10">
@@ -261,10 +285,10 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
           <div className="mb-8 border-b pb-6">
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">Task Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {renderField("Task Name", "project", "text")}
               {renderField("Assignee", "assigneeNames", "select")}
               {renderField("Start Date", "startDate", "date")}
@@ -273,25 +297,11 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               {renderField("Progress (%)", "completion", "number")}
               {renderField("Story Points", "taskStoryPoints", "number")}
               {renderField("Time Spent", "taskTimeSpent", "text")}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              
+              {/* Status and Remarks are now side-by-side using the 5-column grid */}
               {renderField("Status", "status", "select", allTaskStatuses)}
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
-                {isEditing ? (
-                  <input
-                    name="remarks"
-                    value={current.remarks || ""}
-                    onChange={handleDraftChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
-                    placeholder="Add remarks"
-                  />
-                ) : (
-                  <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 max-h-24 overflow-y-auto">
-                    {task.remarks || <span className="text-gray-500">-</span>}
-                  </p>
-                )}
-              </div>
+              {renderField("Remarks", "remarks", "text")}
+              
             </div>
           </div>
           <h3 className="text-xl font-semibold text-indigo-700 mb-4">Subtasks</h3>
