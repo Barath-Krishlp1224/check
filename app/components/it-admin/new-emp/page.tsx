@@ -211,9 +211,9 @@ const AddEmployeePage: React.FC = () => {
   };
 
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return (
+    return (
+      <>
+        {currentStep === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField
               label="Employee ID"
@@ -221,7 +221,7 @@ const AddEmployeePage: React.FC = () => {
               type="text"
               placeholder="e.g., LP012"
               value={formik.values.empId}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 formik.setFieldValue("empId", e.target.value.toUpperCase())
               }
               error={formik.errors.empId as string}
@@ -264,9 +264,8 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
           </div>
-        );
-      case 1:
-        return (
+        )}
+        {currentStep === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField
               label="Joining Date"
@@ -331,9 +330,8 @@ const AddEmployeePage: React.FC = () => {
               />
             )}
           </div>
-        );
-      case 2:
-        return (
+        )}
+        {currentStep === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField
               label="Phone Number"
@@ -359,9 +357,8 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
           </div>
-        );
-      case 3:
-        return (
+        )}
+        {currentStep === 3 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField
               label="Account Number"
@@ -381,7 +378,7 @@ const AddEmployeePage: React.FC = () => {
               type="text"
               placeholder="SBIN0001234"
               value={formik.values.ifscCode}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 formik.setFieldValue("ifscCode", e.target.value.toUpperCase())
               }
               error={formik.errors.ifscCode as string}
@@ -389,9 +386,8 @@ const AddEmployeePage: React.FC = () => {
               getInputClass={getInputClass}
             />
           </div>
-        );
-      case 4:
-        return (
+        )}
+        {currentStep === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField
               label="Password *"
@@ -438,7 +434,7 @@ const AddEmployeePage: React.FC = () => {
                 type="file"
                 name="photo"
                 accept=".png,.jpg,.jpeg"
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   formik.setFieldValue(
                     "photo",
                     e.currentTarget.files?.[0] || null
@@ -459,7 +455,7 @@ const AddEmployeePage: React.FC = () => {
                 type="file"
                 name="aadharFile"
                 accept=".pdf,.png,.jpg,.jpeg"
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   formik.setFieldValue(
                     "aadharFile",
                     e.currentTarget.files?.[0] || null
@@ -480,7 +476,7 @@ const AddEmployeePage: React.FC = () => {
                 type="file"
                 name="panFile"
                 accept=".pdf,.png,.jpg,.jpeg"
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   formik.setFieldValue(
                     "panFile",
                     e.currentTarget.files?.[0] || null
@@ -502,7 +498,7 @@ const AddEmployeePage: React.FC = () => {
                   type="file"
                   name="tenthMarksheet"
                   accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     formik.setFieldValue(
                       "tenthMarksheet",
                       e.currentTarget.files?.[0] || null
@@ -523,7 +519,7 @@ const AddEmployeePage: React.FC = () => {
                   type="file"
                   name="twelfthMarksheet"
                   accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     formik.setFieldValue(
                       "twelfthMarksheet",
                       e.currentTarget.files?.[0] || null
@@ -546,7 +542,7 @@ const AddEmployeePage: React.FC = () => {
                   type="file"
                   name="provisionalCertificate"
                   accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     formik.setFieldValue(
                       "provisionalCertificate",
                       e.currentTarget.files?.[0] || null
@@ -567,7 +563,7 @@ const AddEmployeePage: React.FC = () => {
                   type="file"
                   name="experienceCertificate"
                   accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     formik.setFieldValue(
                       "experienceCertificate",
                       e.currentTarget.files?.[0] || null
@@ -581,16 +577,15 @@ const AddEmployeePage: React.FC = () => {
               </div>
             </div>
           </div>
-        );
-      default:
-        return null;
-    }
+        )}
+      </>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4 mt-[5%]">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-end mb-4">
+    <div className="min-h-screen bg-white pt-8 px-4">
+      <div className="max-w-5xl mx-auto ">
+        <div className="flex justify-end  mb-4">
           <button
             onClick={handleViewAll}
             className="flex items-center gap-2 px-6 py-3 bg-white text-gray-800 text-base font-semibold border-2 border-gray-300 rounded-lg shadow-md hover:bg-gray-100 transition-colors"

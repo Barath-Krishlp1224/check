@@ -1,15 +1,16 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, LogOut, Calendar, Plus } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, Calendar, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
-// Assuming CreateTaskModal is now a dedicated file
-import CreateTaskModal, { Employee } from "./components/CreateTaskModal"; // ✅ UPDATED: import Employee type if needed elsewhere, and the component
+import CreateTaskModal, { Employee } from "./components/CreateTaskModal";
 import { Task, Subtask, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
@@ -49,11 +50,11 @@ const TasksPage: React.FC = () => {
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
 
-  // ✅ NEW: create task modal state
+  // create task modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
-    id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
+    id: prefix + (path.length > 0 ? `.${path.join(".")}` : "-S1"),
     title: "",
     assigneeName: "",
     status: "Pending",
@@ -62,7 +63,7 @@ const TasksPage: React.FC = () => {
     subtasks: [],
     isEditing: true,
     isExpanded: true,
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     timeSpent: "",
     storyPoints: 0,
   });
@@ -71,7 +72,7 @@ const TasksPage: React.FC = () => {
     currentSubs: Subtask[],
     path: number[],
     updater: (sub: Subtask, index: number) => Subtask | null,
-    action: 'update' | 'remove' | 'add' = 'update'
+    action: "update" | "remove" | "add" = "update"
   ): Subtask[] => {
     let newSubs = [...currentSubs];
     let currentLevel: Subtask[] = newSubs;
@@ -79,9 +80,9 @@ const TasksPage: React.FC = () => {
       const index = path[i];
       if (!currentLevel) return currentSubs;
       if (i === path.length - 1) {
-        if (action === 'remove') {
+        if (action === "remove") {
           currentLevel.splice(index, 1);
-        } else if (action === 'add') {
+        } else if (action === "add") {
           const parent = currentLevel[index];
           if (!parent.subtasks) parent.subtasks = [];
           const nextSubIndex = parent.subtasks.length;
@@ -132,7 +133,9 @@ const TasksPage: React.FC = () => {
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) setEmployees(data.employees);
-    } catch (err) {}
+    } catch (err) {
+      // ignore
+    }
   };
 
   const triggerDueDateNotifications = async () => {
@@ -152,18 +155,16 @@ const TasksPage: React.FC = () => {
     }
   };
 
-  // ⬇️ CHANGED: now just open modal
   const handleCreateTask = () => {
     setIsCreateModalOpen(true);
   };
 
-  // ✅ when a task is created from modal, refresh list
   const handleTaskCreated = async () => {
     await fetchTasks();
-    // Re-fetch employees in case new ones were added via task creation (less likely but safer)
-    await fetchEmployees(); 
+    await fetchEmployees();
   };
 
+  // ✅ enforce loader for at least 3 seconds
   useEffect(() => {
     import("xlsx")
       .then((XLSX) => {
@@ -171,33 +172,55 @@ const TasksPage: React.FC = () => {
         setXlsxLoaded(true);
       })
       .catch(() => {});
+
     if (typeof window !== "undefined") {
       const role = (localStorage.getItem("userRole") || "") as Role;
       const name = localStorage.getItem("userName") || "";
       setCurrentUserRole(role || null);
       setCurrentUserName(name);
     }
+
+    let isMounted = true;
+    const MIN_LOADER_TIME = 3000; // 3 seconds
+    const startTime = Date.now();
+
     const init = async () => {
       setLoading(true);
       setError("");
+
       await Promise.all([fetchTasks(), fetchEmployees()]);
       await triggerDueDateNotifications();
-      setLoading(false);
+
+      const elapsed = Date.now() - startTime;
+      const remaining = MIN_LOADER_TIME - elapsed;
+
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+
+      if (isMounted) {
+        setLoading(false);
+      }
     };
+
     init();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
-      
+
       return tasks.filter((task) => {
         if (task.assigneeNames && Array.isArray(task.assigneeNames)) {
           return task.assigneeNames.some(
             (assignee) => assignee.toLowerCase() === nameLower
           );
         }
-        return false; 
+        return false;
       });
     }
     return tasks;
@@ -207,13 +230,13 @@ const TasksPage: React.FC = () => {
     const names = visibleTasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(names));
   }, [visibleTasks]);
-  
+
   const filteredTasks = useMemo(() => {
     const filter = downloadFilterType;
     const value = downloadFilterValue.trim().toLowerCase();
-    
+
     if (filter === "all" || !value) return visibleTasks;
-    
+
     return visibleTasks.filter((task) => {
       switch (filter) {
         case "project":
@@ -242,7 +265,7 @@ const TasksPage: React.FC = () => {
       }
     });
   }, [visibleTasks, downloadFilterType, downloadFilterValue]);
-  
+
   const openTaskModal = (task: Task) => {
     const aggregatedTask = getAggregatedTaskData(task);
     setSelectedTaskForModal(aggregatedTask);
@@ -252,6 +275,7 @@ const TasksPage: React.FC = () => {
     setSubtasks(aggregatedTask.subtasks || []);
     setCurrentProjectPrefix(aggregatedTask.projectId);
   };
+
   const closeTaskModal = () => {
     setIsModalOpen(false);
     setTimeout(() => {
@@ -259,81 +283,92 @@ const TasksPage: React.FC = () => {
       cancelEdit();
     }, 300);
   };
+
   const handleEdit = (task: Task) => {
     setIsEditing(true);
     setDraftTask(task);
     setCurrentProjectPrefix(task.projectId);
     setSubtasks(JSON.parse(JSON.stringify(task.subtasks || [])));
   };
+
   const cancelEdit = () => {
     setIsEditing(false);
     setDraftTask({});
     setSubtasks([]);
     setCurrentProjectPrefix("");
   };
-  const handleDraftChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+
+  const handleDraftChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
     let finalValue: string | string[] | number = value;
 
     if (name === "completion" || name === "taskStoryPoints") {
       finalValue = Number(value);
     } else if (name === "assigneeNames" && type === "select-multiple") {
-        const select = e.target as HTMLSelectElement;
-        finalValue = Array.from(select.selectedOptions, option => option.value);
+      const select = e.target as HTMLSelectElement;
+      finalValue = Array.from(select.selectedOptions, (option) => option.value);
     } else if (name === "assigneeNames") {
-        finalValue = [value];
+      finalValue = [value];
     }
-    
+
     setDraftTask((prev) => ({
       ...prev,
       [name]: finalValue,
     }));
   };
+
   const handleSubtaskChange: SubtaskChangeHandler = (path, field, value) => {
     setSubtasks((prevSubs) =>
-        updateSubtaskState(prevSubs, path, (sub) => ({
-            ...sub,
-            [field]: value
-        }))
+      updateSubtaskState(prevSubs, path, (sub) => ({
+        ...sub,
+        [field]: value,
+      }))
     );
   };
+
   const handleToggleEdit: SubtaskPathHandler = (path) => {
     setSubtasks((prevSubs) =>
-        updateSubtaskState(prevSubs, path, (sub) => ({
-            ...sub,
-            isEditing: !(sub.isEditing ?? false)
-        }))
+      updateSubtaskState(prevSubs, path, (sub) => ({
+        ...sub,
+        isEditing: !(sub.isEditing ?? false),
+      }))
     );
   };
+
   const handleToggleExpansion: SubtaskPathHandler = (path) => {
     setSubtasks((prevSubs) =>
-        updateSubtaskState(prevSubs, path, (sub) => ({
-            ...sub,
-            isExpanded: !(sub.isExpanded ?? false)
-        }))
+      updateSubtaskState(prevSubs, path, (sub) => ({
+        ...sub,
+        isExpanded: !(sub.isExpanded ?? false),
+      }))
     );
   };
+
   const addSubtask: SubtaskPathHandler = (path) => {
     if (!currentProjectPrefix) return;
     if (path.length === 0) {
-        setSubtasks((prevSubs) => [
-            ...prevSubs,
-            {
-                ...getNewSubtask(currentProjectPrefix, [prevSubs.length]),
-                id: `${currentProjectPrefix}-S${prevSubs.length + 1}`
-            }
-        ]);
-        return;
+      setSubtasks((prevSubs) => [
+        ...prevSubs,
+        {
+          ...getNewSubtask(currentProjectPrefix, [prevSubs.length]),
+          id: `${currentProjectPrefix}-S${prevSubs.length + 1}`,
+        },
+      ]);
+      return;
     }
     setSubtasks((prevSubs) =>
-        updateSubtaskState(prevSubs, path, () => null, 'add')
+      updateSubtaskState(prevSubs, path, () => null, "add")
     );
   };
+
   const removeSubtask: SubtaskPathHandler = (path) => {
     setSubtasks((prevSubs) =>
-        updateSubtaskState(prevSubs, path, () => null, 'remove')
+      updateSubtaskState(prevSubs, path, () => null, "remove")
     );
   };
+
   const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
@@ -345,7 +380,9 @@ const TasksPage: React.FC = () => {
       const data = await res.json();
       if (res.ok && data.success) {
         setTasks((prev) =>
-          prev.map((t) => (t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t))
+          prev.map((t) =>
+            t._id === taskId ? { ...t, status: newStatus as Task["status"] } : t
+          )
         );
         fetchTasks();
       } else {
@@ -355,23 +392,36 @@ const TasksPage: React.FC = () => {
       alert("Server error during status update.");
     }
   }, []);
-  const findAndMapSubtasks = (subs: Subtask[], subtaskId: string, newStatus: string): Subtask[] => {
-    return subs.map(sub => {
-        if (sub.id === subtaskId) {
-            return { ...sub, status: newStatus };
-        }
-        if (sub.subtasks) {
-            return { ...sub, subtasks: findAndMapSubtasks(sub.subtasks, subtaskId, newStatus) };
-        }
-        return sub;
+
+  const findAndMapSubtasks = (
+    subs: Subtask[],
+    subtaskId: string,
+    newStatus: string
+  ): Subtask[] => {
+    return subs.map((sub) => {
+      if (sub.id === subtaskId) {
+        return { ...sub, status: newStatus };
+      }
+      if (sub.subtasks) {
+        return {
+          ...sub,
+          subtasks: findAndMapSubtasks(sub.subtasks, subtaskId, newStatus),
+        };
+      }
+      return sub;
     });
   };
+
   const onSubtaskStatusChange = useCallback(
     async (taskId: string, subtaskId: string, newStatus: string) => {
       try {
         const target = tasks.find((t) => t._id === taskId);
         if (!target) return;
-        const updatedSubs = findAndMapSubtasks(target.subtasks || [], subtaskId, newStatus);
+        const updatedSubs = findAndMapSubtasks(
+          target.subtasks || [],
+          subtaskId,
+          newStatus
+        );
         const url = getApiUrl(`/api/tasks/${taskId}`);
         const res = await fetch(url, {
           method: "PUT",
@@ -390,24 +440,27 @@ const TasksPage: React.FC = () => {
     },
     [tasks]
   );
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskForModal?._id) return;
+
     const filterEmptySubs = (subs: Subtask[]): Subtask[] => {
-        return subs.filter(s => {
-            if (s.title.trim() === "") return false;
-            if (s.subtasks) s.subtasks = filterEmptySubs(s.subtasks);
-            return true;
-        });
-    }
+      return subs.filter((s) => {
+        if (s.title.trim() === "") return false;
+        if (s.subtasks) s.subtasks = filterEmptySubs(s.subtasks);
+        return true;
+      });
+    };
+
     const validSubs = filterEmptySubs(subtasks);
-    
+
     const updatedTask = {
       ...draftTask,
       subtasks: validSubs,
       projectId: currentProjectPrefix,
       taskTimeSpent: draftTask.taskTimeSpent,
-      taskStoryPoints: draftTask.taskStoryPoints
+      taskStoryPoints: draftTask.taskStoryPoints,
     };
     try {
       const url = getApiUrl(`/api/tasks/${selectedTaskForModal._id}`);
@@ -428,8 +481,14 @@ const TasksPage: React.FC = () => {
       alert("Server error during update.");
     }
   };
+
   const handleStartSprint = async (taskId: string) => {
-    if (!window.confirm("Start sprint for this task? Status will change to 'In Progress'.")) return;
+    if (
+      !window.confirm(
+        "Start sprint for this task? Status will change to 'In Progress'."
+      )
+    )
+      return;
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
       const res = await fetch(url, {
@@ -448,6 +507,7 @@ const TasksPage: React.FC = () => {
       alert("Server error during sprint start.");
     }
   };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this task?")) return;
     try {
@@ -465,15 +525,25 @@ const TasksPage: React.FC = () => {
     }
   };
 
+  // 🔄 GIF LOADER WITH 3-SECOND MINIMUM
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center bg-white rounded-xl shadow-lg p-8">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-          <p className="text-slate-700 font-medium">Loading tasks...</p>
-        </div>
+      <div className="flex justify-center items-center min-h-screen bg-slate-50">
+        
+          <div className="w-100 h-70 relative mb-4">
+            <Image
+              src="/load.gif" // change path if your GIF is elsewhere
+              alt="Loading tasks..."
+              fill
+              className="object-contain"
+              priority
+              unoptimized
+            />
+          </div>
+        
       </div>
     );
+
   if (error)
     return (
       <div className="min-h-screen flex items-center justify-center p-8">
@@ -488,6 +558,7 @@ const TasksPage: React.FC = () => {
         </div>
       </div>
     );
+
   return (
     <div className="flex flex-col min-h-screen">
       <aside className="fixed top-40 left-1/2 transform -translate-x-1/2 w-[300px] h-16 bg-white rounded-full shadow-2xl flex items-center justify-center px-4 z-50 border-b border-gray-200 space-x-8">
@@ -525,7 +596,7 @@ const TasksPage: React.FC = () => {
           <Calendar className="w-6 h-6" />
         </button>
       </aside>
-      
+
       <main className="flex-1 min-h-screen pt-24 px-4 sm:px-6 lg:px-8 pb-8">
         <div className="max-w-full mx-auto">
           <TaskTableHeader
@@ -544,7 +615,9 @@ const TasksPage: React.FC = () => {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
                   <AlertCircle className="w-8 h-8 text-slate-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-700 mb-2">No tasks found</h3>
+                <h3 className="text-xl font-semibold text-slate-700 mb-2">
+                  No tasks found
+                </h3>
                 <p className="text-slate-500">Try adjusting filters.</p>
               </div>
             </div>
@@ -553,12 +626,20 @@ const TasksPage: React.FC = () => {
               {viewType === "card" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mt-6">
                   {filteredTasks.map((task) => (
-                    <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
+                    <TaskCard
+                      key={task._id}
+                      task={task}
+                      onViewDetails={openTaskModal}
+                    />
                   ))}
                 </div>
               )}
               {viewType === "board" && (
-                <TaskBoardView tasks={filteredTasks} openTaskModal={openTaskModal} onTaskStatusChange={onTaskStatusChange} />
+                <TaskBoardView
+                  tasks={filteredTasks}
+                  openTaskModal={openTaskModal}
+                  onTaskStatusChange={onTaskStatusChange}
+                />
               )}
             </>
           )}
@@ -591,7 +672,10 @@ const TasksPage: React.FC = () => {
         </div>
       </main>
 
-      <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
+      <HolidaysModal
+        open={isHolidaysOpen}
+        onClose={() => setIsHolidaysOpen(false)}
+      />
 
       <div className="fixed bottom-6 right-6 flex flex-col items-end space-y-4 z-50">
         <button
@@ -606,7 +690,6 @@ const TasksPage: React.FC = () => {
         </button>
       </div>
 
-      {/* ✅ external create-task modal component */}
       <CreateTaskModal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -618,4 +701,5 @@ const TasksPage: React.FC = () => {
     </div>
   );
 };
+
 export default TasksPage;

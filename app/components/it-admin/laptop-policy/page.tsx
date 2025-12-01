@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import AssetListTable from "./AllocatedAssetsTable";
-// import Link from 'next/link'; // Removed the import for Link
 
 const Structure = {
   Founders: {
@@ -230,16 +229,12 @@ export default function AssetAllocationForm() {
   const standardLaptopAccessories = ["Monitor", "Keyboard", "Mouse", "Charger", "Bag", "Pouch"];
   const standardPCAccessories = ["Monitor", "Keyboard", "Mouse", "UPS"];
 
+  // ⭐️ CENTERING ADJUSTMENT: Added flex, items-center, and justify-center to the outer container.
+  // The 'p-6' padding remains, but 'items-center' will center the content vertically.
+  // We use `min-h-screen` to ensure it takes up the full viewport height.
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mt-30 mx-auto">
-        <div className="relative bg-white border border-gray-200 shadow-lg p-8 rounded-3xl mb-6">
-          {/* REMOVED: Home button and its function */}
-          <h1 className="text-4xl font-bold text-black text-center tracking-tight">
-            Asset Allocation Form
-          </h1>
-          <p className="text-center text-black mt-2">Complete the form below to allocate company assets</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100"> 
+      <div className="max-w-7xl w-full"> {/* Added w-full */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white border border-gray-200 shadow-lg p-8 rounded-3xl">
             <h2 className="text-2xl font-bold text-black mb-6 pb-3 border-b border-gray-200">
@@ -448,7 +443,7 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Windows 11"
                     value={form.os}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>

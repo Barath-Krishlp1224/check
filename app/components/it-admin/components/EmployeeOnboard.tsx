@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
-import { ChevronRight, Check } from "lucide-react"; // Removed List import
+import { ChevronRight, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as Yup from "yup";
 
@@ -489,8 +489,6 @@ const AddEmployeePage: React.FC = () => {
     }
   };
 
-  // Removed handleViewAll function
-
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
@@ -868,10 +866,10 @@ const AddEmployeePage: React.FC = () => {
     }
   };
 
+  // ⭐️ CENTERING ADJUSTMENT 1: Added min-h-screen, flex, items-center, and justify-center to the main container.
   return (
-    
-      <div className="max-w-5xl mt-40 mx-auto">
-        {/* Removed the entire 'flex justify-end mb-4' div containing the Home button */}
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
+      <div className="max-w-5xl w-full"> {/* ⭐️ CENTERING ADJUSTMENT 2: Removed mx-auto as w-full handles it within the flex container. Added w-full */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gray-800 px-8 py-6 text-white flex justify-between items-start">
             <div>
@@ -959,7 +957,7 @@ const AddEmployeePage: React.FC = () => {
           </div>
         </div>
       </div>
-    
+    </div>
   );
 };
 
