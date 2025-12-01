@@ -1,22 +1,10 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
+import { Task, Subtask, Employee } from "./types"; 
 import TaskRow from "./TaskRow";
-import type { RecursiveSubtaskChangeHandler, RecursiveSubtaskPathHandler, Task, Subtask, Employee } from "./types";
-
-/**
- * If you already have Task/Subtask/Employee types elsewhere in your app,
- * replace the import above with the correct path (e.g. from "../page").
- *
- * This file expects the following exported types from ./types:
- * - Task, Subtask, Employee
- * - Recursive handler types (used below)
- *
- * If you don't want to use a separate types file, you can copy those types
- * directly into this file (but I kept them in a small `types` module to stay tidy).
- */
 
 interface TaskTableProps {
-  tasks: Task[];
+  tasks: Task[]; 
   employees: Employee[];
   editRowId: string | null;
   draftTask: Partial<Task>;
@@ -29,15 +17,16 @@ interface TaskTableProps {
   handleUpdate: (e: React.FormEvent) => void;
   cancelEdit: () => void;
   handleDraftChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-
-  // recursive handlers
-  handleSubtaskChange: RecursiveSubtaskChangeHandler;
-  addSubtask: RecursiveSubtaskPathHandler;
-  removeSubtask: RecursiveSubtaskPathHandler;
+  handleSubtaskChange: (path: number[], field: keyof Subtask, value: string | number) => void; 
+  addSubtask: (path: number[]) => void; 
+  removeSubtask: (path: number[]) => void; 
 }
 
 const TaskTable: React.FC<TaskTableProps> = (props) => {
-  if (!props.tasks || props.tasks.length === 0) {
+  // Count the number of columns defined in the <thead> (12 main columns + 1 toggle column = 13)
+  const COL_SPAN_COUNT = 12; 
+
+  if (props.tasks.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
         <div className="text-center py-16">
@@ -50,7 +39,6 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
       </div>
     );
   }
-
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -89,7 +77,6 @@ const TaskTable: React.FC<TaskTableProps> = (props) => {
                 handleUpdate={props.handleUpdate}
                 cancelEdit={props.cancelEdit}
                 handleDraftChange={props.handleDraftChange}
-                // pass recursive handlers through
                 handleSubtaskChange={props.handleSubtaskChange}
                 addSubtask={props.addSubtask}
                 removeSubtask={props.removeSubtask}
