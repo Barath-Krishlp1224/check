@@ -4,7 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import { ChevronRight, Check, List } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { InputField, SelectField } from "./FormFields";
+import { toast } from "react-toastify"; // Import toast
+// Assuming InputField, SelectField, IFormValues, SubCategoryMap, structure, and validationSchema are defined elsewhere
+import { InputField, SelectField } from "./FormFields"; 
 import { IFormValues, SubCategoryMap, structure } from "./types";
 import { validationSchema } from "./validation";
 
@@ -94,18 +96,21 @@ const AddEmployeePage: React.FC = () => {
         const result = await res.json();
 
         if (result.success) {
-          alert("✅ Employee Added Successfully!");
+          // Changed alert to toast.success
+          toast.success("✅ Employee Added Successfully!"); 
           formik.resetForm();
           setCategoryOptions([]);
           setSubCategoryOptions([]);
           setDepartmentOptions([]);
           setCurrentStep(0);
         } else {
-          alert(`❌ ${result.message}`);
+          // Changed alert to toast.error
+          toast.error(`❌ ${result.message}`);
         }
       } catch (error) {
         console.error("Error submitting form:", error);
-        alert("Network or server error. Please try again.");
+        // Changed alert to toast.error
+        toast.error("Network or server error. Please try again.");
       }
     },
   });
@@ -190,6 +195,9 @@ const AddEmployeePage: React.FC = () => {
     const isValid = await validateStep(currentStep);
     if (isValid && currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+    } else if (!isValid) {
+      // Optional: Add toast notification if validation fails
+      toast.error(`Please fix the errors in the ${steps[currentStep].title} step.`);
     }
   };
 
@@ -203,6 +211,9 @@ const AddEmployeePage: React.FC = () => {
     const isValid = await validateStep(currentStep);
     if (isValid) {
       formik.handleSubmit();
+    } else {
+      // Optional: Add toast notification if validation fails on final step
+      toast.error(`Please fix the errors in the ${steps[currentStep].title} step before submitting.`);
     }
   };
 
@@ -652,6 +663,7 @@ const AddEmployeePage: React.FC = () => {
                   setSubCategoryOptions([]);
                   setDepartmentOptions([]);
                   setCurrentStep(0);
+                  toast.info("Form has been reset."); // Optional: Added reset toast
                 }}
                 className="px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
               >

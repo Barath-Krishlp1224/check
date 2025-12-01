@@ -1,5 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
+// 1. Import ToastContainer and toast
+import { ToastContainer, toast } from 'react-toastify';
+// 2. Import the CSS (Assuming this file is at the root or correctly linked in your project's main layout)
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Asset {
   _id: string;
@@ -96,9 +100,13 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
         return json.assets || [];
       } else {
         console.error("Failed to fetch assets list:", json);
+        // 3. Replaced alert with toast.error
+        toast.error("Failed to fetch assets list.");
       }
     } catch (err) {
       console.error("Fetch error:", err);
+      // 4. Replaced alert with toast.error
+      toast.error("Server error while fetching assets.");
     }
     return [];
   };
@@ -132,6 +140,8 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
 
     setFound(null);
     setSearching(false);
+    // 5. Added toast for "Asset Not Found"
+    toast.info(`No asset found for Employee ID: ${q}`);
   };
 
   const openEdit = (asset: Asset) => {
@@ -182,7 +192,9 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
   const saveEdit = async () => {
     if (!editing) return;
     if (!editing.name?.trim() || !editing.empId?.trim()) {
-      return alert("Employee name and Employee ID are required.");
+      // 6. Replaced alert with toast.error
+      toast.error("Employee name and Employee ID are required.");
+      return;
     }
 
     setSaving(true);
@@ -218,7 +230,8 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       const json = await res.json();
       if (!res.ok || !json?.success) {
         console.error("Update failed:", json);
-        alert("Failed to update asset: " + (json?.error || "Unknown error"));
+        // 7. Replaced alert with toast.error
+        toast.error("Failed to update asset: " + (json?.error || "Unknown error"));
         return;
       }
 
@@ -227,9 +240,12 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       if (found && found._id === updated._id) setFound(updated);
       onUpdated?.(updated);
       setEditing(null);
+      // 8. Added toast.success on successful update
+      toast.success("Asset updated successfully!");
     } catch (err) {
       console.error("Update error:", err);
-      alert("Server error while updating asset. Check console.");
+      // 9. Replaced alert with toast.error
+      toast.error("Server error while updating asset. Check console.");
     } finally {
       setSaving(false);
     }
@@ -243,6 +259,9 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
 
   return (
     <>
+      {/* 10. Add ToastContainer as the first element in the main return */}
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
+
       <div className="min-h-screen flex items-center justify-center p-4 ">
         <div className="w-full max-w-3xl bg-white border border-gray-200 shadow-2xl p-8 rounded-3xl">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Search Asset by Employee ID</h2>

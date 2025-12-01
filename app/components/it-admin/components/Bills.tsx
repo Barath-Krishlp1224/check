@@ -1,6 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+// 1. Import ToastContainer and toast
+import { ToastContainer, toast } from 'react-toastify';
+// 2. Import the CSS (Ensure this is available in your project)
+import 'react-toastify/dist/ReactToastify.css';
+
 
 interface Bill {
   _id?: string;
@@ -176,6 +181,8 @@ const BillsTracker: React.FC = () => {
       );
     } catch (err: any) {
       console.error("Failed to fetch bills", err);
+      // Replaced console.error alert with toast.error
+      toast.error(err.message || "Failed to fetch bills list.");
       setError(err.message || "Failed to fetch bills");
     } finally {
       setLoading(false);
@@ -189,7 +196,8 @@ const BillsTracker: React.FC = () => {
   const createBill = async () => {
     const amountNum = parseFloat(bill.amount);
     if (!bill.name.trim() || !bill.dueDate || isNaN(amountNum) || amountNum <= 0) {
-      alert("Please enter a valid name, amount, and due date.");
+      // Replaced alert with toast.error
+      toast.error("Please enter a valid name, amount, and due date.");
       return;
     }
 
@@ -208,36 +216,34 @@ const BillsTracker: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
-      if (editingId) {
-        const res = await fetch(apiBase, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editingId, ...payload }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data?.error || "Failed to update bill");
-        }
-      } else {
-        const res = await fetch(apiBase, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data?.error || "Failed to save bill");
-        }
+      const isEditing = !!editingId;
+      const method = isEditing ? "PUT" : "POST";
+      const body = isEditing ? JSON.stringify({ id: editingId, ...payload }) : JSON.stringify(payload);
+      
+      const res = await fetch(apiBase, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: body,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || (isEditing ? "Failed to update bill" : "Failed to save bill"));
       }
+      
+      // Success toast
+      toast.success(`Bill ${isEditing ? "updated" : "added"} successfully!`);
 
       await fetchBills();
       setBill({ name: "", amount: "", dueDate: "", paidDate: "" });
       setEditingId(null);
       setShowForm(false);
+
     } catch (err: any) {
       console.error("Failed to create/update bill", err);
       setError(err.message || "Failed to save bill");
-      alert("Failed to save bill. Please try again.");
+      // Replaced alert with toast.error
+      toast.error(`Failed to save bill. ${err.message || "Please check your inputs."}`);
     } finally {
       setSubmitting(false);
     }
@@ -267,19 +273,24 @@ const BillsTracker: React.FC = () => {
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        throw new Error(data?.error || "Failed to update bill");
+        throw new Error(data?.error || "Failed to update bill status");
       }
+
+      // Success toast for status change
+      toast.info(`Bill "${target.name}" marked as ${newPaidState ? "Paid" : "Pending"}.`);
 
       await fetchBills();
     } catch (err: any) {
       console.error("Failed to toggle paid", err);
-      setError(err.message || "Failed to update bill");
-      alert("Failed to update bill. Please try again.");
+      setError(err.message || "Failed to update bill status");
+      // Replaced alert with toast.error
+      toast.error("Failed to update bill status. Please try again.");
     }
   };
 
   const deleteBill = async (id?: string) => {
     if (!id) return;
+    // Keeping confirm for blocking UI interaction for deletion
     const confirmDelete = confirm("Are you sure you want to delete this bill?");
     if (!confirmDelete) return;
 
@@ -293,6 +304,9 @@ const BillsTracker: React.FC = () => {
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || "Failed to delete bill");
       }
+
+      // Success toast for deletion
+      toast.success("Bill deleted successfully!");
 
       await fetchBills();
       if (selectedBill?._id === id) {
@@ -308,7 +322,8 @@ const BillsTracker: React.FC = () => {
     } catch (err: any) {
       console.error("Failed to delete bill", err);
       setError(err.message || "Failed to delete bill");
-      alert("Failed to delete bill. Please try again.");
+      // Replaced alert with toast.error
+      toast.error("Failed to delete bill. Please try again.");
     }
   };
 
@@ -388,6 +403,20 @@ const BillsTracker: React.FC = () => {
 
   return (
     <div className="w-full">
+      {/* 3. Add ToastContainer */}
+      <ToastContainer 
+        position="top-right" 
+        autoClose={5000} 
+        hideProgressBar={false} 
+        newestOnTop={false} 
+        closeOnClick 
+        rtl={false} 
+        pauseOnFocusLoss 
+        draggable 
+        pauseOnHover 
+        theme="light" 
+      />
+
       <div className="max-w-7xl mt-40 mx-auto p-6 md:p-8 w-full"> 
         
         <div className="flex items-center justify-between mb-8">

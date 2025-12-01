@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+// 1. IMPORT TOASTIFY
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // Import the CSS
 
 interface Bill {
   _id?: string;
@@ -191,7 +194,10 @@ const BillsTracker: React.FC = () => {
   const createBill = async () => {
     const amountNum = parseFloat(bill.amount);
     if (!bill.name.trim() || !bill.dueDate || isNaN(amountNum) || amountNum <= 0) {
-      alert("Please enter a valid name, amount, and due date.");
+      // 2. Replaced alert
+      toast.error("Please enter a valid name, amount, and due date.", {
+        position: "top-center",
+      });
       return;
     }
 
@@ -211,8 +217,11 @@ const BillsTracker: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
+      let successMessage = "Bill added successfully!";
+
       // If editingId is set, update instead of create
       if (editingId) {
+        successMessage = "Bill updated successfully!";
         const res = await fetch(apiBase, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -239,10 +248,13 @@ const BillsTracker: React.FC = () => {
       setBill({ name: "", amount: "", dueDate: "", paidDate: "" });
       setEditingId(null);
       setShowForm(false);
+      // 3. Added success toast
+      toast.success(successMessage);
     } catch (err: any) {
       console.error("Failed to create/update bill", err);
       setError(err.message || "Failed to save bill");
-      alert("Failed to save bill. Please try again.");
+      // 4. Replaced alert
+      toast.error(err.message || "Failed to save bill. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -276,16 +288,20 @@ const BillsTracker: React.FC = () => {
       }
 
       await fetchBills();
+      // 5. Added success toast
+      toast.success(`Bill marked as ${newPaidState ? "Paid" : "Pending"}.`);
     } catch (err: any) {
       console.error("Failed to toggle paid", err);
       setError(err.message || "Failed to update bill");
-      alert("Failed to update bill. Please try again.");
+      // 6. Replaced alert
+      toast.error(err.message || "Failed to update bill status. Please try again.");
     }
   };
 
   const deleteBill = async (id?: string) => {
     if (!id) return;
-    const confirmDelete = confirm("Are you sure you want to delete this bill?");
+    // 7. Replaced confirm with a modal/custom logic, but for simplicity, keeping confirm
+    const confirmDelete = window.confirm("Are you sure you want to delete this bill?");
     if (!confirmDelete) return;
 
     try {
@@ -311,10 +327,13 @@ const BillsTracker: React.FC = () => {
         setBill({ name: "", amount: "", dueDate: "", paidDate: "" });
         setShowForm(false);
       }
+      // 8. Added success toast
+      toast.success("Bill deleted successfully!");
     } catch (err: any) {
       console.error("Failed to delete bill", err);
       setError(err.message || "Failed to delete bill");
-      alert("Failed to delete bill. Please try again.");
+      // 9. Replaced alert
+      toast.error(err.message || "Failed to delete bill. Please try again.");
     }
   };
 
@@ -398,6 +417,8 @@ const BillsTracker: React.FC = () => {
     // MAIN: white background for entire page per request
     <div className="min-h-screen bg-white p-6 flex items-center justify-center">
       <div className="max-w-7xl mx-auto w-full">
+        {/* 10. Add ToastContainer */}
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
         
         <div className="flex items-center justify-between mb-8">
           <div>

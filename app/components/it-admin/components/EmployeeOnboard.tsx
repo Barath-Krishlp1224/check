@@ -5,6 +5,10 @@ import { useFormik } from "formik";
 import { ChevronRight, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as Yup from "yup";
+// 1. Import ToastContainer and toast
+import { ToastContainer, toast } from 'react-toastify';
+// 2. Import the CSS (Ensure this is available in your project)
+import 'react-toastify/dist/ReactToastify.css';
 
 // --- 1. TYPES & STRUCTURE ---
 
@@ -372,18 +376,21 @@ const AddEmployeePage: React.FC = () => {
         const result = await res.json();
 
         if (result.success) {
-          alert("✅ Employee Added Successfully!");
+          // Replaced alert with toast.success
+          toast.success("✅ Employee Added Successfully!");
           formik.resetForm();
           setCategoryOptions([]);
           setSubCategoryOptions([]);
           setDepartmentOptions([]);
           setCurrentStep(0);
         } else {
-          alert(`❌ ${result.message}`);
+          // Replaced alert with toast.error
+          toast.error(`❌ ${result.message}`);
         }
       } catch (error) {
         console.error("Error submitting form:", error);
-        alert("Network or server error. Please try again.");
+        // Replaced alert with toast.error
+        toast.error("Network or server error. Please try again.");
       }
     },
   });
@@ -473,6 +480,9 @@ const AddEmployeePage: React.FC = () => {
     const isValid = await validateStep(currentStep);
     if (isValid && currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+    } else if (!isValid) {
+      // Show a toast message if validation fails
+      toast.error("Please fill out all required fields correctly before proceeding.");
     }
   };
 
@@ -486,6 +496,9 @@ const AddEmployeePage: React.FC = () => {
     const isValid = await validateStep(currentStep);
     if (isValid) {
       formik.handleSubmit();
+    } else if (!isValid) {
+      // Show a toast message if validation fails on final submit
+      toast.error("Please correct the errors in the form before submission.");
     }
   };
 
@@ -869,6 +882,20 @@ const AddEmployeePage: React.FC = () => {
   // ⭐️ CENTERING ADJUSTMENT 1: Added min-h-screen, flex, items-center, and justify-center to the main container.
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
+      {/* 3. Add ToastContainer */}
+      <ToastContainer 
+        position="top-right" 
+        autoClose={5000} 
+        hideProgressBar={false} 
+        newestOnTop={false} 
+        closeOnClick 
+        rtl={false} 
+        pauseOnFocusLoss 
+        draggable 
+        pauseOnHover 
+        theme="light" 
+      />
+
       <div className="max-w-5xl w-full"> {/* ⭐️ CENTERING ADJUSTMENT 2: Removed mx-auto as w-full handles it within the flex container. Added w-full */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gray-800 px-8 py-6 text-white flex justify-between items-start">

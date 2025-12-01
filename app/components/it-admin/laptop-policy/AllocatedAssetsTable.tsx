@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { renderPreviewHtml } from "./AssetPreviewUtils";
 
 interface Asset {
@@ -97,9 +98,11 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
         return json.assets || [];
       } else {
         console.error("Failed to fetch assets list:", json);
+        toast.error("Failed to refresh asset list from server.");
       }
     } catch (err) {
       console.error("Fetch error:", err);
+      toast.error("Network error while fetching assets.");
     }
     return [];
   };
@@ -137,14 +140,14 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
 
   const openPreviewWindow = (asset: Asset) => {
     const w = window.open("", "_blank", "width=680,height=720");
-    if (!w) return alert("Popup blocked. Allow popups for this site to preview.");
+    if (!w) return toast.error("Popup blocked. Allow popups for this site to preview.");
     w.document.write(renderPreviewHtml(asset));
     w.document.close();
   };
 
   const handlePrint = (asset: Asset) => {
     const w = window.open("", "_blank", "width=800,height=700");
-    if (!w) return alert("Popup blocked. Allow popups for this site to print.");
+    if (!w) return toast.error("Popup blocked. Allow popups for this site to print.");
     w.document.write(renderPreviewHtml(asset, true));
     w.document.close();
   };
@@ -197,7 +200,7 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
   const saveEdit = async () => {
     if (!editing) return;
     if (!editing.name?.trim() || !editing.empId?.trim()) {
-      return alert("Employee name and Employee ID are required.");
+      return toast.error("Employee name and Employee ID are required.");
     }
 
     setSaving(true);
@@ -233,7 +236,7 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       const json = await res.json();
       if (!res.ok || !json?.success) {
         console.error("Update failed:", json);
-        alert("Failed to update asset: " + (json?.error || "Unknown error"));
+        toast.error("Failed to update asset: " + (json?.error || "Unknown error"));
         return;
       }
 
@@ -242,9 +245,10 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       if (found && found._id === updated._id) setFound(updated);
       onUpdated?.(updated);
       setEditing(null);
+      toast.success(`Asset for ${updated.name} updated successfully!`);
     } catch (err) {
       console.error("Update error:", err);
-      alert("Server error while updating asset. Check console.");
+      toast.error("Server error while updating asset. Check console.");
     } finally {
       setSaving(false);
     }

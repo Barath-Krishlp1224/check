@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "r
 import { AlertCircle, LayoutGrid, ListTodo, Calendar, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { toast } from "react-toastify"; // 👈 Import toast
 
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -121,9 +122,13 @@ const TasksPage: React.FC = () => {
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) setTasks(data.tasks);
-      else setError(data.error || "Failed to fetch tasks.");
+      else {
+        setError(data.error || "Failed to fetch tasks.");
+        toast.error(`Failed to fetch tasks: ${data.error || "Unknown error"}`); // 👈 toast
+      }
     } catch (err) {
       setError("Server connection error while fetching tasks.");
+      toast.error("Server connection error while fetching tasks."); // 👈 toast
     }
   };
 
@@ -162,6 +167,7 @@ const TasksPage: React.FC = () => {
   const handleTaskCreated = async () => {
     await fetchTasks();
     await fetchEmployees();
+    toast.success("Task created successfully!"); // 👈 toast
   };
 
   // ✅ enforce loader for at least 3 seconds
@@ -385,11 +391,12 @@ const TasksPage: React.FC = () => {
           )
         );
         fetchTasks();
+        toast.success("Task status updated successfully!"); // 👈 toast
       } else {
-        alert(data.error || "Failed to update task");
+        toast.error(data.error || "Failed to update task status"); // 👈 toast
       }
     } catch (err) {
-      alert("Server error during status update.");
+      toast.error("Server error during status update."); // 👈 toast
     }
   }, []);
 
@@ -431,11 +438,12 @@ const TasksPage: React.FC = () => {
         const data = await res.json();
         if (res.ok && data.success) {
           fetchTasks();
+          toast.success("Subtask status updated successfully!"); // 👈 toast
         } else {
-          alert(data.error || "Failed to update subtask");
+          toast.error(data.error || "Failed to update subtask status"); // 👈 toast
         }
       } catch (err) {
-        alert("Server error during subtask update.");
+        toast.error("Server error during subtask update."); // 👈 toast
       }
     },
     [tasks]
@@ -471,14 +479,14 @@ const TasksPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("Task updated!");
+        toast.success("Task updated successfully!"); // 👈 toast
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to update task");
+        toast.error(data.error || "Failed to update task"); // 👈 toast
       }
     } catch (err) {
-      alert("Server error during update.");
+      toast.error("Server error during update."); // 👈 toast
     }
   };
 
@@ -489,6 +497,10 @@ const TasksPage: React.FC = () => {
       )
     )
       return;
+    
+    // Optional: Show pending toast
+    const loadingToast = toast.info("Starting sprint...", { autoClose: false, closeButton: false });
+
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
       const res = await fetch(url, {
@@ -497,31 +509,45 @@ const TasksPage: React.FC = () => {
         body: JSON.stringify({ status: "In Progress" }),
       });
       const data = await res.json();
+      
+      toast.dismiss(loadingToast); // Dismiss loading toast
+      
       if (res.ok && data.success) {
+        toast.success("Sprint started! Status changed to 'In Progress'."); // 👈 toast
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to start sprint");
+        toast.error(data.error || "Failed to start sprint"); // 👈 toast
       }
     } catch (err) {
-      alert("Server error during sprint start.");
+      toast.dismiss(loadingToast);
+      toast.error("Server error during sprint start."); // 👈 toast
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this task?")) return;
+    
+    // Optional: Show pending toast
+    const loadingToast = toast.info("Deleting task...", { autoClose: false, closeButton: false });
+    
     try {
       const url = getApiUrl(`/api/tasks/${id}`);
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
+      
+      toast.dismiss(loadingToast); // Dismiss loading toast
+      
       if (res.ok) {
+        toast.success("Task deleted successfully."); // 👈 toast
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to delete task");
+        toast.error(data.error || "Failed to delete task"); // 👈 toast
       }
     } catch (err) {
-      alert("Server error during deletion.");
+      toast.dismiss(loadingToast);
+      toast.error("Server error during deletion."); // 👈 toast
     }
   };
 
