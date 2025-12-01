@@ -473,7 +473,7 @@ const TasksPage: React.FC = () => {
       <aside className="fixed top-40 left-1/2 transform -translate-x-1/2 w-[300px] h-16 bg-white rounded-full shadow-2xl flex items-center justify-center px-4 z-50 border-b border-gray-200 space-x-8">
         <button
           onClick={() => setViewType("card")}
-          className={`p-2 rounded-full transition-all duration-200 flex items-center text-sm ${
+          className={`p-3 rounded-full transition-all duration-200 flex items-center text-sm ${
             viewType === "card"
               ? "text-indigo-600 font-bold bg-indigo-100"
               : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full"
@@ -481,13 +481,10 @@ const TasksPage: React.FC = () => {
           title="Card View (3 in a row)"
         >
           <LayoutGrid className="w-6 h-6" />
-          {viewType === "card" && (
-            <span className="ml-2">Card View</span>
-          )}
         </button>
         <button
           onClick={() => setViewType("board")}
-          className={`p-2 rounded-full transition-all duration-200 flex items-center text-sm ${
+          className={`p-3 rounded-full transition-all duration-200 flex items-center text-sm ${
             viewType === "board"
               ? "text-indigo-600 font-bold bg-indigo-100"
               : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full"
@@ -495,13 +492,10 @@ const TasksPage: React.FC = () => {
           title="Board View (Kanban)"
         >
           <ListTodo className="w-6 h-6" />
-          {viewType === "board" && (
-            <span className="ml-2">Board View</span>
-          )}
         </button>
         <button
           onClick={() => setIsHolidaysOpen(true)}
-          className={`p-2 rounded-full transition-all duration-200 flex items-center text-sm ${
+          className={`p-3 rounded-full transition-all duration-200 flex items-center text-sm ${
             isHolidaysOpen
               ? "text-indigo-600 font-bold bg-indigo-100"
               : "text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full"
@@ -509,9 +503,6 @@ const TasksPage: React.FC = () => {
           title="National Holidays"
         >
           <Calendar className="w-6 h-6" />
-          {isHolidaysOpen && (
-            <span className="ml-2">Holidays</span>
-          )}
         </button>
       </aside>
       
