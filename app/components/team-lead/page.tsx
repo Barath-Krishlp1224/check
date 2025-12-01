@@ -33,7 +33,7 @@ const EmployeesPage: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => router.push("/components/task-view")}
+          onClick={() => router.push("/components/check")}
           className={buttonClasses}
         >
           View All Tasks

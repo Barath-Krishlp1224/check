@@ -93,7 +93,7 @@ export default function AdminPage() {
                     {/* Tasks & Performance (Delay 100ms) */}
                     <div
                       role="button"
-                      onClick={() => router.push("/components/task-view")}
+                      onClick={() => router.push("/components/all-tasks/task-view")}
                       className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
                       style={{ transitionDelay: isQuickActionsOpen ? "100ms" : "0ms" }}
                       onMouseEnter={() => setHoveredButton("tasks")}

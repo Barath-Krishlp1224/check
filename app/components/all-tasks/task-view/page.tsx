@@ -1,14 +1,18 @@
+// ./TasksPage.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, LogOut, BarChart2 } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, BarChart2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SetStateAction, Dispatch } from "react";
+
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import TaskChartView from "./components/TaskChartView";
+
+// IMPORT CORRECT TYPES from the unified file
 import {
   Task,
   Subtask,
@@ -24,17 +28,23 @@ const TasksPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [viewType, setViewType] = useState<ViewType>("card");
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [draftTask, setDraftTask] = useState<Partial<Task>>({});
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [currentProjectPrefix, setCurrentProjectPrefix] = useState<string>("");
+
+  // These states can remain for TaskTableHeader but will no longer affect listing/export
   const [downloadFilterType, setDownloadFilterType] = useState<string>("all");
   const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
 
+  // Define All possible Task Statuses for the select dropdown
   const allTaskStatuses = useMemo(
     () => [
       "Backlog",
@@ -87,6 +97,7 @@ const TasksPage: React.FC = () => {
         setXlsxLoaded(true);
       })
       .catch((err) => {});
+
     const init = async () => {
       setLoading(true);
       setError("");
@@ -96,120 +107,13 @@ const TasksPage: React.FC = () => {
     init();
   }, []);
 
-  const relevantEmployees = useMemo(
-    () =>
-      employees.filter(
-        (e) =>
-          (e as any).team === "Tech" || (e as any).team === "IT Admin"
-      ),
-    [employees]
-  );
-
-  const relevantTasks = useMemo(() => {
-    if (relevantEmployees.length === 0) return [];
-    const names = relevantEmployees
-      .map((e) => e.name?.toLowerCase?.() || "")
-      .filter((n) => n);
-    return tasks.filter((task) => {
-      const assignees = task.assigneeNames || [];
-      return assignees.some((a) => names.includes(a.toLowerCase()));
-    });
-  }, [tasks, relevantEmployees]);
-
   const uniqueProjects = useMemo(() => {
-    const projectNames = relevantTasks.map((task) => task.project).filter(Boolean);
+    const projectNames = tasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(projectNames));
-  }, [relevantTasks]);
+  }, [tasks]);
 
-  const filteredTasks = useMemo(() => {
-    const filter = downloadFilterType;
-    let value = downloadFilterValue.trim().toLowerCase();
-    let primaryFilterValue = value;
-    let fromDateString = "";
-    let toDateString = "";
-    if (value.includes("|")) {
-      const parts = value.split("|");
-      primaryFilterValue = parts[0].trim().toLowerCase();
-      fromDateString = parts[1].trim();
-      toDateString = parts[2].trim();
-      value = primaryFilterValue;
-    }
-    if (filter === "all" && !primaryFilterValue && !fromDateString && !toDateString) {
-      return relevantTasks;
-    }
-    return relevantTasks.filter((task) => {
-      let isPrimaryMatch = true;
-      switch (filter) {
-        case "project":
-          isPrimaryMatch =
-            primaryFilterValue === "" ||
-            task.project.toLowerCase() === primaryFilterValue;
-          break;
-        case "assignee":
-          const assigneeFilterNames = primaryFilterValue
-            .split("#")
-            .map((name) => name.trim())
-            .filter((name) => name !== "");
-          if (assigneeFilterNames.length === 0 || assigneeFilterNames.includes("all")) {
-            isPrimaryMatch = true;
-          } else {
-            isPrimaryMatch = task.assigneeNames.some((taskAssignee) =>
-              assigneeFilterNames.includes(taskAssignee.toLowerCase())
-            );
-          }
-          break;
-        case "status":
-          isPrimaryMatch =
-            primaryFilterValue === "" ||
-            task.status.toLowerCase() === primaryFilterValue;
-          break;
-        case "date":
-          return (
-            task.startDate === downloadFilterValue ||
-            task.dueDate === downloadFilterValue ||
-            (task.endDate && task.endDate === downloadFilterValue)
-          );
-        case "month":
-          return (
-            task.startDate.startsWith(downloadFilterValue) ||
-            task.dueDate.startsWith(downloadFilterValue) ||
-            (task.endDate && task.endDate.startsWith(downloadFilterValue))
-          );
-        case "all":
-          isPrimaryMatch = true;
-          break;
-        default:
-          isPrimaryMatch = true;
-      }
-      if (!isPrimaryMatch) {
-        return false;
-      }
-      if (!fromDateString && !toDateString) {
-        return true;
-      }
-      const fromDate = fromDateString ? new Date(fromDateString) : null;
-      const toDate = toDateString ? new Date(toDateString) : null;
-      const taskDates = [task.startDate, task.dueDate, task.endDate]
-        .filter((d) => d)
-        .map((d) => new Date(d as string));
-      return taskDates.some((taskDate) => {
-        let isAfterFrom = true;
-        let isBeforeTo = true;
-        if (fromDate) {
-          fromDate.setHours(0, 0, 0, 0);
-          taskDate.setHours(0, 0, 0, 0);
-          isAfterFrom = taskDate >= fromDate;
-        }
-        if (toDate) {
-          const endOfDayToDate = new Date(toDateString as string);
-          endOfDayToDate.setDate(endOfDayToDate.getDate() + 1);
-          endOfDayToDate.setHours(0, 0, 0, 0);
-          isBeforeTo = taskDate < endOfDayToDate;
-        }
-        return isAfterFrom && isBeforeTo;
-      });
-    });
-  }, [relevantTasks, downloadFilterType, downloadFilterValue]);
+  // ✅ NO FILTERS: just show all tasks
+  const filteredTasks = useMemo(() => tasks, [tasks]);
 
   const generateNextSubtaskId = (prefix: string, currentSubtasks: Subtask[]) => {
     const numbers = currentSubtasks.map((sub) => {
@@ -228,10 +132,12 @@ const TasksPage: React.FC = () => {
     setSelectedTaskForModal(task);
     setIsModalOpen(true);
     setIsEditing(false);
+
     setDraftTask({
       ...task,
       assigneeNames: task.assigneeNames || [],
     });
+
     setSubtasks(task.subtasks || []);
     setCurrentProjectPrefix(task.projectId);
   };
@@ -251,6 +157,7 @@ const TasksPage: React.FC = () => {
       assigneeNames: task.assigneeNames || [],
     });
     setCurrentProjectPrefix(task.projectId);
+
     const subtasksWithIDs: Subtask[] = (task.subtasks || []).map(
       (sub, index, arr) => {
         if (!sub.id || !sub.id.startsWith(task.projectId)) {
@@ -288,6 +195,7 @@ const TasksPage: React.FC = () => {
   const handleSubtaskChange: SubtaskChangeHandler = (path, field, value) => {
     const index = path[0];
     if (index === undefined || index < 0 || index >= subtasks.length) return;
+
     setSubtasks((prev) => {
       const updated = [...prev];
       (updated[index] as any)[field] =
@@ -314,9 +222,11 @@ const TasksPage: React.FC = () => {
   const removeSubtask: SubtaskPathHandler = (path) => {
     const index = path[0];
     if (index === undefined || index < 0 || index >= subtasks.length) return;
+
     setSubtasks((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Existing function for main task status change (ASYNC)
   const onTaskStatusChange = useCallback(
     async (taskId: string, newStatus: string) => {
       try {
@@ -336,6 +246,7 @@ const TasksPage: React.FC = () => {
             )
           );
           fetchTasks();
+
           const statusesToNotify = [
             "Backlog",
             "In Progress",
@@ -361,6 +272,7 @@ const TasksPage: React.FC = () => {
     []
   );
 
+  // Subtask Status Change (local only)
   const onSubtaskStatusChange = useCallback(
     (taskId: string, subtaskId: string, newStatus: string) => {
       setSubtasks((prevSubtasks) =>
@@ -368,6 +280,7 @@ const TasksPage: React.FC = () => {
           sub.id === subtaskId ? { ...sub, status: newStatus } : sub
         )
       );
+
       console.log(
         `Subtask status update locally applied: Task ${taskId}, Subtask ${subtaskId} -> ${newStatus}`
       );
@@ -386,12 +299,14 @@ const TasksPage: React.FC = () => {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskForModal?._id) return;
+
     const subtasksToSave = subtasks.filter((s) => s.title.trim() !== "");
     const updatedTask = {
       ...draftTask,
       subtasks: subtasksToSave,
       projectId: currentProjectPrefix,
     };
+
     try {
       const url = getApiUrl(`/api/tasks/${selectedTaskForModal._id}`);
       const res = await fetch(url, {
@@ -405,7 +320,9 @@ const TasksPage: React.FC = () => {
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(`❌ Failed to update task: ${data.error || "Unknown error"}`);
+        alert(
+          `❌ Failed to update task: ${data.error || "Unknown error"}`
+        );
       }
     } catch (err) {
       alert("A server error occurred during update.");
@@ -440,59 +357,20 @@ const TasksPage: React.FC = () => {
     }
   };
 
+  // ✅ Excel export: export ALL tasks, ignore filters
   const handleExcelDownload = () => {
     if (typeof window === "undefined" || !(window as any).XLSX) {
       alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
       return;
     }
-    let tasksForExport: Task[] = [];
-    const filter = downloadFilterType;
-    const value = downloadFilterValue.trim();
-    if (filter === "all" || !value) {
-      tasksForExport = relevantTasks;
-    } else {
-      tasksForExport = relevantTasks.filter((task) => {
-        switch (filter) {
-          case "project":
-            return task.project === value;
-          case "assignee":
-            const assigneeNamesFilter = value
-              .toLowerCase()
-              .split("#")
-              .map((name) => name.trim())
-              .filter((name) => name !== "");
-            if (assigneeNamesFilter.length === 0 || value.toLowerCase() === "all")
-              return true;
-            return task.assigneeNames.some((taskAssignee) =>
-              assigneeNamesFilter.includes(taskAssignee.toLowerCase())
-            );
-          case "status":
-            return task.status === value;
-          case "date":
-            return (
-              task.startDate === value ||
-              task.dueDate === value ||
-              (task.endDate && task.endDate === value)
-            );
-          case "month":
-            return (
-              task.startDate.startsWith(value) ||
-              task.dueDate.startsWith(value) ||
-              (task.endDate && task.endDate.startsWith(value))
-            );
-          default:
-            return true;
-        }
-      });
-    }
+
+    const tasksForExport: Task[] = tasks;
+
     if (tasksForExport.length === 0) {
-      alert(
-        `No tasks found for the current filter: ${filter} = ${
-          value || "N/A"
-        }`
-      );
+      alert("No tasks found to export.");
       return;
     }
+
     const dataForExport = tasksForExport.flatMap((task) => {
       const mainRow = {
         TaskID: task.projectId,
@@ -512,9 +390,11 @@ const TasksPage: React.FC = () => {
         SubtaskStatus: "N/A",
         SubtaskRemarks: "N/A",
       };
+
       if (!task.subtasks || task.subtasks.length === 0) {
         return [mainRow];
       }
+
       const subtaskRows = task.subtasks.map((sub) => ({
         TaskID: "",
         ItemType: "Subtask",
@@ -533,10 +413,13 @@ const TasksPage: React.FC = () => {
         SubtaskStatus: sub.status,
         SubtaskRemarks: sub.remarks || "-",
       }));
+
       return [mainRow, ...subtaskRows];
     });
+
     const XLSX = (window as any).XLSX;
     const ws = XLSX.utils.json_to_sheet(dataForExport);
+
     const objectKeys = Object.keys(dataForExport[0] || {});
     const wscols = objectKeys.map((key) => {
       let max_width = key.length;
@@ -547,22 +430,16 @@ const TasksPage: React.FC = () => {
       const finalWidth = Math.min(max_width + 2, 60);
       return { wch: finalWidth };
     });
+
     ws["!cols"] = wscols;
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Tasks Report");
-    const safeValue = value.replace(/[^a-z0-9]/gi, "_");
-    const fileName =
-      filter === "all"
-        ? "Tech_ITAdmin_Tasks_Report.xlsx"
-        : `${filter}_${safeValue}_Tech_ITAdmin_Tasks_Report.xlsx`;
+    XLSX.utils.book_append_sheet(wb, ws, "All Tasks Report");
+
+    const fileName = "All_Tasks_Report.xlsx";
+
     XLSX.writeFile(wb, fileName);
     alert(`✅ Task report downloaded as ${fileName}`);
-  };
-
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      router.push("/");
-    }
   };
 
   if (loading)
@@ -594,58 +471,47 @@ const TasksPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-white">
-      <aside className="fixed left-0 top-0 h-full w-20 bg-white shadow-xl pt-28 flex flex-col items-center space-y-4 z-20">
-        <button
-          onClick={() => setViewType("card")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "card"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
-          title="Card View (3 in a row)"
-        >
-          <LayoutGrid className="w-6 h-6" />
-        </button>
-        <button
-          onClick={() => setViewType("board")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "board"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
-          title="Board View (Kanban)"
-        >
-          <ListTodo className="w-6 h-6" />
-        </button>
-        <button
-          onClick={() => setViewType("chart")}
-          className={`p-3 rounded-xl transition-all duration-200 ${
-            viewType === "chart"
-              ? "bg-indigo-600 text-white shadow-lg"
-              : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
-          }`}
-          title="Chart View (Analytics)"
-        >
-          <BarChart2 className="w-6 h-6" />
-        </button>
-        <div className="flex-grow" />
-        <button
-          onClick={handleLogout}
-          className="p-3 mb-4 rounded-xl transition-all duration-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-          title="Logout"
-        >
-          <LogOut className="w-6 h-6" />
-        </button>
-      </aside>
+      <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
+        <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
+          <button
+            onClick={() => setViewType("card")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              viewType === "card"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+            }`}
+            title="Card View (3 in a row)"
+          >
+            <LayoutGrid className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setViewType("board")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              viewType === "board"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+            }`}
+            title="Board View (Kanban)"
+          >
+            <ListTodo className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setViewType("chart")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              viewType === "chart"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+            }`}
+            title="Chart View (Analytics)"
+          >
+            <BarChart2 className="w-6 h-6" />
+          </button>
+        </nav>
 
-      <div
-        className="flex-1 min-h-screen mt-[5%] py-8 px-4 sm:px-6 lg:px-8"
-        style={{ marginLeft: "5rem", backgroundColor: "#ffffff" }}
-      >
         <div className="max-w-[1800px] mx-auto">
           <TaskTableHeader
             uniqueProjects={uniqueProjects}
-            employees={relevantEmployees}
+            employees={employees}
             downloadFilterType={downloadFilterType}
             setDownloadFilterType={setDownloadFilterType}
             downloadFilterValue={downloadFilterValue}
@@ -664,7 +530,7 @@ const TasksPage: React.FC = () => {
                   No tasks found
                 </h3>
                 <p className="text-slate-500">
-                  The current filter returned no matching tasks.
+                  There are no tasks available to display.
                 </p>
               </div>
             </div>
@@ -707,7 +573,7 @@ const TasksPage: React.FC = () => {
                 setDraftTask as Dispatch<SetStateAction<Partial<Task>>>
               }
               subtasks={subtasks}
-              employees={relevantEmployees}
+              employees={employees}
               currentProjectPrefix={currentProjectPrefix}
               allTaskStatuses={allTaskStatuses}
               handleEdit={handleEdit}
