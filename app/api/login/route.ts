@@ -1,22 +1,24 @@
 // app/api/login/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 
-// ✅ Ensure this route runs on Node.js runtime (not Edge)
+// ✅ Ensure this route runs on Node.js runtime (NOT Edge)
 export const runtime = "nodejs";
 
-// (Optional but sometimes useful to avoid caching issues)
+// ✅ Disable caching / force dynamic
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     // ✅ Connect to MongoDB (make sure MONGODB_URI is set on Vercel)
     await connectDB();
 
     // ✅ Parse body
-    const { empIdOrEmail, password } = await req.json();
+    const body = await req.json();
+    const empIdOrEmail = body?.empIdOrEmail;
+    const password = body?.password;
 
     if (!empIdOrEmail || !password) {
       return NextResponse.json(
@@ -44,6 +46,7 @@ export async function POST(req: Request) {
 
     // ✅ Guard in case password is missing on document
     if (!employee.password) {
+      console.error("Employee found but no password field:", employee.empId);
       return NextResponse.json(
         { error: "User does not have a password set." },
         { status: 500 }
@@ -75,16 +78,11 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("Login error:", error);
+    console.error("Login error in /api/login:", error);
 
-    // Hide internal details from client, but log them above
-    const message =
-      typeof error?.message === "string"
-        ? error.message
-        : "Internal server error";
-
+    // Don't leak internal details to the client
     return NextResponse.json(
-      { error: message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
