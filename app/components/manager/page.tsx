@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, CheckSquare, TrendingUp, PlusSquare, List } from "lucide-react"; 
+import { Users, CheckSquare, TrendingUp, PlusSquare, List, CalendarCheck } from "lucide-react"; // Added CalendarCheck
 
 export default function AdminPage() {
   const router = useRouter();
@@ -34,6 +34,12 @@ export default function AdminPage() {
   const goToViewMyTasks = () => {
     router.push("/components/view-task");
   };
+  
+  // NEW: Function to navigate to the Employee Leaves page
+  const goToViewEmpLeaves = () => {
+    // NOTE: You may need to change the route path below to match your actual leaves view page
+    router.push("/components/emp-leave/approval"); 
+  };
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">
@@ -61,7 +67,7 @@ export default function AdminPage() {
 
                 <div className={`overflow-hidden transition-all duration-700 ease-in-out ${isQuickActionsOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"}`}>
 
-                  {/* RESTORED: Grid uses sm:grid-cols-4 and lg:grid-cols-4 for 4 items per row on medium/large screens */}
+                  {/* Grid uses sm:grid-cols-4 and lg:grid-cols-4 for 4 items per row on medium/large screens */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4">
 
                     {/* View Employee List (Delay 0ms) */}
@@ -144,7 +150,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     
-                    {/* NEW: Create My Task (Delay 400ms) - Icon color updated to blue */}
+                    {/* NEW: Create My Task (Delay 400ms) */}
                     <div
                       role="button"
                       onClick={goToCreateTask}
@@ -164,7 +170,7 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* NEW: View My Tasks (Delay 500ms) - Icon color updated to blue */}
+                    {/* NEW: View My Tasks (Delay 500ms) */}
                     <div
                       role="button"
                       onClick={goToViewMyTasks}
@@ -184,8 +190,27 @@ export default function AdminPage() {
                       </div>
                     </div>
                     
-                    {/* Placeholder div to push the last two boxes to the start of the next row if necessary, although with 6 items in a 4-column grid, they naturally flow */}
-                    <div className="hidden sm:block lg:hidden"></div>
+                    {/* NEW: View Employee Leaves (Delay 600ms) */}
+                    <div
+                      role="button"
+                      onClick={goToViewEmpLeaves} // Hooked up the new function
+                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                      style={{ transitionDelay: isQuickActionsOpen ? "600ms" : "0ms" }} // Set new delay
+                      onMouseEnter={() => setHoveredButton("view-emp-leaves")}
+                      onMouseLeave={() => setHoveredButton(null)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
+                          <CalendarCheck className="w-5 h-5 text-white" /> {/* Used CalendarCheck icon */}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">View Emp Leaves</h3>
+                          <p className="text-gray-600 text-xs">Manage time-off requests</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Placeholder div to ensure consistent grid layout */}
                     <div className="hidden sm:block lg:hidden"></div>
                   </div>
                 </div>

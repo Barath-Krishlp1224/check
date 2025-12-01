@@ -8,27 +8,55 @@ export async function GET(request: Request) {
   try {
     await connectDB();
     const url = new URL(request.url);
-    const name = url.searchParams.get("name");
+    const name = url.searchParams.get("name");   // exact match (old flow)
+    const search = url.searchParams.get("search"); // partial match (new flow)
 
-    // Define the fields we want to select for both single and multiple employee requests.
-    // Explicitly include all fields needed by the frontend filtering logic.
-    const selectFields = "name department role empId team category departmentName department_name"; 
+    // Fields required by frontend
+    const selectFields =
+      "name department role empId team category departmentName department_name";
 
+    // ✅ 1) Partial search (for suggestions / filtering)
+    if (search) {
+      const regex = new RegExp(search, "i");
+      const employees = await Employee.find(
+        {
+          $or: [{ name: regex }, { empId: regex }],
+        },
+        selectFields
+      )
+        .sort({ name: 1 })
+        .lean();
+
+      return NextResponse.json({ success: true, employees });
+    }
+
+    // ✅ 2) Single employee by exact name (existing behaviour)
     if (name) {
       const employee = await Employee.findOne(
         { name: { $regex: `^${name}$`, $options: "i" } },
         selectFields
       ).lean();
-      
-      if (!employee) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
+
+      if (!employee) {
+        return NextResponse.json(
+          { success: false, error: "Not found" },
+          { status: 404 }
+        );
+      }
       return NextResponse.json({ success: true, employee });
-    } else {
-      const employees = await Employee.find({}, selectFields).sort({ name: 1 }).lean();
-      
-      return NextResponse.json({ success: true, employees });
     }
+
+    // ✅ 3) Default: return all employees (for dropdown list)
+    const employees = await Employee.find({}, selectFields)
+      .sort({ name: 1 })
+      .lean();
+
+    return NextResponse.json({ success: true, employees });
   } catch (error) {
     console.error("Error fetching employees:", error);
-    return NextResponse.json({ success: false, error: "Failed to fetch employees" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch employees" },
+      { status: 500 }
+    );
   }
 }
