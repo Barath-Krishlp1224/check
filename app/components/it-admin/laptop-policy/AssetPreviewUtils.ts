@@ -108,7 +108,7 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
       font-size: 14px;
       font-weight: 700;
       margin-top: 14px;
-      color: #222;
+      color: #000;
       padding-bottom: 6px;
       
     }
@@ -117,7 +117,7 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
       font-size: 12px;
       line-height: 1.45;
       margin: 6px 0;
-      color: #222;
+      color: #000;
       text-align: justify;
     }
 
@@ -138,14 +138,14 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
       font-size: 12px;
       font-weight: 700;
       margin: 0 0 6px 0;
-      color: #444;
+      color: #000;
       text-decoration: underline;
     }
     
     .info-table p {
       font-size: 12px;
       margin: 4px 0;
-      color: #222;
+      color: #000;
       line-height: 1.4;
     }
     
@@ -301,10 +301,10 @@ export function renderPreviewHtml(asset: Asset, forPrint = false) {
 
   const acknowledgmentHtml = `
     <div class="acknowledgment-block">
-      <p style="margin-top: 10px; margin-bottom: 20px; font-size: 14px; text-align:center ;">
+      <p style="margin-top: 10px; margin-bottom: 20px; font-size: 14px; text-align:center ; color: #000;">
         Lemonpay does provide a laptop to Employees at all career levels. The (PC, Windows Laptop and Apple Mac) are intended for office use only. 
       </p>
-       <p style="margin-top: 10px; margin-bottom: 20px; font-size: 14px; text-align: center;">
+       <p style="margin-top: 10px; margin-bottom: 20px; font-size: 14px; text-align: center; color: #000;">
          I hereby declare that I have read & accept the terms & conditions mentioned above.
       </p>
 

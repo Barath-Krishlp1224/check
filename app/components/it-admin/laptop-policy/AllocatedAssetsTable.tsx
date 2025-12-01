@@ -1,11 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-// Import the utility functions from the new file
 import { renderPreviewHtml } from "./AssetPreviewUtils";
 
-/* -----------------------
-   Types
-   ----------------------- */
 interface Asset {
   _id: string;
   name: string;
@@ -29,9 +25,6 @@ interface Asset {
   allAccessories?: string[];
 }
 
-/* -----------------------
-   Structure & Accessories (for selects)
-   ----------------------- */
 const Structure = {
   Founders: { Founders: ["Founder", "Co-Founder"] },
   Manager: { Manager: ["Manager"] },
@@ -57,18 +50,12 @@ const Structure = {
 const standardLaptopAccessories = ["Monitor", "Keyboard", "Mouse", "Charger", "Bag", "Pouch"];
 const standardPCAccessories = ["Monitor", "Keyboard", "Mouse", "UPS"];
 
-/* -----------------------
-   Props
-   ----------------------- */
 interface Props {
-  assets: Asset[]; // initial list (optional)
+  assets: Asset[];
   isLoading: boolean;
-  onUpdated?: (asset: Asset) => void; // optional callback after successful update
+  onUpdated?: (asset: Asset) => void;
 }
 
-/* -----------------------
-   Component
-   ----------------------- */
 export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
   const [localAssets, setLocalAssets] = useState<Asset[]>([]);
   const [editing, setEditing] = useState<Asset | null>(null);
@@ -82,7 +69,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
     setLocalAssets(assets ?? []);
   }, [assets]);
 
-  /* Reuse helpers from before */
   const getTeamOptions = (category?: string) => {
     if (!category) return [];
     const cat = (Structure as any)[category];
@@ -101,7 +87,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
     return [];
   };
 
-  /* Fetch latest list from server once when needed */
   const fetchAllAssets = async () => {
     try {
       const res = await fetch("/api/assets/list");
@@ -119,10 +104,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
     return [];
   };
 
-  /* Search flow:
-     1) try localAssets
-     2) if not found and we haven't refreshed recently, re-fetch /api/assets/list and try again
-  */
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const q = searchQuery.trim();
@@ -132,7 +113,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
     }
 
     setSearching(true);
-    // first, look in local list
     let asset = localAssets.find((a) => String(a.empId).toLowerCase() === q.toLowerCase());
     if (asset) {
       setFound(asset);
@@ -140,7 +120,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       return;
     }
 
-    // if we've not refreshed in last 30s, re-fetch and try again
     const refreshedRecently = lastRefreshed && Date.now() - lastRefreshed < 30000;
     if (!refreshedRecently) {
       const fresh = await fetchAllAssets();
@@ -152,12 +131,10 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       }
     }
 
-    // not found
     setFound(null);
     setSearching(false);
   };
 
-  /* Preview and Print re-used, now calling imported utility */
   const openPreviewWindow = (asset: Asset) => {
     const w = window.open("", "_blank", "width=680,height=720");
     if (!w) return alert("Popup blocked. Allow popups for this site to preview.");
@@ -172,7 +149,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
     w.document.close();
   };
 
-  /* Edit flow (open modal with full fields) */
   const openEdit = (asset: Asset) => {
     const clone: Asset = {
       ...asset,
@@ -262,7 +238,6 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
       }
 
       const updated: Asset = json.asset;
-      // update local lists and current found item
       setLocalAssets((prev) => prev.map((a) => (a._id === updated._id ? updated : a)));
       if (found && found._id === updated._id) setFound(updated);
       onUpdated?.(updated);
@@ -275,18 +250,17 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
     }
   };
 
-  /* Render UI */
   return (
     <>
       <div className="bg-white border border-gray-200 shadow-lg p-6 rounded-3xl mt-8">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Search Asset by Employee ID</h2>
+        <h2 className="text-lg font-semibold text-black mb-4">Search Asset by Employee ID</h2>
 
         <form onSubmit={handleSearch} className="flex gap-3 items-center">
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Enter Employee ID and press Enter or Search"
-            className="flex-1 p-3 rounded-xl border border-gray-300 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 p-3 rounded-xl border border-gray-300 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-black"
           />
           <button
             type="submit"
@@ -297,7 +271,7 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
           </button>
           <button
             type="button"
-            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-black"
             onClick={() => {
               setSearchQuery("");
               setFound(null);
@@ -309,44 +283,44 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
 
         <div className="mt-6">
           {isLoading ? (
-            <p className="text-sm text-gray-500">Initial assets are loading...</p>
+            <p className="text-sm text-black">Initial assets are loading...</p>
           ) : found === null && searchQuery.trim() !== "" && !searching ? (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-black">
               <p>No asset found for "{searchQuery}".</p>
-              <p className="mt-2 text-xs text-gray-400">Tip: try refreshing the list or check exact Employee ID spelling.</p>
+              <p className="mt-2 text-xs text-black">Tip: try refreshing the list or check exact Employee ID spelling.</p>
             </div>
           ) : found ? (
             <div className="mt-4 bg-gray-50 border border-gray-100 p-4 rounded-lg">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-lg font-semibold text-gray-800">{found.name}</div>
-                  <div className="text-sm text-gray-500">ID: {found.empId}</div>
-                  <div className="text-sm text-blue-600 font-medium mt-1">{found.designation} ({found.team})</div>
+                  <div className="text-lg font-semibold text-black">{found.name}</div>
+                  <div className="text-sm text-black">ID: {found.empId}</div>
+                  <div className="text-sm text-black font-medium mt-1">{found.designation} ({found.team})</div>
                 </div>
 
                 <div className="flex gap-2">
                   <button
                     onClick={() => openPreviewWindow(found)}
-                    className="px-3 py-1 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-100"
+                    className="px-3 py-1 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-100 text-black"
                   >
                     Preview
                   </button>
                   <button
                     onClick={() => openEdit(found)}
-                    className="px-3 py-1 rounded-lg border border-blue-500 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                    className="px-3 py-1 rounded-lg border border-blue-500 text-sm font-medium text-black hover:bg-blue-50"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handlePrint(found)}
-                    className="px-3 py-1 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-100"
+                    className="px-3 py-1 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-100 text-black"
                   >
                     Print
                   </button>
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-black">
                 <div><strong>Device:</strong> {found.deviceType || "—"}</div>
                 <div><strong>Model:</strong> {found.laptopModel || "—"}</div>
                 <div><strong>Serial:</strong> {found.serialNumber || "—"}</div>
@@ -357,61 +331,59 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Enter an Employee ID to view details.</p>
+            <p className="text-sm text-black">Enter an Employee ID to view details.</p>
           )}
         </div>
       </div>
 
-      {/* Full Edit Modal (same as before) */}
       {editing && (
         <div className="fixed inset-0 z-40 flex items-start justify-center pt-12 px-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => !saving && setEditing(null)} />
 
           <div className="relative z-50 max-w-4xl w-full bg-white rounded-2xl shadow-xl p-6 mx-auto">
             <div className="flex items-start justify-between gap-4">
-              <h3 className="text-xl font-semibold text-gray-800">Edit Asset — {editing.name}</h3>
-              <button className="text-gray-500 hover:text-gray-700" onClick={() => !saving && setEditing(null)} aria-label="Close">✕</button>
+              <h3 className="text-xl font-semibold text-black">Edit Asset — {editing.name}</h3>
+              <button className="text-black hover:text-gray-700" onClick={() => !saving && setEditing(null)} aria-label="Close">✕</button>
             </div>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Employee Info */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700">Employee Name</label>
-                <input value={editing.name ?? ""} onChange={(e) => modalChange("name", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50" />
+                <label className="block text-xs font-semibold text-black">Employee Name</label>
+                <input value={editing.name ?? ""} onChange={(e) => modalChange("name", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black" />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700">Employee ID</label>
-                <input value={editing.empId ?? ""} onChange={(e) => modalChange("empId", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50" />
+                <label className="block text-xs font-semibold text-black">Employee ID</label>
+                <input value={editing.empId ?? ""} onChange={(e) => modalChange("empId", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black" />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700">Team Category</label>
-                <select value={editing.selectedTeamCategory ?? ""} onChange={(e) => modalChange("selectedTeamCategory", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50">
+                <label className="block text-xs font-semibold text-black">Team Category</label>
+                <select value={editing.selectedTeamCategory ?? ""} onChange={(e) => modalChange("selectedTeamCategory", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black">
                   <option value="">Select Category</option>
                   {Object.keys(Structure).map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700">Team / Department</label>
-                <select value={editing.team ?? ""} onChange={(e) => modalChange("team", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50">
+                <label className="block text-xs font-semibold text-black">Team / Department</label>
+                <select value={editing.team ?? ""} onChange={(e) => modalChange("team", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black">
                   <option value="">Select Team</option>
                   {getTeamOptions(editing.selectedTeamCategory).map((t) => (<option key={t} value={t}>{t}</option>))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700">Designation</label>
-                <select value={editing.designation ?? ""} onChange={(e) => modalChange("designation", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50">
+                <label className="block text-xs font-semibold text-black">Designation</label>
+                <select value={editing.designation ?? ""} onChange={(e) => modalChange("designation", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black">
                   <option value="">Select Designation</option>
                   {getDesignationOptions(editing.selectedTeamCategory, editing.team).map((d) => (<option key={d} value={d}>{d}</option>))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700">Device Type</label>
-                <select value={editing.deviceType ?? ""} onChange={(e) => modalChange("deviceType", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50">
+                <label className="block text-xs font-semibold text-black">Device Type</label>
+                <select value={editing.deviceType ?? ""} onChange={(e) => modalChange("deviceType", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black">
                   <option value="">Select Device</option>
                   <option value="Laptop">Laptop</option>
                   <option value="PC">PC</option>
@@ -419,66 +391,64 @@ export default function AssetSearch({ assets, isLoading, onUpdated }: Props) {
               </div>
             </div>
 
-            {/* Device-specific fields */}
             {editing.deviceType === "Laptop" && (
               <>
-                <h4 className="mt-6 text-sm font-semibold text-gray-700">Laptop Specifications</h4>
+                <h4 className="mt-6 text-sm font-semibold text-black">Laptop Specifications</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-                  <input value={editing.laptopModel ?? ""} onChange={(e) => modalChange("laptopModel", e.target.value)} placeholder="Laptop Model" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.serialNumber ?? ""} onChange={(e) => modalChange("serialNumber", e.target.value)} placeholder="Serial Number" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.yearOfMake ?? ""} onChange={(e) => modalChange("yearOfMake", e.target.value)} placeholder="Year of Make" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.macAddress ?? ""} onChange={(e) => modalChange("macAddress", e.target.value)} placeholder="MAC Address" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.processor ?? ""} onChange={(e) => modalChange("processor", e.target.value)} placeholder="Processor" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.storage ?? ""} onChange={(e) => modalChange("storage", e.target.value)} placeholder="Storage" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.ram ?? ""} onChange={(e) => modalChange("ram", e.target.value)} placeholder="RAM" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.os ?? ""} onChange={(e) => modalChange("os", e.target.value)} placeholder="Operating System" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.antivirus ?? ""} onChange={(e) => modalChange("antivirus", e.target.value)} placeholder="Antivirus" className="p-2 border rounded-lg bg-gray-50" />
-                  <input type="date" value={editing.purchaseDate ?? ""} onChange={(e) => modalChange("purchaseDate", e.target.value)} className="p-2 border rounded-lg bg-gray-50" />
+                  <input value={editing.laptopModel ?? ""} onChange={(e) => modalChange("laptopModel", e.target.value)} placeholder="Laptop Model" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.serialNumber ?? ""} onChange={(e) => modalChange("serialNumber", e.target.value)} placeholder="Serial Number" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.yearOfMake ?? ""} onChange={(e) => modalChange("yearOfMake", e.target.value)} placeholder="Year of Make" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.macAddress ?? ""} onChange={(e) => modalChange("macAddress", e.target.value)} placeholder="MAC Address" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.processor ?? ""} onChange={(e) => modalChange("processor", e.target.value)} placeholder="Processor" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.storage ?? ""} onChange={(e) => modalChange("storage", e.target.value)} placeholder="Storage" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.ram ?? ""} onChange={(e) => modalChange("ram", e.target.value)} placeholder="RAM" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.os ?? ""} onChange={(e) => modalChange("os", e.target.value)} placeholder="Operating System" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.antivirus ?? ""} onChange={(e) => modalChange("antivirus", e.target.value)} placeholder="Antivirus" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input type="date" value={editing.purchaseDate ?? ""} onChange={(e) => modalChange("purchaseDate", e.target.value)} className="p-2 border rounded-lg bg-gray-50 text-black" />
                 </div>
               </>
             )}
 
             {editing.deviceType === "PC" && (
               <>
-                <h4 className="mt-6 text-sm font-semibold text-gray-700">PC Specifications</h4>
+                <h4 className="mt-6 text-sm font-semibold text-black">PC Specifications</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-                  <input value={editing.processor ?? ""} onChange={(e) => modalChange("processor", e.target.value)} placeholder="Processor" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.storage ?? ""} onChange={(e) => modalChange("storage", e.target.value)} placeholder="Storage" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.ram ?? ""} onChange={(e) => modalChange("ram", e.target.value)} placeholder="RAM" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.os ?? ""} onChange={(e) => modalChange("os", e.target.value)} placeholder="Operating System" className="p-2 border rounded-lg bg-gray-50" />
-                  <input value={editing.antivirus ?? ""} onChange={(e) => modalChange("antivirus", e.target.value)} placeholder="Antivirus" className="p-2 border rounded-lg bg-gray-50" />
-                  <input type="date" value={editing.purchaseDate ?? ""} onChange={(e) => modalChange("purchaseDate", e.target.value)} className="p-2 border rounded-lg bg-gray-50" />
+                  <input value={editing.processor ?? ""} onChange={(e) => modalChange("processor", e.target.value)} placeholder="Processor" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.storage ?? ""} onChange={(e) => modalChange("storage", e.target.value)} placeholder="Storage" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.ram ?? ""} onChange={(e) => modalChange("ram", e.target.value)} placeholder="RAM" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.os ?? ""} onChange={(e) => modalChange("os", e.target.value)} placeholder="Operating System" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input value={editing.antivirus ?? ""} onChange={(e) => modalChange("antivirus", e.target.value)} placeholder="Antivirus" className="p-2 border rounded-lg bg-gray-50 text-black" />
+                  <input type="date" value={editing.purchaseDate ?? ""} onChange={(e) => modalChange("purchaseDate", e.target.value)} className="p-2 border rounded-lg bg-gray-50 text-black" />
                 </div>
               </>
             )}
 
-            {/* Accessories */}
             <div className="mt-6">
-              <h4 className="text-sm font-semibold text-gray-700">Standard Accessories</h4>
+              <h4 className="text-sm font-semibold text-black">Standard Accessories</h4>
               <div className="flex flex-wrap gap-2 mt-2">
                 {(editing.deviceType === "PC" ? standardPCAccessories : standardLaptopAccessories).map((item) => {
                   const checked = (editing.standardAccessories ?? []).includes(item);
                   return (
                     <label key={item} className={`px-3 py-1 rounded-lg border ${checked ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-gray-50"} cursor-pointer`}>
                       <input type="checkbox" checked={checked} onChange={() => toggleModalAccessory(item)} className="mr-2" />
-                      <span className="text-sm">{item}</span>
+                      <span className="text-sm text-black">{item}</span>
                     </label>
                   );
                 })}
               </div>
 
               <div className="mt-3">
-                <label className="block text-xs font-semibold text-gray-700">Other Accessories (comma-separated)</label>
-                <input value={editing.otherAccessoriesText ?? ""} onChange={(e) => modalChange("otherAccessoriesText", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50" placeholder="e.g., Headset, WebCam" />
+                <label className="block text-xs font-semibold text-black">Other Accessories (comma-separated)</label>
+                <input value={editing.otherAccessoriesText ?? ""} onChange={(e) => modalChange("otherAccessoriesText", e.target.value)} className="w-full p-2 rounded-lg border border-gray-300 bg-gray-50 text-black" placeholder="e.g., Headset, WebCam" />
               </div>
 
-              <div className="mt-3 text-sm text-gray-600">
+              <div className="mt-3 text-sm text-black">
                 <div><strong>All accessories:</strong> {(editing.allAccessories ?? []).join(", ") || "None"}</div>
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => !saving && setEditing(null)} className="px-4 py-2 rounded-lg border border-gray-200" type="button" disabled={saving}>Cancel</button>
+              <button onClick={() => !saving && setEditing(null)} className="px-4 py-2 rounded-lg border border-gray-200 text-black" type="button" disabled={saving}>Cancel</button>
               <button onClick={saveEdit} className="px-4 py-2 rounded-lg bg-blue-600 text-white" type="button" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</button>
             </div>
           </div>

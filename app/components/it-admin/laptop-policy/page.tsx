@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import AssetListTable from "./AllocatedAssetsTable";
-import Link from 'next/link';
+// import Link from 'next/link'; // Removed the import for Link
 
 const Structure = {
   Founders: {
@@ -231,29 +231,23 @@ export default function AssetAllocationForm() {
   const standardPCAccessories = ["Monitor", "Keyboard", "Mouse", "UPS"];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mt-30 mx-auto">
         <div className="relative bg-white border border-gray-200 shadow-lg p-8 rounded-3xl mb-6">
-          <div className="absolute top-4 right-4">
-            <Link href="/components/it-admin" passHref>
-              <button className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-md">
-                Home
-              </button>
-            </Link>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-800 text-center tracking-tight">
+          {/* REMOVED: Home button and its function */}
+          <h1 className="text-4xl font-bold text-black text-center tracking-tight">
             Asset Allocation Form
           </h1>
-          <p className="text-center text-gray-600 mt-2">Complete the form below to allocate company assets</p>
+          <p className="text-center text-black mt-2">Complete the form below to allocate company assets</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white border border-gray-200 shadow-lg p-8 rounded-3xl">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-black mb-6 pb-3 border-b border-gray-200">
               Employee Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                   Employee Name
                 </label>
                 <input
@@ -261,12 +255,12 @@ export default function AssetAllocationForm() {
                   value={form.name}
                   onChange={handleChange}
                   placeholder="Enter full name"
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                   Employee ID
                 </label>
                 <input
@@ -274,19 +268,19 @@ export default function AssetAllocationForm() {
                   value={form.empId}
                   onChange={handleChange}
                   placeholder="Enter employee ID"
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                   Team Category
                 </label>
                 <select
                   name="selectedTeamCategory"
                   value={form.selectedTeamCategory}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                 >
                   <option value="">Select Team Category</option>
@@ -298,7 +292,7 @@ export default function AssetAllocationForm() {
                 </select>
               </div>
               <div>
-                <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                   Team / Department
                 </label>
                 <select
@@ -306,7 +300,7 @@ export default function AssetAllocationForm() {
                   value={form.team}
                   onChange={handleChange}
                   disabled={!form.selectedTeamCategory}
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200"
                   required
                 >
                   <option value="">Select Team / Department</option>
@@ -318,7 +312,7 @@ export default function AssetAllocationForm() {
                 </select>
               </div>
               <div>
-                <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                   Designation / Role
                 </label>
                 <select
@@ -326,7 +320,7 @@ export default function AssetAllocationForm() {
                   value={form.designation}
                   onChange={handleChange}
                   disabled={!form.team}
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200"
                   required
                 >
                   <option value="">Select Designation</option>
@@ -338,14 +332,14 @@ export default function AssetAllocationForm() {
                 </select>
               </div>
               <div>
-                <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                   Select Device Type
                 </label>
                 <select
                   name="deviceType"
                   value={form.deviceType}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                 >
                   <option value="">Select Device</option>
@@ -357,12 +351,12 @@ export default function AssetAllocationForm() {
           </div>
           {form.deviceType === "Laptop" && (
             <div className="bg-white border border-gray-200 shadow-lg p-8 rounded-3xl">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-black mb-6 pb-3 border-b border-gray-200">
                 Laptop Specifications
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Laptop Model
                   </label>
                   <input
@@ -370,11 +364,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Dell XPS 15"
                     value={form.laptopModel}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Serial Number
                   </label>
                   <input
@@ -382,11 +376,11 @@ export default function AssetAllocationForm() {
                     placeholder="Enter serial number"
                     value={form.serialNumber}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Year of Make
                   </label>
                   <input
@@ -394,11 +388,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., 2024"
                     value={form.yearOfMake}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     MAC Address
                   </label>
                   <input
@@ -406,11 +400,11 @@ export default function AssetAllocationForm() {
                     placeholder="00:00:00:00:00:00"
                     value={form.macAddress}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Processor
                   </label>
                   <input
@@ -418,11 +412,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Intel Core i7"
                     value={form.processor}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Storage
                   </label>
                   <input
@@ -430,11 +424,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., 512GB SSD"
                     value={form.storage}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     RAM
                   </label>
                   <input
@@ -442,11 +436,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., 16GB"
                     value={form.ram}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Operating System
                   </label>
                   <input
@@ -454,11 +448,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Windows 11"
                     value={form.os}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Antivirus
                   </label>
                   <input
@@ -466,11 +460,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Norton"
                     value={form.antivirus}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Purchase Date
                   </label>
                   <input
@@ -478,12 +472,12 @@ export default function AssetAllocationForm() {
                     name="purchaseDate"
                     value={form.purchaseDate}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Standard Accessories</h3>
+                <h3 className="text-xl font-semibold text-black mb-4">Standard Accessories</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                   {standardLaptopAccessories.map((item) => (
                     <label key={item} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-pointer hover:bg-gray-100 border border-gray-200 transition-all">
@@ -493,12 +487,12 @@ export default function AssetAllocationForm() {
                         onChange={() => toggleAccessory(item)}
                         className="w-5 h-5 rounded accent-blue-500"
                       />
-                      <span className="text-gray-700 font-medium">{item}</span>
+                      <span className="text-black font-medium">{item}</span>
                     </label>
                   ))}
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Other Accessories (Optional)
                   </label>
                   <input
@@ -506,7 +500,7 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Typing Box, Stand, Adapter (comma-separated)"
                     value={form.otherAccessoriesText}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -514,12 +508,12 @@ export default function AssetAllocationForm() {
           )}
           {form.deviceType === "PC" && (
             <div className="bg-white border border-gray-200 shadow-lg p-8 rounded-3xl">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-black mb-6 pb-3 border-b border-gray-200">
                 PC Specifications
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Processor
                   </label>
                   <input
@@ -527,11 +521,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Intel Core i5"
                     value={form.processor}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Storage
                   </label>
                   <input
@@ -539,11 +533,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., 1TB HDD"
                     value={form.storage}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     RAM
                   </label>
                   <input
@@ -551,11 +545,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., 8GB"
                     value={form.ram}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Operating System
                   </label>
                   <input
@@ -563,11 +557,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Windows 10"
                     value={form.os}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Antivirus
                   </label>
                   <input
@@ -575,11 +569,11 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., McAfee"
                     value={form.antivirus}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Purchase Date
                   </label>
                   <input
@@ -587,12 +581,12 @@ export default function AssetAllocationForm() {
                     name="purchaseDate"
                     value={form.purchaseDate}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Standard Accessories</h3>
+                <h3 className="text-xl font-semibold text-black mb-4">Standard Accessories</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {standardPCAccessories.map((item) => (
                     <label key={item} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-pointer hover:bg-gray-100 border border-gray-200 transition-all">
@@ -602,12 +596,12 @@ export default function AssetAllocationForm() {
                         onChange={() => toggleAccessory(item)}
                         className="w-5 h-5 rounded accent-blue-500"
                       />
-                      <span className="text-gray-700 font-medium">{item}</span>
+                      <span className="text-black font-medium">{item}</span>
                     </label>
                   ))}
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2 text-sm uppercase tracking-wide">
+                  <label className="block text-black font-semibold mb-2 text-sm uppercase tracking-wide">
                     Other Accessories (Optional)
                   </label>
                   <input
@@ -615,7 +609,7 @@ export default function AssetAllocationForm() {
                     placeholder="e.g., Headset, WebCam, Extra Monitor (comma-separated)"
                     value={form.otherAccessoriesText}
                     onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-black outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>

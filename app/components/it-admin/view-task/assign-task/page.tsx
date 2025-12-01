@@ -8,7 +8,9 @@ import TaskModal from "./components/TaskModal";
 import TaskBoardView from "./components/TaskBoardView";
 import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
-import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
+// Assuming CreateTaskModal is now a dedicated file
+import CreateTaskModal, { Employee } from "./components/CreateTaskModal"; // ✅ UPDATED: import Employee type if needed elsewhere, and the component
+import { Task, Subtask, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
 export type ViewType = "card" | "board";
@@ -46,21 +48,25 @@ const TasksPage: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
-  
+
+  // ✅ NEW: create task modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
-      id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
-      title: "",
-      assigneeName: "",
-      status: "Pending",
-      completion: 0,
-      remarks: "",
-      subtasks: [],
-      isEditing: true,
-      isExpanded: true,
-      date: new Date().toISOString().split('T')[0],
-      timeSpent: "",
-      storyPoints: 0,
+    id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
+    title: "",
+    assigneeName: "",
+    status: "Pending",
+    completion: 0,
+    remarks: "",
+    subtasks: [],
+    isEditing: true,
+    isExpanded: true,
+    date: new Date().toISOString().split('T')[0],
+    timeSpent: "",
+    storyPoints: 0,
   });
+
   const updateSubtaskState = (
     currentSubs: Subtask[],
     path: number[],
@@ -70,35 +76,36 @@ const TasksPage: React.FC = () => {
     let newSubs = [...currentSubs];
     let currentLevel: Subtask[] = newSubs;
     for (let i = 0; i < path.length; i++) {
-        const index = path[i];
-        if (!currentLevel) return currentSubs;
-        if (i === path.length - 1) {
-            if (action === 'remove') {
-                currentLevel.splice(index, 1);
-            } else if (action === 'add') {
-                const parent = currentLevel[index];
-                if (!parent.subtasks) parent.subtasks = [];
-                const nextSubIndex = parent.subtasks.length;
-                const newPath = [...path, nextSubIndex];
-                const newNestedId = (parent.id || currentProjectPrefix) + `.${nextSubIndex + 1}`;
-                parent.subtasks.push({
-                    ...getNewSubtask(currentProjectPrefix, newPath),
-                    id: newNestedId,
-                });
-            } else {
-                const updatedSub = updater(currentLevel[index], index);
-                if (updatedSub) {
-                    currentLevel[index] = updatedSub;
-                }
-            }
+      const index = path[i];
+      if (!currentLevel) return currentSubs;
+      if (i === path.length - 1) {
+        if (action === 'remove') {
+          currentLevel.splice(index, 1);
+        } else if (action === 'add') {
+          const parent = currentLevel[index];
+          if (!parent.subtasks) parent.subtasks = [];
+          const nextSubIndex = parent.subtasks.length;
+          const newPath = [...path, nextSubIndex];
+          const newNestedId = (parent.id || currentProjectPrefix) + `.${nextSubIndex + 1}`;
+          parent.subtasks.push({
+            ...getNewSubtask(currentProjectPrefix, newPath),
+            id: newNestedId,
+          });
         } else {
-            const sub: Subtask = currentLevel[index];
-            if (!sub || !sub.subtasks) return currentSubs;
-            currentLevel = sub.subtasks;
+          const updatedSub = updater(currentLevel[index], index);
+          if (updatedSub) {
+            currentLevel[index] = updatedSub;
+          }
         }
+      } else {
+        const sub: Subtask = currentLevel[index];
+        if (!sub || !sub.subtasks) return currentSubs;
+        currentLevel = sub.subtasks;
+      }
     }
     return newSubs;
   };
+
   const getApiUrl = (path: string): string => {
     if (typeof window !== "undefined") {
       return `${window.location.origin}${path}`;
@@ -106,6 +113,7 @@ const TasksPage: React.FC = () => {
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "";
     return `${base}${path}`;
   };
+
   const fetchTasks = async () => {
     try {
       const url = getApiUrl("/api/tasks");
@@ -117,6 +125,7 @@ const TasksPage: React.FC = () => {
       setError("Server connection error while fetching tasks.");
     }
   };
+
   const fetchEmployees = async () => {
     try {
       const url = getApiUrl("/api/employees");
@@ -125,6 +134,7 @@ const TasksPage: React.FC = () => {
       if (res.ok && data.success) setEmployees(data.employees);
     } catch (err) {}
   };
+
   const triggerDueDateNotifications = async () => {
     try {
       const url = getApiUrl("/api/tasks/reminders");
@@ -141,9 +151,19 @@ const TasksPage: React.FC = () => {
       console.warn("Error calling reminders API:", err);
     }
   };
+
+  // ⬇️ CHANGED: now just open modal
   const handleCreateTask = () => {
-    router.push("/components/it-admin/create-task");
+    setIsCreateModalOpen(true);
   };
+
+  // ✅ when a task is created from modal, refresh list
+  const handleTaskCreated = async () => {
+    await fetchTasks();
+    // Re-fetch employees in case new ones were added via task creation (less likely but safer)
+    await fetchEmployees(); 
+  };
+
   useEffect(() => {
     import("xlsx")
       .then((XLSX) => {
@@ -166,7 +186,7 @@ const TasksPage: React.FC = () => {
     };
     init();
   }, []);
-  
+
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
@@ -182,7 +202,7 @@ const TasksPage: React.FC = () => {
     }
     return tasks;
   }, [tasks, currentUserRole, currentUserName]);
-  
+
   const uniqueProjects = useMemo(() => {
     const names = visibleTasks.map((task) => task.project).filter(Boolean);
     return Array.from(new Set(names));
@@ -531,7 +551,7 @@ const TasksPage: React.FC = () => {
           ) : (
             <>
               {viewType === "card" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mt-6">
                   {filteredTasks.map((task) => (
                     <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
                   ))}
@@ -570,19 +590,31 @@ const TasksPage: React.FC = () => {
           )}
         </div>
       </main>
+
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
+
       <div className="fixed bottom-6 right-6 flex flex-col items-end space-y-4 z-50">
-          <button
-            onClick={handleCreateTask}
-            className="group p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 relative"
-            title="Create New Task"
-          >
-            <Plus className="w-6 h-6" />
-            <span className="absolute right-full mr-4 p-2 text-sm bg-gray-800 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                Create Task
-            </span>
-          </button>
+        <button
+          onClick={handleCreateTask}
+          className="group p-4 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 relative"
+          title="Create New Task"
+        >
+          <Plus className="w-6 h-6" />
+          <span className="absolute right-full mr-4 p-2 text-sm bg-gray-800 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+            Create Task
+          </span>
+        </button>
       </div>
+
+      {/* ✅ external create-task modal component */}
+      <CreateTaskModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={handleTaskCreated}
+        employees={employees}
+        getApiUrl={getApiUrl}
+        allTaskStatuses={allTaskStatuses}
+      />
     </div>
   );
 };
