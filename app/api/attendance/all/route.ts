@@ -21,12 +21,11 @@ export async function GET() {
       new Set(records.map((r: any) => r.employeeId))
     );
 
-    // Fetch basic employee info (adjust fields based on your Employee schema)
-    // Assuming: Employee has `empId` (or `employeeId`) and `name`
+    // Fetch basic employee info
     const employees = await Employee.find({
-      empId: { $in: employeeIds }, // OR employeeId: { $in: employeeIds } if that's your field
+      empId: { $in: employeeIds },
     })
-      .select("empId name")        // adjust if field names differ
+      .select("empId name")
       .lean();
 
     // Build map: empId -> name
@@ -46,7 +45,13 @@ export async function GET() {
       date: r.date,
       punchInTime: r.punchInTime || null,
       punchOutTime: r.punchOutTime || null,
-      mode: r.mode || "IN_OFFICE", // 👈 ensure mode is present
+      mode: r.mode || "IN_OFFICE",
+
+      // 👇 expose location fields so frontend can calculate distance / accuracy
+      punchInLatitude: r.punchInLatitude ?? null,
+      punchInLongitude: r.punchInLongitude ?? null,
+      punchOutLatitude: r.punchOutLatitude ?? null,
+      punchOutLongitude: r.punchOutLongitude ?? null,
     }));
 
     return NextResponse.json(
@@ -61,3 +66,4 @@ export async function GET() {
     );
   }
 }
+

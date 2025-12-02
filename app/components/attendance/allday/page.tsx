@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Calendar, Loader2, Clock, XCircle, Filter, Download, RefreshCw, Users, BarChart3 } from "lucide-react";
+import {
+  Calendar,
+  Loader2,
+  Clock,
+  XCircle,
+  Filter,
+  Download,
+  RefreshCw,
+  Users,
+  BarChart3,
+} from "lucide-react";
 
 type AttendanceMode =
   | "IN_OFFICE"
@@ -17,9 +27,79 @@ interface AttendanceRecord {
   punchInTime?: string | null;
   punchOutTime?: string | null;
   mode?: AttendanceMode;
+  punchInLatitude?: number | null;
+  punchInLongitude?: number | null;
+  punchOutLatitude?: number | null;
+  punchOutLongitude?: number | null;
+  distanceFromOfficeMeters?: number | null;
 }
 
+const OFFICE_LOCATION = {
+  lat: 11.939198361614558,
+  lng: 79.81654494108358,
+};
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+const haversineDistanceMeters = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+const getRecordDistanceFromOffice = (
+  record: AttendanceRecord
+): number | null => {
+  if (
+    typeof record.distanceFromOfficeMeters === "number" &&
+    !Number.isNaN(record.distanceFromOfficeMeters)
+  ) {
+    return record.distanceFromOfficeMeters;
+  }
+
+  const lat =
+    record.punchInLatitude ??
+    record.punchOutLatitude ??
+    null;
+  const lng =
+    record.punchInLongitude ??
+    record.punchOutLongitude ??
+    null;
+
+  if (lat == null || lng == null) return null;
+
+  const d = haversineDistanceMeters(
+    lat,
+    lng,
+    OFFICE_LOCATION.lat,
+    OFFICE_LOCATION.lng
+  );
+
+  return Math.round(d);
+};
+
+const getTodayDateString = () => {
+  return new Date().toISOString().slice(0, 10);
+};
+
 const Page: React.FC = () => {
+  const todayDateString = getTodayDateString();
+  
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
@@ -28,8 +108,9 @@ const Page: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<AttendanceMode | "ALL">(
     "ALL"
   );
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  
+  const [fromDate, setFromDate] = useState<string>(todayDateString);
+  const [toDate, setToDate] = useState<string>(todayDateString);
 
   const loadAttendance = useCallback(async () => {
     try {
@@ -78,7 +159,11 @@ const Page: React.FC = () => {
     if (!record.punchInTime || !record.punchOutTime) return "-";
     const start = new Date(record.punchInTime);
     const end = new Date(record.punchOutTime);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end <= start
+    ) {
       return "-";
     }
 
@@ -99,7 +184,7 @@ const Page: React.FC = () => {
     let isLate = false;
     let isGrace = false;
     let isEarlyLogout = false;
-    
+
     if (punchInTime) {
       const d = new Date(punchInTime);
       const h = d.getHours();
@@ -119,7 +204,7 @@ const Page: React.FC = () => {
       const d = new Date(punchOutTime);
       const h = d.getHours();
       const m = d.getMinutes();
-      
+
       const before630 = h < 18 || (h === 18 && m < 30);
       if (before630) {
         isEarlyLogout = true;
@@ -209,8 +294,13 @@ const Page: React.FC = () => {
   }, [attendance]);
 
   const filteredAttendance = useMemo(() => {
+    const isDateFilterActive = !!fromDate || !!toDate;
+
     return attendance.filter((r) => {
-      if (selectedEmployeeId !== "ALL" && r.employeeId !== selectedEmployeeId) {
+      if (
+        selectedEmployeeId !== "ALL" &&
+        r.employeeId !== selectedEmployeeId
+      ) {
         return false;
       }
 
@@ -219,34 +309,53 @@ const Page: React.FC = () => {
       }
 
       const recordDate = new Date(r.date);
+
+      if (!isDateFilterActive || (fromDate === todayDateString && toDate === todayDateString)) {
+          const filterFrom = new Date(fromDate);
+          const filterTo = new Date(toDate);
+          
+          const recordDateOnly = new Date(recordDate.setHours(0, 0, 0, 0));
+          
+          if (recordDateOnly.getTime() < filterFrom.getTime() || 
+              recordDateOnly.getTime() > filterTo.getTime()) {
+              return false;
+          }
+
+      } else {
+          if (fromDate) {
+            const from = new Date(fromDate);
+            if (recordDate.getTime() < from.getTime()) return false;
+          }
+
+          if (toDate) {
+            const to = new Date(toDate);
+            if (recordDate.getTime() > to.getTime()) return false;
+          }
+      }
       
-      if (fromDate) {
-        const from = new Date(fromDate);
-        if (recordDate.getTime() < from.getTime()) return false;
-      }
-
-      if (toDate) {
-        const to = new Date(toDate);
-        if (recordDate.getTime() > to.getTime()) return false;
-      }
-
       return true;
     });
-  }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate]);
+  }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate, todayDateString]);
 
   const handleClearFilters = () => {
     setSelectedEmployeeId("ALL");
     setSelectedMode("ALL");
-    setFromDate("");
-    setToDate("");
+    setFromDate(getTodayDateString());
+    setToDate(getTodayDateString());
   };
 
   const stats = useMemo(() => {
     const total = filteredAttendance.length;
-    const onTime = filteredAttendance.filter(r => getStatusLabel(r).includes("On Time Login")).length;
-    const late = filteredAttendance.filter(r => getStatusLabel(r).includes("Late")).length;
-    const absent = filteredAttendance.filter(r => getStatusLabel(r).includes("Absent")).length;
-    
+    const onTime = filteredAttendance.filter((r) =>
+      getStatusLabel(r).includes("On Time Login")
+    ).length;
+    const late = filteredAttendance.filter((r) =>
+      getStatusLabel(r).includes("Late")
+    ).length;
+    const absent = filteredAttendance.filter((r) =>
+      getStatusLabel(r).includes("Absent")
+    ).length;
+
     return { total, onTime, late, absent };
   }, [filteredAttendance]);
 
@@ -268,7 +377,11 @@ const Page: React.FC = () => {
               disabled={loadingAttendance}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all hover:bg-slate-50 disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loadingAttendance ? 'animate-spin' : ''} text-black`} />
+              <RefreshCw
+                className={`w-4 h-4 ${
+                  loadingAttendance ? "animate-spin" : ""
+                } text-black`}
+              />
               <span className="font-medium text-sm text-black">Refresh</span>
             </button>
           </div>
@@ -278,7 +391,9 @@ const Page: React.FC = () => {
           <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-black mb-1">Total Records</p>
+                <p className="text-sm font-medium text-black mb-1">
+                  Total Records
+                </p>
                 <p className="text-2xl font-bold text-black">{stats.total}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -291,7 +406,9 @@ const Page: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-black mb-1">On Time</p>
-                <p className="text-2xl font-bold text-green-600">{stats.onTime}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.onTime}
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <Clock className="w-6 h-6 text-green-600" />
@@ -302,8 +419,12 @@ const Page: React.FC = () => {
           <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-black mb-1">Late/Early</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
+                <p className="text-sm font-medium text-black mb-1">
+                  Late/Early
+                </p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {stats.late}
+                </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-yellow-600" />
@@ -315,7 +436,9 @@ const Page: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-black mb-1">Absent</p>
-                <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats.absent}
+                </p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <XCircle className="w-6 h-6 text-red-600" />
@@ -345,9 +468,15 @@ const Page: React.FC = () => {
                   value={selectedEmployeeId}
                   onChange={(e) => setSelectedEmployeeId(e.target.value)}
                 >
-                  <option value="ALL" className="text-gray-500">All Employees</option>
+                  <option value="ALL" className="text-gray-500">
+                    All Employees
+                  </option>
                   {uniqueEmployees.map((emp) => (
-                    <option key={emp.employeeId} value={emp.employeeId} className="text-black">
+                    <option
+                      key={emp.employeeId}
+                      value={emp.employeeId}
+                      className="text-black"
+                    >
                       {emp.employeeName} ({emp.employeeId})
                     </option>
                   ))}
@@ -369,11 +498,21 @@ const Page: React.FC = () => {
                     )
                   }
                 >
-                  <option value="ALL" className="text-gray-500">All Modes</option>
-                  <option value="IN_OFFICE" className="text-black">In Office</option>
-                  <option value="WORK_FROM_HOME" className="text-black">Work From Home</option>
-                  <option value="ON_DUTY" className="text-black">On Duty</option>
-                  <option value="REGULARIZATION" className="text-black">Regularization</option>
+                  <option value="ALL" className="text-gray-500">
+                    All Modes
+                  </option>
+                  <option value="IN_OFFICE" className="text-black">
+                    In Office
+                  </option>
+                  <option value="WORK_FROM_HOME" className="text-black">
+                    Work From Home
+                  </option>
+                  <option value="ON_DUTY" className="text-black">
+                    On Duty
+                  </option>
+                  <option value="REGULARIZATION" className="text-black">
+                    Regularization
+                  </option>
                 </select>
               </div>
 
@@ -438,7 +577,9 @@ const Page: React.FC = () => {
             {loadingAttendance && (
               <div className="flex flex-col items-center justify-center py-20 text-black">
                 <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600" />
-                <p className="text-sm font-medium text-black">Loading attendance records...</p>
+                <p className="text-sm font-medium text-black">
+                  Loading attendance records...
+                </p>
               </div>
             )}
 
@@ -447,7 +588,9 @@ const Page: React.FC = () => {
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                   <XCircle className="w-8 h-8" />
                 </div>
-                <p className="font-semibold text-lg text-black">Error Loading Records</p>
+                <p className="font-semibold text-lg text-black">
+                  Error Loading Records
+                </p>
                 <p className="text-sm text-black mt-1">{attendanceError}</p>
               </div>
             )}
@@ -482,6 +625,9 @@ const Page: React.FC = () => {
                             Duration
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                            Distance from Office
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                             Status
                           </th>
                         </tr>
@@ -489,12 +635,21 @@ const Page: React.FC = () => {
                       <tbody className="bg-white divide-y divide-slate-100">
                         {filteredAttendance.map((record) => {
                           const statusLabel = getStatusLabel(record);
+                          const distance = getRecordDistanceFromOffice(record);
+                          const showDistance =
+                            record.mode === "IN_OFFICE" && distance != null;
+
                           return (
-                            <tr key={record._id} className="hover:bg-slate-50 transition-colors">
+                            <tr
+                              key={record._id}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
                                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
-                                    {(record.employeeName || "?").charAt(0).toUpperCase()}
+                                    {(record.employeeName || "?")
+                                      .charAt(0)
+                                      .toUpperCase()}
                                   </div>
                                   <span className="text-sm font-medium text-black">
                                     {record.employeeName || "-"}
@@ -527,6 +682,17 @@ const Page: React.FC = () => {
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-semibold">
                                 {getDuration(record)}
                               </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                {showDistance ? (
+                                  <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-slate-100 text-slate-800">
+                                    {distance} m
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400">
+                                    —
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <span
                                   className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusBadgeClass(
@@ -552,8 +718,12 @@ const Page: React.FC = () => {
                   <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                     <Clock className="w-8 h-8 text-gray-500" />
                   </div>
-                  <p className="text-black font-semibold text-lg">No Records Found</p>
-                  <p className="text-black text-sm mt-1">Try adjusting your filters to see more results</p>
+                  <p className="text-black font-semibold text-lg">
+                    No Records Found
+                  </p>
+                  <p className="text-black text-sm mt-1">
+                    Try adjusting your filters to see more results
+                  </p>
                 </div>
               )}
           </div>

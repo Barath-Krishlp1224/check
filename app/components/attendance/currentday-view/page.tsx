@@ -9,6 +9,34 @@ type AttendanceMode =
   | "ON_DUTY"
   | "REGULARIZATION";
 
+// --- Office constants & distance helper ---
+const OFFICE_LAT = 11.939198361614558;
+const OFFICE_LON = 79.81654494108358;
+const OFFICE_ALLOWED_RADIUS_METERS = 60;
+
+function getDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371e3;
+  const toRad = (v: number) => (v * Math.PI) / 180;
+
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(Δφ / 2) ** 2 +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return Math.round(R * c);
+}
+
 interface AttendanceRecord {
   _id: string;
   employeeId: string;
@@ -17,6 +45,12 @@ interface AttendanceRecord {
   punchInTime?: string | null;
   punchOutTime?: string | null;
   mode?: AttendanceMode;
+
+  // 👉 Make sure your API returns these from Mongo
+  punchInLatitude?: number | null;
+  punchInLongitude?: number | null;
+  punchOutLatitude?: number | null;
+  punchOutLongitude?: number | null;
 }
 
 const AttendanceRecords: React.FC = () => {
@@ -60,7 +94,7 @@ const AttendanceRecords: React.FC = () => {
     if (!value) return "-";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+    return d.toISOString().slice(0, 10);
   };
 
   const formatTime = (value?: string | null) => {
@@ -189,6 +223,39 @@ const AttendanceRecords: React.FC = () => {
     }
   };
 
+  // 👉 Distance label for punch in (you can duplicate for punch-out if needed)
+  const getPunchInDistanceLabel = (record: AttendanceRecord) => {
+    if (
+      record.punchInLatitude == null ||
+      record.punchInLongitude == null
+    ) {
+      return "-";
+    }
+    const d = getDistanceMeters(
+      OFFICE_LAT,
+      OFFICE_LON,
+      record.punchInLatitude,
+      record.punchInLongitude
+    );
+    return `${d} m`;
+  };
+
+  const getPunchInDistanceClass = (record: AttendanceRecord) => {
+    if (
+      record.punchInLatitude == null ||
+      record.punchInLongitude == null
+    ) {
+      return "text-gray-500";
+    }
+    const d = getDistanceMeters(
+      OFFICE_LAT,
+      OFFICE_LON,
+      record.punchInLatitude,
+      record.punchInLongitude
+    );
+    return d <= OFFICE_ALLOWED_RADIUS_METERS ? "text-green-700" : "text-red-700";
+  };
+
   const recentAttendance = attendance.slice(0, 5);
   const otherAttendance = attendance.slice(5);
 
@@ -207,7 +274,7 @@ const AttendanceRecords: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-md h-full w-full min-w-[520px]">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-md h-full w-full min-w-[620px]">
         {loadingAttendance && (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mb-2" />
@@ -224,7 +291,6 @@ const AttendanceRecords: React.FC = () => {
 
         {!loadingAttendance && !attendanceError && attendance.length > 0 && (
           <div className="flex flex-col">
-            {/* Most recent section */}
             <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
               Most Recent Records
             </h3>
@@ -252,6 +318,10 @@ const AttendanceRecords: React.FC = () => {
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Duration
+                    </th>
+                    {/* NEW: Punch-in distance */}
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      In Distance
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -289,6 +359,13 @@ const AttendanceRecords: React.FC = () => {
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
                           {getDuration(record)}
+                        </td>
+                        <td
+                          className={`px-2 py-2 whitespace-nowrap text-xs font-semibold ${getPunchInDistanceClass(
+                            record
+                          )}`}
+                        >
+                          {getPunchInDistanceLabel(record)}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap">
                           <span
@@ -338,6 +415,9 @@ const AttendanceRecords: React.FC = () => {
                           Duration
                         </th>
                         <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          In Distance
+                        </th>
+                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
                       </tr>
@@ -373,6 +453,13 @@ const AttendanceRecords: React.FC = () => {
                             </td>
                             <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
                               {getDuration(record)}
+                            </td>
+                            <td
+                              className={`px-2 py-2 whitespace-nowrap text-xs font-semibold ${getPunchInDistanceClass(
+                                record
+                              )}`}
+                            >
+                              {getPunchInDistanceLabel(record)}
                             </td>
                             <td className="px-2 py-2 whitespace-nowrap">
                               <span

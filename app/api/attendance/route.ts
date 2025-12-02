@@ -10,6 +10,15 @@ export const dynamic = "force-dynamic";
 
 type PunchType = "IN" | "OUT";
 
+// 👉 MAIN OFFICE LOCATION (your coordinates)
+const OFFICE_LOCATION = {
+  lat: 11.93899, 
+  lng: 79.81667,
+};
+
+// 👉 Max allowed distance for IN_OFFICE punches (in meters)
+const MAX_OFFICE_DISTANCE_METERS = 200; // adjust as you like
+
 // ✅ Env setup
 const S3_REGION = process.env.S3_REGION || process.env.AWS_REGION;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
@@ -49,6 +58,32 @@ function getTodayDateOnly() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+// 🔹 Distance helpers (Haversine formula)
+function toRad(deg: number) {
+  return (deg * Math.PI) / 180;
+}
+
+function haversineDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // 🔹 Utility: upload base64 Data URL to S3 and return URL
 async function uploadImageDataUrlToS3(
   dataUrl: string,
@@ -72,8 +107,6 @@ async function uploadImageDataUrlToS3(
       ? "webp"
       : "jpg";
 
-  // file names:
-  // punchin-<timestamp>.ext  or  punchout-<timestamp>.ext
   const fileName =
     punchType === "IN"
       ? `punchin-${Date.now()}.${fileExtension}`
@@ -114,8 +147,8 @@ export async function POST(req: Request) {
       latitude,
       longitude,
       punchType,
-      mode, // new
-      // optional extras
+      mode,
+      // optional extras (currently unused, but kept for future)
       role,
       team,
       name,
@@ -147,13 +180,54 @@ export async function POST(req: Request) {
     }
 
     const attendanceMode: AttendanceMode = mode || "IN_OFFICE";
-
     const today = getTodayDateOnly();
-    const dateStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const dateStr = today.toISOString().slice(0, 10);
 
-    // Folder structure:
-    // attendance/YYYY-MM-DD/EMPID/in_office/...
-    const modeFolder = attendanceMode.toLowerCase(); // in_office, work_from_home, etc.
+    // 👉 LOCATION VALIDATION for IN_OFFICE
+    let distanceFromOfficeMeters: number | null = null;
+
+    if (attendanceMode === "IN_OFFICE") {
+      if (latitude == null || longitude == null) {
+        return NextResponse.json(
+          {
+            error:
+              "Location is required for In Office attendance. Please allow location access.",
+          },
+          { status: 400 }
+        );
+      }
+
+      distanceFromOfficeMeters = haversineDistanceMeters(
+        latitude,
+        longitude,
+        OFFICE_LOCATION.lat,
+        OFFICE_LOCATION.lng
+      );
+
+      if (distanceFromOfficeMeters > MAX_OFFICE_DISTANCE_METERS) {
+        return NextResponse.json(
+          {
+            error:
+              "You are too far from the office location for an In Office punch.",
+            distanceMeters: Math.round(distanceFromOfficeMeters),
+            allowedMeters: MAX_OFFICE_DISTANCE_METERS,
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      // For other modes, we just compute distance if we have location (for info)
+      if (latitude != null && longitude != null) {
+        distanceFromOfficeMeters = haversineDistanceMeters(
+          latitude,
+          longitude,
+          OFFICE_LOCATION.lat,
+          OFFICE_LOCATION.lng
+        );
+      }
+    }
+
+    const modeFolder = attendanceMode.toLowerCase();
     const keyPrefix = `attendance/${dateStr}/${employeeId}/${modeFolder}`;
 
     // 🔹 Upload image to S3
@@ -245,6 +319,15 @@ export async function POST(req: Request) {
           punchOutTime: attendance.punchOutTime,
           punchInImage: attendance.punchInImage,
           punchOutImage: attendance.punchOutImage,
+          punchInLatitude: attendance.punchInLatitude ?? null,
+          punchInLongitude: attendance.punchInLongitude ?? null,
+          punchOutLatitude: attendance.punchOutLatitude ?? null,
+          punchOutLongitude: attendance.punchOutLongitude ?? null,
+          distanceFromOfficeMeters:
+            distanceFromOfficeMeters != null
+              ? Math.round(distanceFromOfficeMeters)
+              : null,
+          officeLocation: OFFICE_LOCATION,
         },
       },
       { status: 201 }
