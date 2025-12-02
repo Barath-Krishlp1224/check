@@ -9,7 +9,6 @@ type AttendanceMode =
   | "ON_DUTY"
   | "REGULARIZATION";
 
-// --- Office constants & distance helper ---
 const OFFICE_LAT = 11.939198361614558;
 const OFFICE_LON = 79.81654494108358;
 const OFFICE_ALLOWED_RADIUS_METERS = 60;
@@ -45,7 +44,6 @@ interface AttendanceRecord {
   punchInTime?: string | null;
   punchOutTime?: string | null;
   mode?: AttendanceMode;
-
   punchInLatitude?: number | null;
   punchInLongitude?: number | null;
   punchOutLatitude?: number | null;
@@ -195,17 +193,17 @@ const AttendanceRecords: React.FC = () => {
     return "bg-gray-100 text-gray-800";
   };
 
-  const getModeLabel = (mode?: AttendanceMode) => {
+  const getModeAbbreviation = (mode?: AttendanceMode) => {
     if (!mode) return "-";
     switch (mode) {
       case "IN_OFFICE":
-        return "In Office";
+        return "IO";
       case "WORK_FROM_HOME":
-        return "Work From Home";
+        return "WFH";
       case "ON_DUTY":
-        return "On Duty";
+        return "OD";
       case "REGULARIZATION":
-        return "Regularization";
+        return "REG";
       default:
         return mode;
     }
@@ -226,7 +224,6 @@ const AttendanceRecords: React.FC = () => {
     }
   };
 
-  // Distance label for punch in
   const getPunchInDistanceLabel = (record: AttendanceRecord) => {
     if (record.punchInLatitude == null || record.punchInLongitude == null) {
       return "-";
@@ -268,7 +265,7 @@ const AttendanceRecords: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-md h-full w-full min-w-[620px]">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-md h-full w-full min-w-[500px]">
         {loadingAttendance && (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mb-2" />
@@ -288,17 +285,12 @@ const AttendanceRecords: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
               All Attendance Records
             </h3>
-            {/* 💡 MODIFIED: Added max-h-96 and overflow-y-auto for fixed-height scrolling */}
-            <div className="overflow-x-auto overflow-y-auto max-h-96 border rounded-lg">
+            <div className="overflow-x-auto overflow-y-auto h-96 border rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
-                {/* 💡 MODIFIED: Added sticky top-0 to keep the header visible during scroll */}
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Emp ID
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mode
@@ -332,15 +324,12 @@ const AttendanceRecords: React.FC = () => {
                           {record.employeeName || "-"}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                          {record.employeeId}
-                        </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getModeBadgeClass(
                               record.mode
                             )}`}
                           >
-                            {getModeLabel(record.mode)}
+                            {getModeAbbreviation(record.mode)}
                           </span>
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
