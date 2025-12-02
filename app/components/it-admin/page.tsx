@@ -11,6 +11,7 @@ import LaptopPolicy from "./components/LaptopPolicy";
 import AssetManagement from "./components/AssetManagement";
 import Bills from "./components/Bills";
 import ApplyLeave from "../emp-leave/page";
+import Attendance from "../attendance/emp/page"; // 👈 New Import
 
 // --- TYPES ---
 
@@ -36,6 +37,7 @@ const EmployeeOnboardComponent = EmployeeOnboard as React.FC<BaseContentComponen
 const TasksComponent = Tasks as React.FC<BaseContentComponentProps>;
 const BillsComponent = Bills as React.FC<BaseContentComponentProps>;
 const ApplyLeaveComponent = ApplyLeave as React.FC<BaseContentComponentProps>;
+const AttendanceComponent = Attendance as React.FC<BaseContentComponentProps>; // 👈 New Cast
 
 const EmployeeListComponent = EmployeeList as React.FC<DataComponentProps>;
 const LaptopPolicyComponent = LaptopPolicy as React.FC<DataComponentProps>;
@@ -43,15 +45,18 @@ const AssetManagementComponent = AssetManagement as React.FC<DataComponentProps>
 
 // Sidebar menu config
 const menuItems: MenuItem[] = [
-  { id: "onboard",     icon: "👤", label: "Employee Onboard", path: "/components/it-admin/new-emp" },
-  { id: "employees",   icon: "📋", label: "Employee List",    path: "/components/it-admin/view-emp" },
-  { id: "tasks",       icon: "✓",  label: "Tasks",            path: "/components/it-admin/view-task" },
-  { id: "laptop",      icon: "💻", label: "Laptop Policy",    path: "/components/it-admin/laptop-policy" },
-  { id: "assets",      icon: "🛠️", label: "Asset Management", path: "/components/it-admin/asset-management" },
-  { id: "bills",       icon: "🧾", label: "Bills",            path: "/components/it-admin/bills" },
+  { id: "onboard", icon: "👤", label: "Employee Onboard", path: "/components/it-admin/new-emp" },
+  { id: "employees", icon: "📋", label: "Employee List", path: "/components/it-admin/view-emp" },
+  { id: "tasks", icon: "✓", label: "Tasks", path: "/components/it-admin/view-task" },
+  { id: "laptop", icon: "💻", label: "Laptop Policy", path: "/components/it-admin/laptop-policy" },
+  { id: "assets", icon: "🛠️", label: "Asset Management", path: "/components/it-admin/asset-management" },
+  { id: "bills", icon: "🧾", label: "Bills", path: "/components/it-admin/bills" },
 
   // New item: Apply Leave
-  { id: "apply-leave", icon: "🏖️", label: "Apply Leave",      path: "/components/emp-leave" },
+  { id: "apply-leave", icon: "🏖️", label: "Apply Leave", path: "/components/emp-leave" },
+
+  // 👈 New Item: Attendance
+  { id: "attendance", icon: "⏰", label: "Attendance", path: "/components/it-admin/attendance" },
 ];
 
 export default function AdminDashboard() {
@@ -101,6 +106,9 @@ export default function AdminDashboard() {
       case "apply-leave":
         // Now actually calling your leave component file
         return <ApplyLeaveComponent path={path} />;
+
+      case "attendance": // 👈 New Case
+        return <AttendanceComponent path={path} />;
 
       default:
         return <div className="p-4 text-gray-500">Select a dashboard option.</div>;

@@ -1,6 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Calendar,
   Loader2,
@@ -23,7 +28,7 @@ interface AttendanceRecord {
   _id: string;
   employeeId: string;
   employeeName?: string;
-  date: string;
+  date: string; // ISO string from API
   punchInTime?: string | null;
   punchOutTime?: string | null;
   mode?: AttendanceMode;
@@ -31,75 +36,13 @@ interface AttendanceRecord {
   punchInLongitude?: number | null;
   punchOutLatitude?: number | null;
   punchOutLongitude?: number | null;
-  distanceFromOfficeMeters?: number | null;
 }
 
-const OFFICE_LOCATION = {
-  lat: 11.939198361614558,
-  lng: 79.81654494108358,
-};
+const getTodayDateString = () => new Date().toISOString().slice(0, 10);
 
-const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-const haversineDistanceMeters = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number => {
-  const R = 6371000;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
-const getRecordDistanceFromOffice = (
-  record: AttendanceRecord
-): number | null => {
-  if (
-    typeof record.distanceFromOfficeMeters === "number" &&
-    !Number.isNaN(record.distanceFromOfficeMeters)
-  ) {
-    return record.distanceFromOfficeMeters;
-  }
-
-  const lat =
-    record.punchInLatitude ??
-    record.punchOutLatitude ??
-    null;
-  const lng =
-    record.punchInLongitude ??
-    record.punchOutLongitude ??
-    null;
-
-  if (lat == null || lng == null) return null;
-
-  const d = haversineDistanceMeters(
-    lat,
-    lng,
-    OFFICE_LOCATION.lat,
-    OFFICE_LOCATION.lng
-  );
-
-  return Math.round(d);
-};
-
-const getTodayDateString = () => {
-  return new Date().toISOString().slice(0, 10);
-};
-
-const Page: React.FC = () => {
+const page: React.FC = () => {
   const todayDateString = getTodayDateString();
-  
+
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
@@ -108,15 +51,22 @@ const Page: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<AttendanceMode | "ALL">(
     "ALL"
   );
-  
-  const [fromDate, setFromDate] = useState<string>(todayDateString);
-  const [toDate, setToDate] = useState<string>(todayDateString);
 
+  // ⬇️ IMPORTANT: no date filter at start
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+
+  // ----- LOAD DATA FROM /api/attendance/all -----
   const loadAttendance = useCallback(async () => {
     try {
       setLoadingAttendance(true);
-      const res = await fetch("/api/attendance/all");
+      const res = await fetch("/api/attendance/all", {
+        method: "GET",
+        cache: "no-store",
+      });
       const json = await res.json();
+
+      console.log("attendance/all records:", json.records?.length, json.records?.[0]);
 
       if (!res.ok) {
         throw new Error(json.error || "Failed to load attendance records.");
@@ -141,11 +91,12 @@ const Page: React.FC = () => {
     loadAttendance();
   }, [loadAttendance]);
 
+  // ----- HELPERS -----
   const formatDate = (value?: string) => {
     if (!value) return "-";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
-    return d.toISOString().slice(0, 10);
+    return d.toISOString().slice(0, 10); // yyyy-mm-dd
   };
 
   const formatTime = (value?: string | null) => {
@@ -278,6 +229,7 @@ const Page: React.FC = () => {
     }
   };
 
+  // ----- EMPLOYEE DROPDOWN OPTIONS -----
   const uniqueEmployees = useMemo(() => {
     const map = new Map<string, { employeeId: string; employeeName: string }>();
     attendance.forEach((r) => {
@@ -293,10 +245,10 @@ const Page: React.FC = () => {
     );
   }, [attendance]);
 
+  // ----- FILTERED DATA -----
   const filteredAttendance = useMemo(() => {
-    const isDateFilterActive = !!fromDate || !!toDate;
-
     return attendance.filter((r) => {
+      // Employee filter
       if (
         selectedEmployeeId !== "ALL" &&
         r.employeeId !== selectedEmployeeId
@@ -304,46 +256,29 @@ const Page: React.FC = () => {
         return false;
       }
 
+      // Mode filter
       if (selectedMode !== "ALL" && r.mode !== selectedMode) {
         return false;
       }
 
-      const recordDate = new Date(r.date);
+      // Date filter (only if selected)
+      const recordDateStr = formatDate(r.date); // yyyy-mm-dd
 
-      if (!isDateFilterActive || (fromDate === todayDateString && toDate === todayDateString)) {
-          const filterFrom = new Date(fromDate);
-          const filterTo = new Date(toDate);
-          
-          const recordDateOnly = new Date(recordDate.setHours(0, 0, 0, 0));
-          
-          if (recordDateOnly.getTime() < filterFrom.getTime() || 
-              recordDateOnly.getTime() > filterTo.getTime()) {
-              return false;
-          }
+      if (fromDate && recordDateStr < fromDate) return false;
+      if (toDate && recordDateStr > toDate) return false;
 
-      } else {
-          if (fromDate) {
-            const from = new Date(fromDate);
-            if (recordDate.getTime() < from.getTime()) return false;
-          }
-
-          if (toDate) {
-            const to = new Date(toDate);
-            if (recordDate.getTime() > to.getTime()) return false;
-          }
-      }
-      
       return true;
     });
-  }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate, todayDateString]);
+  }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate]);
 
   const handleClearFilters = () => {
     setSelectedEmployeeId("ALL");
     setSelectedMode("ALL");
-    setFromDate(getTodayDateString());
-    setToDate(getTodayDateString());
+    setFromDate("");
+    setToDate("");
   };
 
+  // ----- STATS -----
   const stats = useMemo(() => {
     const total = filteredAttendance.length;
     const onTime = filteredAttendance.filter((r) =>
@@ -359,9 +294,11 @@ const Page: React.FC = () => {
     return { total, onTime, late, absent };
   }, [filteredAttendance]);
 
+  // ----- UI -----
   return (
     <div className="min-h-screen bg-white">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center mt-30 justify-between flex-wrap gap-4">
             <div>
@@ -375,7 +312,7 @@ const Page: React.FC = () => {
             <button
               onClick={loadAttendance}
               disabled={loadingAttendance}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all hover:bg-slate-50 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 bg_white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all hover:bg-slate-50 disabled:opacity-50"
             >
               <RefreshCw
                 className={`w-4 h-4 ${
@@ -387,6 +324,7 @@ const Page: React.FC = () => {
           </div>
         </div>
 
+        {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
@@ -394,7 +332,7 @@ const Page: React.FC = () => {
                 <p className="text-sm font-medium text-black mb-1">
                   Total Records
                 </p>
-                <p className="text-2xl font-bold text-black">{stats.total}</p>
+                <p className="text-2xl font-bold text_black">{stats.total}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <BarChart3 className="w-6 h-6 text-blue-600" />
@@ -426,7 +364,7 @@ const Page: React.FC = () => {
                   {stats.late}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items_center justify-center">
                 <Users className="w-6 h-6 text-yellow-600" />
               </div>
             </div>
@@ -447,6 +385,7 @@ const Page: React.FC = () => {
           </div>
         </div>
 
+        {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
             <div className="flex items-center gap-2">
@@ -459,6 +398,7 @@ const Page: React.FC = () => {
 
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Employee filter */}
               <div className="flex flex-col">
                 <label className="text-sm font-semibold text-black mb-2">
                   Employee
@@ -483,6 +423,7 @@ const Page: React.FC = () => {
                 </select>
               </div>
 
+              {/* Work Mode */}
               <div className="flex flex-col">
                 <label className="text-sm font-semibold text-black mb-2">
                   Work Mode
@@ -516,6 +457,7 @@ const Page: React.FC = () => {
                 </select>
               </div>
 
+              {/* From Date */}
               <div className="flex flex-col">
                 <label className="text-sm font-semibold text-black mb-2">
                   From Date
@@ -525,10 +467,10 @@ const Page: React.FC = () => {
                   className="border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  placeholder="Select Start Date"
                 />
               </div>
 
+              {/* To Date */}
               <div className="flex flex-col">
                 <label className="text-sm font-semibold text-black mb-2">
                   To Date
@@ -538,7 +480,6 @@ const Page: React.FC = () => {
                   className="border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  placeholder="Select End Date"
                 />
               </div>
             </div>
@@ -558,9 +499,10 @@ const Page: React.FC = () => {
           </div>
         </div>
 
+        {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify_between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
                 <h2 className="text-lg font-semibold text-black">
@@ -625,9 +567,6 @@ const Page: React.FC = () => {
                             Duration
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Distance from Office
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                             Status
                           </th>
                         </tr>
@@ -635,9 +574,6 @@ const Page: React.FC = () => {
                       <tbody className="bg-white divide-y divide-slate-100">
                         {filteredAttendance.map((record) => {
                           const statusLabel = getStatusLabel(record);
-                          const distance = getRecordDistanceFromOffice(record);
-                          const showDistance =
-                            record.mode === "IN_OFFICE" && distance != null;
 
                           return (
                             <tr
@@ -682,17 +618,6 @@ const Page: React.FC = () => {
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-semibold">
                                 {getDuration(record)}
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                {showDistance ? (
-                                  <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-slate-100 text-slate-800">
-                                    {distance} m
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-gray-400">
-                                    —
-                                  </span>
-                                )}
-                              </td>
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <span
                                   className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusBadgeClass(
@@ -733,4 +658,4 @@ const Page: React.FC = () => {
   );
 };
 
-export default Page;
+export default page;

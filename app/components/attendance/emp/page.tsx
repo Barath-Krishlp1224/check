@@ -84,7 +84,6 @@ const Page = () => {
 
     const { punchInTime, punchOutTime } = rec;
     
-    // ... (rest of the getStatusLabel function remains the same)
     if (!punchInTime && !punchOutTime) return "No punch-in";
 
     let isLate = false;
@@ -258,7 +257,7 @@ const Page = () => {
 
     setSubmitLoading(true);
     setSubmitStatus(null);
-    setPreviewImage(null); // Clear previous image
+    setPreviewImage(null); 
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -430,10 +429,10 @@ const Page = () => {
 
   // --- Main Render ---
   return (
-    <div className="min-h-screen mt-30 p-2 sm:p-4">
+    <div className="min-h-screen bg-white p-2 sm:p-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-3 sm:mb-4">
+        <div className="text-center mt-40 mb-3 sm:mb-4">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Attendance System</h1>
           <p className="text-xs sm:text-sm text-gray-600 mt-1">{currentDate}</p>
         </div>
@@ -472,7 +471,7 @@ const Page = () => {
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as AttendanceMode)}
-                disabled={isConfirming || submitLoading} // Disable changes during capture/submission
+                disabled={isConfirming || submitLoading}
                 className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium ${isConfirming || submitLoading ? 'opacity-60 bg-gray-50' : ''}`}
               >
                 <option value="IN_OFFICE">🏢 In Office</option>
@@ -491,7 +490,7 @@ const Page = () => {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setPunchType("IN")}
-                  disabled={isConfirming || submitLoading} // Disable changes during capture/submission
+                  disabled={isConfirming || submitLoading}
                   className={`p-2 rounded-md border transition-all ${
                     punchType === "IN"
                       ? "border-blue-600 bg-blue-50"
@@ -506,7 +505,7 @@ const Page = () => {
                 
                 <button
                   onClick={() => setPunchType("OUT")}
-                  disabled={isConfirming || submitLoading} // Disable changes during capture/submission
+                  disabled={isConfirming || submitLoading}
                   className={`p-2 rounded-md border transition-all ${
                     punchType === "OUT"
                       ? "border-blue-600 bg-blue-50"
@@ -521,7 +520,7 @@ const Page = () => {
               </div>
             </div>
 
-            {/* Today's Status Box (Remains the same) */}
+            {/* Today's Status Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">Today's Status</h3>
               <div className="space-y-2">
@@ -541,7 +540,7 @@ const Page = () => {
               </div>
             </div>
 
-            {/* Location Box (Remains the same) */}
+            {/* Location Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <div className="flex items-start">
                 <MapPin className="w-4 h-4 text-gray-600 mr-2 mt-0.5 flex-shrink-0" />
@@ -559,9 +558,9 @@ const Page = () => {
 
           {/* Right Side - Large Camera View */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 relative min-h-[400px]"> {/* Added relative and min-h for absolute positioning */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 relative min-h-[400px]">
               
-              {isConfirming && <ConfirmationView />} {/* Display confirmation view when ready */}
+              {isConfirming && <ConfirmationView />}
 
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 flex items-center">
@@ -586,7 +585,7 @@ const Page = () => {
                 />
               </div>
 
-              {/* Submit Button - Changed to capture */}
+              {/* Capture Button */}
               <button
                 onClick={handleCapture}
                 disabled={submitLoading || isConfirming}
@@ -623,9 +622,6 @@ const Page = () => {
                   </p>
                 </div>
               )}
-              
-              {/* NOTE: Preview Thumbnail removed from here, now used in ConfirmationView */}
-
             </div>
           </div>
         </div>

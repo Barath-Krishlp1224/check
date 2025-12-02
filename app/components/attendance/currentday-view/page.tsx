@@ -46,7 +46,6 @@ interface AttendanceRecord {
   punchOutTime?: string | null;
   mode?: AttendanceMode;
 
-  // 👉 Make sure your API returns these from Mongo
   punchInLatitude?: number | null;
   punchInLongitude?: number | null;
   punchOutLatitude?: number | null;
@@ -108,7 +107,11 @@ const AttendanceRecords: React.FC = () => {
     if (!record.punchInTime || !record.punchOutTime) return "-";
     const start = new Date(record.punchInTime);
     const end = new Date(record.punchOutTime);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end <= start
+    ) {
       return "-";
     }
 
@@ -223,12 +226,9 @@ const AttendanceRecords: React.FC = () => {
     }
   };
 
-  // 👉 Distance label for punch in (you can duplicate for punch-out if needed)
+  // Distance label for punch in
   const getPunchInDistanceLabel = (record: AttendanceRecord) => {
-    if (
-      record.punchInLatitude == null ||
-      record.punchInLongitude == null
-    ) {
+    if (record.punchInLatitude == null || record.punchInLongitude == null) {
       return "-";
     }
     const d = getDistanceMeters(
@@ -241,10 +241,7 @@ const AttendanceRecords: React.FC = () => {
   };
 
   const getPunchInDistanceClass = (record: AttendanceRecord) => {
-    if (
-      record.punchInLatitude == null ||
-      record.punchInLongitude == null
-    ) {
+    if (record.punchInLatitude == null || record.punchInLongitude == null) {
       return "text-gray-500";
     }
     const d = getDistanceMeters(
@@ -255,9 +252,6 @@ const AttendanceRecords: React.FC = () => {
     );
     return d <= OFFICE_ALLOWED_RADIUS_METERS ? "text-green-700" : "text-red-700";
   };
-
-  const recentAttendance = attendance.slice(0, 5);
-  const otherAttendance = attendance.slice(5);
 
   return (
     <div
@@ -278,7 +272,7 @@ const AttendanceRecords: React.FC = () => {
         {loadingAttendance && (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mb-2" />
-            <p>Fetching recent records...</p>
+            <p>Fetching all records...</p>
           </div>
         )}
 
@@ -292,11 +286,13 @@ const AttendanceRecords: React.FC = () => {
         {!loadingAttendance && !attendanceError && attendance.length > 0 && (
           <div className="flex flex-col">
             <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
-              Most Recent Records
+              All Attendance Records
             </h3>
-            <div className="overflow-x-auto mb-4">
+            {/* 💡 MODIFIED: Added max-h-96 and overflow-y-auto for fixed-height scrolling */}
+            <div className="overflow-x-auto overflow-y-auto max-h-96 border rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                {/* 💡 MODIFIED: Added sticky top-0 to keep the header visible during scroll */}
+                <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
@@ -319,7 +315,6 @@ const AttendanceRecords: React.FC = () => {
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Duration
                     </th>
-                    {/* NEW: Punch-in distance */}
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       In Distance
                     </th>
@@ -329,7 +324,7 @@ const AttendanceRecords: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {recentAttendance.map((record) => {
+                  {attendance.map((record) => {
                     const statusLabel = getStatusLabel(record);
                     return (
                       <tr key={record._id}>
@@ -382,109 +377,6 @@ const AttendanceRecords: React.FC = () => {
                 </tbody>
               </table>
             </div>
-
-            {/* Previous records */}
-            {otherAttendance.length > 0 && (
-              <>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
-                  Previous Records
-                </h3>
-                <div className="overflow-y-auto max-h-48 border rounded-lg">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Emp ID
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Mode
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          In
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Out
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Duration
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          In Distance
-                        </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {otherAttendance.map((record) => {
-                        const statusLabel = getStatusLabel(record);
-                        return (
-                          <tr key={record._id}>
-                            <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {record.employeeName || "-"}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                              {record.employeeId}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                              <span
-                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getModeBadgeClass(
-                                  record.mode
-                                )}`}
-                              >
-                                {getModeLabel(record.mode)}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {formatDate(record.date)}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                              {formatTime(record.punchInTime)}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                              {formatTime(record.punchOutTime)}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                              {getDuration(record)}
-                            </td>
-                            <td
-                              className={`px-2 py-2 whitespace-nowrap text-xs font-semibold ${getPunchInDistanceClass(
-                                record
-                              )}`}
-                            >
-                              {getPunchInDistanceLabel(record)}
-                            </td>
-                            <td className="px-2 py-2 whitespace-nowrap">
-                              <span
-                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
-                                  statusLabel
-                                )}`}
-                              >
-                                {statusLabel}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-
-            {attendance.length === 0 && (
-              <div className="flex items-center justify-center h-full min-h-[200px] text-gray-500">
-                <Clock className="w-5 h-5 mr-2" />
-                <p>No attendance records found.</p>
-              </div>
-            )}
           </div>
         )}
 
