@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, Calendar, CalendarCheck } from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, Calendar, CalendarCheck, Clock } from "lucide-react"; // ADDED: Clock
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -11,12 +11,13 @@ import TaskBoardView from "./components/TaskBoardView";
 import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
 import EmpLeave from "../../emp-leave/page";
+import AttendancePage from "../../attendance/emp/page"; // ADDED: Import for Attendance Component
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
 export type ViewType = "card" | "board";
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
-type ScreenType = "tasks" | "leave";
+type ScreenType = "tasks" | "leave" | "attendance"; // MODIFIED: Added "attendance"
 
 const allTaskStatuses = [
   "Backlog",
@@ -517,6 +518,19 @@ const TasksPage: React.FC = () => {
           >
             <Calendar className="w-6 h-6" />
           </button>
+
+          {/* NEW: Attendance Button */}
+          <button
+            onClick={() => setCurrentScreen("attendance")}
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              currentScreen === "attendance"
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
+            }`}
+            title="Attendance"
+          >
+            <Clock className="w-6 h-6" />
+          </button>
         </nav>
 
         <div className="max-w-[1800px] mx-auto bg-white">
@@ -591,8 +605,10 @@ const TasksPage: React.FC = () => {
                 />
               )}
             </>
-          ) : (
+          ) : currentScreen === "leave" ? ( // Existing Leave logic
             <EmpLeave />
+          ) : ( // NEW Attendance logic
+            <AttendancePage />
           )}
         </div>
       </div>
