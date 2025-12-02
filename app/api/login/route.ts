@@ -1,5 +1,5 @@
 // app/api/login/route.ts
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
@@ -10,13 +10,34 @@ export const runtime = "nodejs";
 // ✅ Disable caching / force dynamic
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
+// Optional: sanity check for DB env
+const MONGODB_URI = process.env.MONGODB_URI;
+
+export async function POST(req: Request) {
   try {
-    // ✅ Connect to MongoDB (make sure MONGODB_URI is set on Vercel)
+    if (!MONGODB_URI) {
+      console.error("❌ MONGODB_URI is NOT set in environment");
+      return NextResponse.json(
+        { error: "Server database is not configured." },
+        { status: 500 }
+      );
+    }
+
+    // ✅ Connect to MongoDB
     await connectDB();
 
-    // ✅ Parse body
-    const body = await req.json();
+    // ✅ Parse body safely
+    let body: any;
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.error("❌ Failed to parse JSON body in /api/login:", err);
+      return NextResponse.json(
+        { error: "Invalid request body." },
+        { status: 400 }
+      );
+    }
+
     const empIdOrEmail = body?.empIdOrEmail;
     const password = body?.password;
 
@@ -29,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const identifier = String(empIdOrEmail).trim();
 
-    // ✅ Build case-insensitive query (email or empId)
+    // ✅ Case-insensitive query: email OR empId
     const query =
       identifier.includes("@")
         ? { mailId: new RegExp(`^${identifier}$`, "i") }
@@ -38,15 +59,18 @@ export async function POST(req: NextRequest) {
     const employee = await Employee.findOne(query);
 
     if (!employee) {
+      console.warn("⚠️ Login failed: user not found for identifier:", identifier);
       return NextResponse.json(
         { error: "User not found with given Employee ID or Email." },
         { status: 401 }
       );
     }
 
-    // ✅ Guard in case password is missing on document
     if (!employee.password) {
-      console.error("Employee found but no password field:", employee.empId);
+      console.error(
+        "❌ Employee found but password field missing for empId:",
+        employee.empId
+      );
       return NextResponse.json(
         { error: "User does not have a password set." },
         { status: 500 }
@@ -56,13 +80,14 @@ export async function POST(req: NextRequest) {
     // ✅ Compare password
     const isMatch = await bcrypt.compare(password, employee.password);
     if (!isMatch) {
+      console.warn("⚠️ Login failed: invalid password for empId:", employee.empId);
       return NextResponse.json(
         { error: "Invalid password." },
         { status: 401 }
       );
     }
 
-    // ✅ Minimal safe user object
+    // ✅ Minimal safe user object for frontend
     const user = {
       empId: employee.empId,
       name: employee.name,
@@ -78,9 +103,8 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("Login error in /api/login:", error);
+    console.error("💥 Login error in /api/login:", error);
 
-    // Don't leak internal details to the client
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
