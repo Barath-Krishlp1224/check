@@ -1,7 +1,7 @@
 // app/api/attendance/route.ts
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import Attendance from "@/models/Attendance";
+import Attendance, { AttendanceMode } from "@/models/Attendance";
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
@@ -55,7 +55,6 @@ async function uploadImageDataUrlToS3(
   keyPrefix: string,
   punchType: PunchType
 ): Promise<string> {
-  // dataUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
   const [meta, base64Data] = dataUrl.split(",");
   if (!base64Data) {
     throw new Error("Invalid image data URL: missing base64 part.");
@@ -73,14 +72,13 @@ async function uploadImageDataUrlToS3(
       ? "webp"
       : "jpg";
 
-  // 👇 file names exactly as you asked:
+  // file names:
   // punchin-<timestamp>.ext  or  punchout-<timestamp>.ext
   const fileName =
     punchType === "IN"
       ? `punchin-${Date.now()}.${fileExtension}`
       : `punchout-${Date.now()}.${fileExtension}`;
 
-  // keyPrefix: attendance/YYYY-MM-DD/EMPID
   const key = `${keyPrefix}/${fileName}`;
 
   const client = getS3Client();
@@ -90,7 +88,6 @@ async function uploadImageDataUrlToS3(
     Key: key,
     Body: buffer,
     ContentType: contentType,
-    // ❌ No ACL – your bucket has ACLs disabled (Object Ownership: Bucket owner enforced)
   });
 
   try {
@@ -102,7 +99,6 @@ async function uploadImageDataUrlToS3(
     );
   }
 
-  // This URL may or may not be publicly visible depending on bucket policy
   const url = `https://${S3_BUCKET_NAME}.s3.${S3_REGION}.amazonaws.com/${key}`;
   return url;
 }
@@ -118,7 +114,8 @@ export async function POST(req: Request) {
       latitude,
       longitude,
       punchType,
-      // optional extras (unused for now, but available)
+      mode, // new
+      // optional extras
       role,
       team,
       name,
@@ -128,6 +125,7 @@ export async function POST(req: Request) {
       latitude?: number | null;
       longitude?: number | null;
       punchType?: PunchType;
+      mode?: AttendanceMode;
       role?: string;
       team?: string;
       name?: string;
@@ -148,16 +146,24 @@ export async function POST(req: Request) {
       );
     }
 
+    const attendanceMode: AttendanceMode = mode || "IN_OFFICE";
+
     const today = getTodayDateOnly();
     const dateStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
-    // 👇 Folder structure: attendance/2025-12-02/EMP001/...
-    const keyPrefix = `attendance/${dateStr}/${employeeId}`;
+    // Folder structure:
+    // attendance/YYYY-MM-DD/EMPID/in_office/...
+    const modeFolder = attendanceMode.toLowerCase(); // in_office, work_from_home, etc.
+    const keyPrefix = `attendance/${dateStr}/${employeeId}/${modeFolder}`;
 
     // 🔹 Upload image to S3
     let imageUrl: string;
     try {
-      imageUrl = await uploadImageDataUrlToS3(imageData, keyPrefix, punchType);
+      imageUrl = await uploadImageDataUrlToS3(
+        imageData,
+        keyPrefix,
+        punchType
+      );
     } catch (uploadErr: any) {
       console.error("S3 upload error (wrapped):", uploadErr);
       return NextResponse.json(
@@ -169,16 +175,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔹 Find or create attendance doc for this employee + date
+    // 🔹 Find or create attendance doc for this employee + date + mode
     let attendance = await Attendance.findOne({
       employeeId,
       date: today,
+      mode: attendanceMode,
     });
 
     if (!attendance) {
       attendance = new Attendance({
         employeeId,
         date: today,
+        mode: attendanceMode,
       });
     }
 
@@ -187,7 +195,7 @@ export async function POST(req: Request) {
     if (punchType === "IN") {
       if (attendance.punchInTime) {
         return NextResponse.json(
-          { error: "Already punched in for today." },
+          { error: "Already punched in for today for this mode." },
           { status: 400 }
         );
       }
@@ -201,7 +209,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error:
-              "No punch in record found for today. Please punch in first.",
+              "No punch in record found for today for this mode. Please punch in first.",
           },
           { status: 400 }
         );
@@ -209,7 +217,7 @@ export async function POST(req: Request) {
 
       if (attendance.punchOutTime) {
         return NextResponse.json(
-          { error: "Already punched out for today." },
+          { error: "Already punched out for today for this mode." },
           { status: 400 }
         );
       }
@@ -232,6 +240,7 @@ export async function POST(req: Request) {
         data: {
           employeeId: attendance.employeeId,
           date: attendance.date,
+          mode: attendance.mode,
           punchInTime: attendance.punchInTime,
           punchOutTime: attendance.punchOutTime,
           punchInImage: attendance.punchInImage,
@@ -245,7 +254,7 @@ export async function POST(req: Request) {
 
     if (err.code === 11000) {
       return NextResponse.json(
-        { error: "Attendance record already exists for today." },
+        { error: "Attendance record already exists for today for this mode." },
         { status: 409 }
       );
     }

@@ -1,13 +1,21 @@
 // models/Attendance.ts
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export type AttendanceMode =
+  | "IN_OFFICE"
+  | "WORK_FROM_HOME"
+  | "ON_DUTY"
+  | "REGULARIZATION";
+
 export interface IAttendance extends Document {
   employeeId: string;
   date: Date; // only date part matters (no time)
+  mode: AttendanceMode;
+
   punchInTime?: Date;
   punchOutTime?: Date;
-  punchInImage?: string;        // S3 URL
-  punchOutImage?: string;       // S3 URL
+  punchInImage?: string; // S3 URL
+  punchOutImage?: string; // S3 URL
   punchInLatitude?: number;
   punchInLongitude?: number;
   punchOutLatitude?: number;
@@ -19,7 +27,14 @@ export interface IAttendance extends Document {
 const AttendanceSchema: Schema<IAttendance> = new Schema(
   {
     employeeId: { type: String, required: true },
-    date: { type: Date, required: true }, // one doc per employee per day
+    date: { type: Date, required: true }, // one doc per employee per day per mode
+
+    mode: {
+      type: String,
+      enum: ["IN_OFFICE", "WORK_FROM_HOME", "ON_DUTY", "REGULARIZATION"],
+      required: true,
+      default: "IN_OFFICE",
+    },
 
     // Punch In
     punchInTime: { type: Date },
@@ -36,8 +51,8 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
   { timestamps: true }
 );
 
-// 🔹 Ensure unique (employeeId + date) combination
-AttendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
+// 🔹 Ensure unique (employeeId + date + mode) combination
+AttendanceSchema.index({ employeeId: 1, date: 1, mode: 1 }, { unique: true });
 
 const Attendance: Model<IAttendance> =
   mongoose.models.Attendance ||

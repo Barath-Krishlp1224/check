@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, CheckSquare, TrendingUp, PlusSquare, List, CalendarCheck } from "lucide-react"; // Added CalendarCheck
+import { Users, CheckSquare, TrendingUp, PlusSquare, List, CalendarCheck, Calendar } from "lucide-react"; // Added Calendar for Attendance button
 
 export default function AdminPage() {
   const router = useRouter();
@@ -35,10 +35,15 @@ export default function AdminPage() {
     router.push("/components/view-task");
   };
   
-  // NEW: Function to navigate to the Employee Leaves page
   const goToViewEmpLeaves = () => {
     // NOTE: You may need to change the route path below to match your actual leaves view page
     router.push("/components/emp-leave/approval"); 
+  };
+  
+  // NEW: Function to navigate to the View Attendance page
+  const goToViewAttendance = () => {
+    // NOTE: Replace '/components/attendance-view' with your actual route path for viewing attendance
+    router.push("/components/attendance/allday"); 
   };
 
   return (
@@ -150,7 +155,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     
-                    {/* NEW: Create My Task (Delay 400ms) */}
+                    {/* Create My Task (Delay 400ms) */}
                     <div
                       role="button"
                       onClick={goToCreateTask}
@@ -170,7 +175,7 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* NEW: View My Tasks (Delay 500ms) */}
+                    {/* View My Tasks (Delay 500ms) */}
                     <div
                       role="button"
                       onClick={goToViewMyTasks}
@@ -190,18 +195,18 @@ export default function AdminPage() {
                       </div>
                     </div>
                     
-                    {/* NEW: View Employee Leaves (Delay 600ms) */}
+                    {/* View Employee Leaves (Delay 600ms) */}
                     <div
                       role="button"
-                      onClick={goToViewEmpLeaves} // Hooked up the new function
+                      onClick={goToViewEmpLeaves}
                       className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-                      style={{ transitionDelay: isQuickActionsOpen ? "600ms" : "0ms" }} // Set new delay
+                      style={{ transitionDelay: isQuickActionsOpen ? "600ms" : "0ms" }}
                       onMouseEnter={() => setHoveredButton("view-emp-leaves")}
                       onMouseLeave={() => setHoveredButton(null)}
                     >
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <CalendarCheck className="w-5 h-5 text-white" /> {/* Used CalendarCheck icon */}
+                          <CalendarCheck className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">View Emp Leaves</h3>
@@ -209,9 +214,27 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* NEW: View Attendance (Delay 700ms) */}
+                    <div
+                      role="button"
+                      onClick={goToViewAttendance}
+                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${loaded && isQuickActionsOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                      style={{ transitionDelay: isQuickActionsOpen ? "700ms" : "0ms" }}
+                      onMouseEnter={() => setHoveredButton("view-attendance")}
+                      onMouseLeave={() => setHoveredButton(null)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
+                          <Calendar className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">View Attendance</h3>
+                          <p className="text-gray-600 text-xs">Track daily presence</p>
+                        </div>
+                      </div>
+                    </div>
 
-                    {/* Placeholder div to ensure consistent grid layout */}
-                    <div className="hidden sm:block lg:hidden"></div>
                   </div>
                 </div>
               </div>
