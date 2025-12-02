@@ -35,7 +35,7 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
   return (
     <div
-      className="fixed inset-0 z-[60] overflow-y-auto bg-white/50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-white/70 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
