@@ -1,44 +1,27 @@
-// app/api/login/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 
-// ✅ Ensure this route runs on Node.js runtime (NOT Edge)
 export const runtime = "nodejs";
-
-// ✅ Disable caching / force dynamic
 export const dynamic = "force-dynamic";
 
-// Optional: sanity check for DB env
-const MONGODB_URI = process.env.MONGODB_URI;
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    if (!MONGODB_URI) {
-      console.error("❌ MONGODB_URI is NOT set in environment");
-      return NextResponse.json(
-        { error: "Server database is not configured." },
-        { status: 500 }
-      );
-    }
-
-    // ✅ Connect to MongoDB
     await connectDB();
 
-    // ✅ Parse body safely
-    let body: any;
+    let body: { empIdOrEmail?: string; password?: string };
     try {
       body = await req.json();
     } catch (err) {
-      console.error("❌ Failed to parse JSON body in /api/login:", err);
+      console.error("Failed to parse JSON body in /api/login:", err);
       return NextResponse.json(
         { error: "Invalid request body." },
         { status: 400 }
       );
     }
 
-    const empIdOrEmail = body?.empIdOrEmail;
+    const empIdOrEmail = body?.empIdOrEmail?.trim();
     const password = body?.password;
 
     if (!empIdOrEmail || !password) {
@@ -48,18 +31,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const identifier = String(empIdOrEmail).trim();
+    const identifierLower = empIdOrEmail.toLowerCase();
 
-    // ✅ Case-insensitive query: email OR empId
-    const query =
-      identifier.includes("@")
-        ? { mailId: new RegExp(`^${identifier}$`, "i") }
-        : { empId: new RegExp(`^${identifier}$`, "i") };
-
-    const employee = await Employee.findOne(query);
+    // Single query that supports both email and empId (case-insensitive)
+    const employee = await Employee.findOne({
+      $or: [
+        { mailId: new RegExp(`^${identifierLower}$`, "i") },
+        { empId: new RegExp(`^${empIdOrEmail}$`, "i") },
+      ],
+    });
 
     if (!employee) {
-      console.warn("⚠️ Login failed: user not found for identifier:", identifier);
+      console.warn("Login failed: user not found for:", empIdOrEmail);
       return NextResponse.json(
         { error: "User not found with given Employee ID or Email." },
         { status: 401 }
@@ -68,31 +51,30 @@ export async function POST(req: Request) {
 
     if (!employee.password) {
       console.error(
-        "❌ Employee found but password field missing for empId:",
+        "Employee found but password missing for empId:",
         employee.empId
       );
       return NextResponse.json(
-        { error: "User does not have a password set." },
+        { error: "User does not have a password set. Contact admin." },
         { status: 500 }
       );
     }
 
-    // ✅ Compare password
     const isMatch = await bcrypt.compare(password, employee.password);
     if (!isMatch) {
-      console.warn("⚠️ Login failed: invalid password for empId:", employee.empId);
+      console.warn("Login failed: invalid password for empId:", employee.empId);
       return NextResponse.json(
         { error: "Invalid password." },
         { status: 401 }
       );
     }
 
-    // ✅ Minimal safe user object for frontend
     const user = {
       empId: employee.empId,
       name: employee.name,
-      role: employee.role, // "Admin" | "Manager" | "TeamLead" | "Employee"
-      team: employee.team, // "Founders" | "Manager" | "TL-Reporting Manager" | "Tech" | "Accounts" | "HR" | "Admin & Operations"
+      role: employee.role || "Employee",
+      team: employee.team || null,
+      department: employee.department || null,
     };
 
     return NextResponse.json(
@@ -103,8 +85,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("💥 Login error in /api/login:", error);
-
+    console.error("Login error in /api/login:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
