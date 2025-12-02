@@ -35,11 +35,11 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
   return (
     <div
-      className="fixed inset-0 z-[60] overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-white/70 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8 transform transition-all duration-300 overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-5xl my-8 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
         <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-indigo-50">
