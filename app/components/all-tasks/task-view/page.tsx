@@ -22,6 +22,14 @@ import {
   SubtaskPathHandler,
 } from "./components/types";
 
+// 🚀 React-Toastify Imports
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+// Assuming getAggregatedTaskData is still available, but commenting out as it wasn't in the provided imports
+// import { getAggregatedTaskData } from "./utils/aggregation"; 
+
+
 const TasksPage: React.FC = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -75,9 +83,13 @@ const TasksPage: React.FC = () => {
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) setTasks(data.tasks);
-      else setError(data.error || "Failed to fetch tasks.");
+      else {
+        setError(data.error || "Failed to fetch tasks.");
+        toast.error(data.error || "Failed to fetch tasks.");
+      }
     } catch (err) {
       setError("Server connection error while fetching tasks.");
+      toast.error("Server connection error while fetching tasks.");
     }
   };
 
@@ -96,7 +108,9 @@ const TasksPage: React.FC = () => {
         (window as any).XLSX = XLSX;
         setXlsxLoaded(true);
       })
-      .catch((err) => {});
+      .catch((err) => {
+        toast.warn("XLSX library failed to load. Export feature may be unavailable.");
+      });
 
     const init = async () => {
       setLoading(true);
@@ -160,6 +174,7 @@ const TasksPage: React.FC = () => {
 
     const subtasksWithIDs: Subtask[] = (task.subtasks || []).map(
       (sub, index, arr) => {
+        // Simple check to ensure subtasks have an ID suitable for the current task
         if (!sub.id || !sub.id.startsWith(task.projectId)) {
           const tempId = generateNextSubtaskId(
             task.projectId,
@@ -178,6 +193,7 @@ const TasksPage: React.FC = () => {
     setDraftTask({});
     setSubtasks([]);
     setCurrentProjectPrefix("");
+    toast.info("Task edit cancelled.");
   };
 
   const handleDraftChange = (
@@ -217,6 +233,7 @@ const TasksPage: React.FC = () => {
         remarks: "",
       } as Subtask,
     ]);
+    toast.success("New subtask draft added.");
   };
 
   const removeSubtask: SubtaskPathHandler = (path) => {
@@ -224,6 +241,7 @@ const TasksPage: React.FC = () => {
     if (index === undefined || index < 0 || index >= subtasks.length) return;
 
     setSubtasks((prev) => prev.filter((_, i) => i !== index));
+    toast.info("Subtask removed from draft.");
   };
 
   // Existing function for main task status change (ASYNC)
@@ -257,22 +275,23 @@ const TasksPage: React.FC = () => {
             console.log(
               `Slack Notification Triggered for Task ${taskId}: Status changed to ${newStatus}`
             );
+            toast.success(`Task ${taskId} status changed to ${newStatus}.`);
           }
         } else {
-          alert(
+          toast.error(
             `❌ Failed to update task status: ${
               data.error || "Unknown error"
             }`
           );
         }
       } catch (err) {
-        alert("A server error occurred during status update.");
+        toast.error("A server error occurred during status update.");
       }
     },
     []
   );
 
-  // Subtask Status Change (local only)
+  // Subtask Status Change (local only for this simplified version)
   const onSubtaskStatusChange = useCallback(
     (taskId: string, subtaskId: string, newStatus: string) => {
       setSubtasks((prevSubtasks) =>
@@ -284,16 +303,17 @@ const TasksPage: React.FC = () => {
       console.log(
         `Subtask status update locally applied: Task ${taskId}, Subtask ${subtaskId} -> ${newStatus}`
       );
+      toast.info(`Subtask status for ${subtaskId} updated to ${newStatus} (local change).`);
     },
     []
   );
 
   const onToggleEdit: SubtaskPathHandler = () => {
-    console.log("onToggleEdit called (Placeholder)");
+    // Placeholder function
   };
 
   const onToggleExpansion: SubtaskPathHandler = () => {
-    console.log("onToggleExpansion called (Placeholder)");
+    // Placeholder function
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -316,16 +336,16 @@ const TasksPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("✅ Task updated successfully!");
+        toast.success("✅ Task updated successfully!");
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(
+        toast.error(
           `❌ Failed to update task: ${data.error || "Unknown error"}`
         );
       }
     } catch (err) {
-      alert("A server error occurred during update.");
+      toast.error("A server error occurred during update.");
     }
   };
 
@@ -336,8 +356,9 @@ const TasksPage: React.FC = () => {
       )
     )
       return;
+      
     await onTaskStatusChange(taskId, "In Progress");
-    alert("🚀 Sprint started! Task status is now 'In Progress'.");
+    toast.success("🚀 Sprint initiated! Task status is now 'In Progress'.");
     closeTaskModal();
   };
 
@@ -348,26 +369,26 @@ const TasksPage: React.FC = () => {
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
-        alert("✅ Task deleted successfully!");
+        toast.success("✅ Task deleted successfully!");
         closeTaskModal();
         fetchTasks();
-      } else alert(data.error || "Failed to delete task.");
+      } else toast.error(data.error || "Failed to delete task.");
     } catch (err) {
-      alert("Server error during deletion.");
+      toast.error("Server error during deletion.");
     }
   };
 
   // ✅ Excel export: export ALL tasks, ignore filters
   const handleExcelDownload = () => {
     if (typeof window === "undefined" || !(window as any).XLSX) {
-      alert("❌ XLSX library not loaded. Please ensure SheetJS is installed.");
+      toast.error("❌ XLSX library not loaded. Please ensure SheetJS is available.");
       return;
     }
 
     const tasksForExport: Task[] = tasks;
 
     if (tasksForExport.length === 0) {
-      alert("No tasks found to export.");
+      toast.warn("No tasks found to export.");
       return;
     }
 
@@ -439,7 +460,7 @@ const TasksPage: React.FC = () => {
     const fileName = "All_Tasks_Report.xlsx";
 
     XLSX.writeFile(wb, fileName);
-    alert(`✅ Task report downloaded as ${fileName}`);
+    toast.success(`✅ Task report downloaded as ${fileName}`);
   };
 
   if (loading)
@@ -471,14 +492,27 @@ const TasksPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-white">
+      {/* 🟢 Toast Container */}
+      <ToastContainer 
+        position="bottom-right" 
+        autoClose={3000} 
+        hideProgressBar={false} 
+        newestOnTop={false} 
+        closeOnClick 
+        rtl={false} 
+        pauseOnFocusLoss 
+        draggable 
+        pauseOnHover 
+      />
+
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
         <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
           <button
             onClick={() => setViewType("card")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "card"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" // Changed from indigo-600 to green-600
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" // Changed from indigo-600 to green-600
             }`}
             title="Card View (3 in a row)"
           >
@@ -488,8 +522,8 @@ const TasksPage: React.FC = () => {
             onClick={() => setViewType("board")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "board"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" // Changed from indigo-600 to green-600
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" // Changed from indigo-600 to green-600
             }`}
             title="Board View (Kanban)"
           >
@@ -499,8 +533,8 @@ const TasksPage: React.FC = () => {
             onClick={() => setViewType("chart")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "chart"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" // Changed from indigo-600 to green-600
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" // Changed from indigo-600 to green-600
             }`}
             title="Chart View (Analytics)"
           >
@@ -537,7 +571,7 @@ const TasksPage: React.FC = () => {
           ) : (
             <>
               {viewType === "card" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                   {filteredTasks.map((task) => (
                     <TaskCard
                       key={task._id}

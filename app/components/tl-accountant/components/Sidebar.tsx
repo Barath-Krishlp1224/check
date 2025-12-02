@@ -47,8 +47,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
             onClick={() => setActiveView(item.id)}
             className={`flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
               activeView === item.id
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" // CHANGED: bg-indigo-600 -> bg-green-600
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" // CHANGED: hover:text-indigo-600 -> hover:text-green-600
             }`}
             title={item.label}
           >

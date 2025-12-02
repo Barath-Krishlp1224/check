@@ -243,11 +243,11 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
   return (
     <div
-        className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-60 flex items-center justify-center p-4 sm:p-6"
+        className="fixed inset-0 z-50 overflow-y-auto bg-white/50 flex items-center justify-center p-4 sm:p-6"
         onClick={onClose}
     >
       <div
-        className="bg-white rounded-4xl shadow-2xl w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
+        className="bg-white rounded-4xl mt-30 shadow-2xl w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
         <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0  bg-white z-10">
@@ -261,7 +261,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
           <div className="mb-8 border-b pb-6">
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">Task Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

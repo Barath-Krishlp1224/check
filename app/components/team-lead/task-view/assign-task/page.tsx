@@ -28,6 +28,10 @@ import {
 } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
+// 🚀 React-Toastify Imports
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 export type ViewType = "card" | "board" | "chart";
 
 const allTaskStatuses = [
@@ -48,6 +52,8 @@ const TasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  // ⭐ NEW STATE: Tracks if the minimum 2-second display time has passed
+  const [minLoadTimePassed, setMinLoadTimePassed] = useState(false); 
   const [error, setError] = useState("");
   const [viewType, setViewType] = useState<ViewType>("card");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,9 +139,13 @@ const TasksPage: React.FC = () => {
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) setTasks(data.tasks);
-      else setError(data.error || "Failed to fetch tasks.");
+      else {
+        setError(data.error || "Failed to fetch tasks.");
+        toast.error(data.error || "Failed to fetch tasks.");
+      }
     } catch (err) {
       setError("Server connection error while fetching tasks.");
+      toast.error("Server connection error while fetching tasks.");
     }
   };
 
@@ -172,17 +182,27 @@ const TasksPage: React.FC = () => {
         (window as any).XLSX = XLSX;
         setXlsxLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        toast.warn("Excel library failed to load. Download functionality may be limited.");
+      });
 
     const init = async () => {
-      setLoading(true);
-      setError("");
+      // Fetch data
       await Promise.all([fetchTasks(), fetchEmployees()]);
       await triggerDueDateNotifications();
-      setLoading(false);
+      // Data fetching complete
+      setLoading(false); 
     };
 
+    // 1. Start timer for minimum load time (2 seconds)
+    const timer = setTimeout(() => {
+        setMinLoadTimePassed(true);
+    }, 2000);
+
+    // 2. Start data fetching
     init();
+
+    return () => clearTimeout(timer); // Cleanup timer
   }, []);
 
   // 🔹 Only Tech & IT Admin employees (for assignee dropdowns)
@@ -260,7 +280,7 @@ const TasksPage: React.FC = () => {
     setTimeout(() => {
       setSelectedTaskForModal(null);
       cancelEdit();
-    }, 300);
+    }, 2000); 
   };
 
   const handleEdit = (task: Task) => {
@@ -275,6 +295,7 @@ const TasksPage: React.FC = () => {
     setDraftTask({});
     setSubtasks([]);
     setCurrentProjectPrefix("");
+    toast.info("Edit cancelled.");
   };
 
   const handleDraftChange = (
@@ -331,7 +352,10 @@ const TasksPage: React.FC = () => {
   };
 
   const addSubtask: SubtaskPathHandler = (path) => {
-    if (!currentProjectPrefix) return;
+    if (!currentProjectPrefix) {
+        toast.error("Cannot add subtask: Project ID is missing.");
+        return;
+    }
     if (path.length === 0) {
       setSubtasks((prevSubs) => [
         ...prevSubs,
@@ -340,17 +364,19 @@ const TasksPage: React.FC = () => {
           id: `${currentProjectPrefix}-S${prevSubs.length + 1}`,
         },
       ]);
-      return;
+    } else {
+      setSubtasks((prevSubs) =>
+        updateSubtaskState(prevSubs, path, () => null, "add")
+      );
     }
-    setSubtasks((prevSubs) =>
-      updateSubtaskState(prevSubs, path, () => null, "add")
-    );
+    toast.success("Subtask draft added. Remember to save the main task!");
   };
 
   const removeSubtask: SubtaskPathHandler = (path) => {
     setSubtasks((prevSubs) =>
       updateSubtaskState(prevSubs, path, () => null, "remove")
     );
+    toast.info("Subtask draft removed. Remember to save the main task!");
   };
 
   const onTaskStatusChange = useCallback(
@@ -372,11 +398,12 @@ const TasksPage: React.FC = () => {
             )
           );
           fetchTasks();
+          toast.success(`Task status updated to ${newStatus}.`);
         } else {
-          alert(data.error || "Failed to update task");
+          toast.error(data.error || "Failed to update task.");
         }
       } catch {
-        alert("Server error during status update.");
+        toast.error("Server error during status update.");
       }
     },
     []
@@ -421,11 +448,12 @@ const TasksPage: React.FC = () => {
         const data = await res.json();
         if (res.ok && data.success) {
           fetchTasks();
+          toast.success(`Subtask status updated to ${newStatus}.`);
         } else {
-          alert(data.error || "Failed to update subtask");
+          toast.error(data.error || "Failed to update subtask.");
         }
       } catch {
-        alert("Server error during subtask update.");
+        toast.error("Server error during subtask update.");
       }
     },
     [tasks]
@@ -461,19 +489,19 @@ const TasksPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("Task updated!");
+        toast.success("Task updated successfully!");
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to update task");
+        toast.error(data.error || "Failed to update task.");
       }
     } catch {
-      alert("Server error during update.");
+      toast.error("Server error during update.");
     }
   };
 
   const handleStartSprint = async (taskId: string) => {
-    if (!window.confirm("Start sprint?")) return;
+    if (!window.confirm("Are you sure you want to start the sprint (set status to 'In Progress')?")) return;
 
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
@@ -484,39 +512,49 @@ const TasksPage: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        toast.success("Sprint started! Status set to 'In Progress'.");
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to start sprint");
+        toast.error(data.error || "Failed to start sprint.");
       }
     } catch {
-      alert("Server error during sprint start.");
+      toast.error("Server error during sprint start.");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete task?")) return;
+    if (!window.confirm("Are you sure you want to permanently delete this task?")) return;
 
     try {
       const url = getApiUrl(`/api/tasks/${id}`);
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
+        toast.success("Task deleted successfully!");
         closeTaskModal();
         fetchTasks();
       } else {
-        alert(data.error || "Failed to delete task");
+        toast.error(data.error || "Failed to delete task.");
       }
     } catch {
-      alert("Server error during deletion.");
+      toast.error("Server error during deletion.");
     }
   };
 
-  if (loading)
+  // Only render the tasks page once data is loaded AND the minimum load time has passed
+  if (loading || !minLoadTimePassed)
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
+          {/* // 🛑 START: Custom GIF Loader (Replace the src with your actual GIF path) */}
+          <img
+            src="/load.gif" 
+            alt="Loading..."
+            className="w-100 h-70 mx-auto mb-4" 
+            style={{ objectFit: 'contain' }}
+          />
+          {/* // 🛑 END: Custom GIF Loader */}
           <p className="text-slate-700 font-medium">Loading tasks...</p>
         </div>
       </div>
@@ -539,15 +577,28 @@ const TasksPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-white">
+      {/* 🟢 Toast Container added */}
+      <ToastContainer 
+        position="bottom-right" 
+        autoClose={3000} 
+        hideProgressBar={false} 
+        newestOnTop={false} 
+        closeOnClick 
+        rtl={false} 
+        pauseOnFocusLoss 
+        draggable 
+        pauseOnHover 
+      />
+
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
-        {/* ---------- NAVBAR WITH VIEW SELECTOR ---------- */}
+        {/* ---------- NAVBAR WITH VIEW SELECTOR (Green Active) ---------- */}
         <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
           <button
             onClick={() => setViewType("card")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "card"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" 
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" 
             }`}
             title="Card View"
           >
@@ -558,8 +609,8 @@ const TasksPage: React.FC = () => {
             onClick={() => setViewType("board")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "board"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" 
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" 
             }`}
             title="Board View"
           >
@@ -570,8 +621,8 @@ const TasksPage: React.FC = () => {
             onClick={() => setViewType("chart")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "chart"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600"
+                ? "bg-green-600 text-white shadow-lg" 
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" 
             }`}
             title="Chart View"
           >

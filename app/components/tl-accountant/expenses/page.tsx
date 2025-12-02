@@ -9,7 +9,9 @@ import {
   INITIAL_AMOUNT_CONSTANT,
   getWeekStart,
   isExpensePaid,
-} from "./types";
+} from "./types"; // Assuming this imports your necessary types
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface InitialAmountHistoryEntry {
   amount: number;
@@ -356,7 +358,7 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={onSaveInitialAmount}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm"
                 >
                   Save
                 </button>
@@ -950,6 +952,7 @@ const ExpensesContent: React.FC = () => {
         );
       } catch (err: any) {
         setError(err.message || "Failed to load expenses");
+        toast.error(err.message || "Failed to load expenses");
       } finally {
         setLoading(false);
       }
@@ -991,10 +994,11 @@ const ExpensesContent: React.FC = () => {
           if (typeof window !== "undefined") {
             localStorage.setItem("initialWalletAmountHistory", JSON.stringify(newHistory));
           }
+          toast.success("Initial amount updated successfully!");
       }
       setIsEditingInitialAmount(false);
     } else {
-      alert("Please enter a valid amount.");
+      toast.error("Please enter a valid amount.");
     }
   };
 
@@ -1082,12 +1086,12 @@ const ExpensesContent: React.FC = () => {
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || !amount || !category.trim() || !date) {
-      alert("Description, category, amount, date required");
+      toast.warn("Description, category, amount, date are required.");
       return;
     }
 
     if (role === "manager" && !selectedEmployeeId) {
-      alert("Select employee for Manager role");
+      toast.warn("Select employee for Manager role.");
       return;
     }
 
@@ -1114,7 +1118,7 @@ const ExpensesContent: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
-        alert(json.error || "Failed to add expense");
+        toast.error(json.error || "Failed to add expense.");
         return;
       }
 
@@ -1134,8 +1138,9 @@ const ExpensesContent: React.FC = () => {
       setDate(new Date().toISOString().slice(0, 10));
       setRole("founder");
       setSelectedEmployeeId("");
+      toast.success("Expense added successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed");
+      toast.error(err.message || "Failed to add expense.");
     }
   };
 
@@ -1155,12 +1160,12 @@ const ExpensesContent: React.FC = () => {
     e.preventDefault();
     if (!expandedId) return;
     if (!subTitle.trim() || !subAmount) {
-      alert("Sub description and amount required");
+      toast.warn("Sub description and amount required.");
       return;
     }
 
     if (subRole === "manager" && !subEmployeeId) {
-      alert("Select employee for Manager");
+      toast.warn("Select employee for Manager.");
       return;
     }
 
@@ -1195,7 +1200,7 @@ const ExpensesContent: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
-        alert(json.error || "Failed to add sub expense");
+        toast.error(json.error || "Failed to add sub expense.");
         return;
       }
 
@@ -1215,8 +1220,9 @@ const ExpensesContent: React.FC = () => {
       setSubDate(new Date().toISOString().slice(0, 10));
       setSubRole("founder");
       setSubEmployeeId("");
+      toast.success("Sub expense added successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed");
+      toast.error(err.message || "Failed to add sub expense.");
     }
   };
 
@@ -1242,7 +1248,7 @@ const ExpensesContent: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
-        alert(json.error || "Failed to update subtask status");
+        toast.error(json.error || "Failed to update subtask status.");
         return;
       }
       
@@ -1264,9 +1270,9 @@ const ExpensesContent: React.FC = () => {
       if (newPaidStatus !== parentExp.paid) {
           await handleUpdatePaidStatus({...parentExp, subtasks: updatedSubtasks}, newPaidStatus, false);
       }
-      
+      toast.success("Sub expense status updated!");
     } catch (err: any) {
-      alert(err.message || "Failed");
+      toast.error(err.message || "Failed to update subtask status.");
     }
   };
   
@@ -1275,6 +1281,8 @@ const ExpensesContent: React.FC = () => {
     const action = isPaid ? "Done" : "Pending";
     const confirmMessage = `Are you sure you want to mark the expense "${exp.description}" as ${action}?`;
 
+    // Using toast for confirmation with a small delay for better UX flow (though a custom modal is better)
+    // For a quick fix, we'll keep the native window.confirm, as it blocks execution cleanly.
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -1304,7 +1312,7 @@ const ExpensesContent: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
-        alert(json.error || "Failed to update status");
+        toast.error(json.error || "Failed to update status.");
         return;
       }
 
@@ -1317,8 +1325,9 @@ const ExpensesContent: React.FC = () => {
       setExpenses((prev) =>
         prev.map((e) => (e._id === exp._id ? updatedExpense : e))
       );
+      toast.success(`Expense marked as ${isPaid ? 'Done' : 'Pending'}!`);
     } catch (err: any) {
-      alert(err.message || "Failed");
+      toast.error(err.message || "Failed to update status.");
     }
   };
 
@@ -1350,6 +1359,8 @@ const ExpensesContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
+      
       <div className="max-w-7xl mt-20 mx-auto space-y-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-black mb-2">Expense Management</h1>
