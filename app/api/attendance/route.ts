@@ -10,14 +10,12 @@ export const dynamic = "force-dynamic";
 
 type PunchType = "IN" | "OUT";
 
-// 👉 MAIN OFFICE LOCATION (your coordinates)
 const OFFICE_LOCATION = {
   lat: 11.93899,
   lng: 79.81667,
 };
 
-// 👉 Max allowed distance for IN_OFFICE punches (in meters)
-const MAX_OFFICE_DISTANCE_METERS = 200; // adjust as you like
+const MAX_OFFICE_DISTANCE_METERS = 200;
 
 // ✅ Env setup
 const S3_REGION = process.env.S3_REGION || process.env.AWS_REGION;
@@ -27,7 +25,6 @@ const ACCESS_KEY_ID =
 const SECRET_ACCESS_KEY =
   process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 
-// 🔹 Quick sanity check – fail early if misconfigured
 function ensureS3Env() {
   if (!S3_REGION) throw new Error("S3 region is not configured.");
   if (!S3_BUCKET_NAME) throw new Error("S3 bucket name is not configured.");
@@ -52,23 +49,15 @@ function getS3Client() {
   return s3;
 }
 
-/**
- * 🔹 Get today's date in IST as "YYYY-MM-DD"
- * This matches Hikvision's dateKey: log.time.slice(0, 10)
- */
-function getTodayISTDateString(): string {
+// 🔹 IST date "YYYY-MM-DD"
+function getTodayDateStringIST(): string {
   const now = new Date();
-  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30
-  const istNow = new Date(now.getTime() + IST_OFFSET_MS);
-
-  const year = istNow.getUTCFullYear();
-  const month = (istNow.getUTCMonth() + 1).toString().padStart(2, "0");
-  const day = istNow.getUTCDate().toString().padStart(2, "0");
-
-  return `${year}-${month}-${day}`; // "YYYY-MM-DD"
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(now.getTime() + istOffsetMs);
+  return istDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
 }
 
-// 🔹 Distance helpers (Haversine formula)
+// ----- Distance helpers -----
 function toRad(deg: number) {
   return (deg * Math.PI) / 180;
 }
@@ -79,7 +68,7 @@ function haversineDistanceMeters(
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371000; // Earth radius in meters
+  const R = 6371000;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
 
@@ -94,7 +83,7 @@ function haversineDistanceMeters(
   return R * c;
 }
 
-// 🔹 Utility: upload base64 Data URL to S3 and return URL
+// ----- S3 upload -----
 async function uploadImageDataUrlToS3(
   dataUrl: string,
   keyPrefix: string,
@@ -133,14 +122,7 @@ async function uploadImageDataUrlToS3(
     ContentType: contentType,
   });
 
-  try {
-    await client.send(command);
-  } catch (err: any) {
-    console.error("S3 PutObject error:", err);
-    throw new Error(
-      `S3 upload failed: ${err?.message || "Unknown S3 error"}`
-    );
-  }
+  await client.send(command);
 
   const url = `https://${S3_BUCKET_NAME}.s3.${S3_REGION}.amazonaws.com/${key}`;
   return url;
@@ -158,10 +140,6 @@ export async function POST(req: Request) {
       longitude,
       punchType,
       mode,
-      // optional extras (currently unused, but kept for future)
-      role,
-      team,
-      name,
     } = body as {
       employeeId?: string;
       imageData?: string;
@@ -169,12 +147,8 @@ export async function POST(req: Request) {
       longitude?: number | null;
       punchType?: PunchType;
       mode?: AttendanceMode;
-      role?: string;
-      team?: string;
-      name?: string;
     };
 
-    // Basic validation
     if (!employeeId || !imageData || !punchType) {
       return NextResponse.json(
         { error: "employeeId, imageData and punchType are required." },
@@ -182,7 +156,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (punchType !== "IN" && punchType !== "OUT") {
+    if (!["IN", "OUT"].includes(punchType)) {
       return NextResponse.json(
         { error: "Invalid punchType. Use 'IN' or 'OUT'." },
         { status: 400 }
@@ -190,11 +164,9 @@ export async function POST(req: Request) {
     }
 
     const attendanceMode: AttendanceMode = mode || "IN_OFFICE";
+    const dateStr = getTodayDateStringIST(); // 🔥 store as string
 
-    // 🔹 This is the same date style used in Hikvision aggregation: "YYYY-MM-DD"
-    const todayDateStr = getTodayISTDateString();
-
-    // 👉 LOCATION VALIDATION for IN_OFFICE
+    // ---- LOCATION CHECK ----
     let distanceFromOfficeMeters: number | null = null;
 
     if (attendanceMode === "IN_OFFICE") {
@@ -226,22 +198,18 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-    } else {
-      // For other modes, we just compute distance if we have location (for info)
-      if (latitude != null && longitude != null) {
-        distanceFromOfficeMeters = haversineDistanceMeters(
-          latitude,
-          longitude,
-          OFFICE_LOCATION.lat,
-          OFFICE_LOCATION.lng
-        );
-      }
+    } else if (latitude != null && longitude != null) {
+      distanceFromOfficeMeters = haversineDistanceMeters(
+        latitude,
+        longitude,
+        OFFICE_LOCATION.lat,
+        OFFICE_LOCATION.lng
+      );
     }
 
     const modeFolder = attendanceMode.toLowerCase();
-    const keyPrefix = `attendance/${todayDateStr}/${employeeId}/${modeFolder}`;
+    const keyPrefix = `attendance/${dateStr}/${employeeId}/${modeFolder}`;
 
-    // 🔹 Upload image to S3
     let imageUrl: string;
     try {
       imageUrl = await uploadImageDataUrlToS3(
@@ -250,7 +218,7 @@ export async function POST(req: Request) {
         punchType
       );
     } catch (uploadErr: any) {
-      console.error("S3 upload error (wrapped):", uploadErr);
+      console.error("S3 upload error:", uploadErr);
       return NextResponse.json(
         {
           error: "Failed to upload image to storage.",
@@ -260,17 +228,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔹 Find or create attendance doc for this employee + date + mode
+    // 🔹 Find or create attendance for (employeeId + dateStr + mode)
     let attendance = await Attendance.findOne({
       employeeId,
-      date: todayDateStr,
+      date: dateStr,
       mode: attendanceMode,
     });
 
     if (!attendance) {
       attendance = new Attendance({
         employeeId,
-        date: todayDateStr,
+        date: dateStr,
         mode: attendanceMode,
       });
     }
@@ -289,7 +257,7 @@ export async function POST(req: Request) {
       attendance.punchInImage = imageUrl;
       attendance.punchInLatitude = latitude ?? undefined;
       attendance.punchInLongitude = longitude ?? undefined;
-    } else if (punchType === "OUT") {
+    } else {
       if (!attendance.punchInTime) {
         return NextResponse.json(
           {
@@ -322,24 +290,6 @@ export async function POST(req: Request) {
             ? "Punch In recorded successfully."
             : "Punch Out recorded successfully.",
         attendanceId: attendance._id,
-        data: {
-          employeeId: attendance.employeeId,
-          date: attendance.date, // "YYYY-MM-DD" string, consistent with Hikvision data
-          mode: attendance.mode,
-          punchInTime: attendance.punchInTime,
-          punchOutTime: attendance.punchOutTime,
-          punchInImage: attendance.punchInImage,
-          punchOutImage: attendance.punchOutImage,
-          punchInLatitude: attendance.punchInLatitude ?? null,
-          punchInLongitude: attendance.punchInLongitude ?? null,
-          punchOutLatitude: attendance.punchOutLatitude ?? null,
-          punchOutLongitude: attendance.punchOutLongitude ?? null,
-          distanceFromOfficeMeters:
-            distanceFromOfficeMeters != null
-              ? Math.round(distanceFromOfficeMeters)
-              : null,
-          officeLocation: OFFICE_LOCATION,
-        },
       },
       { status: 201 }
     );
