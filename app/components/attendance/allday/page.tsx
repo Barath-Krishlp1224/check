@@ -104,16 +104,27 @@ const page: React.FC = () => {
   }, [loadAttendance]);
 
   // ----- HELPERS -----
+
+  // DD-MM-YYYY based on the normalized date key
   const formatDate = (value?: string) => {
-    const key = getDateKey(value);
-    return key || "-";
+    const key = getDateKey(value); // "YYYY-MM-DD"
+    if (!key) return "-";
+    const parts = key.split("-");
+    if (parts.length !== 3) return key;
+    const [year, month, day] = parts;
+    return `${day}-${month}-${year}`;
   };
 
+  // 12-hour format with AM/PM
   const formatTime = (value?: string | null) => {
     if (!value) return "-";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const getDuration = (record: AttendanceRecord) => {
@@ -441,7 +452,7 @@ const page: React.FC = () => {
               </div>
 
               {/* Work Mode */}
-              <div className="flex flex-col">
+              <div className="flex flex_col">
                 <label className="text-sm font-semibold text-black mb-2">
                   Work Mode
                 </label>
@@ -506,7 +517,7 @@ const page: React.FC = () => {
                 onClick={handleClearFilters}
                 className="px-5 py-2.5 rounded-lg border border-slate-300 text-black text-sm font-medium hover:bg-slate-50 transition-colors"
               >
-                Clear Filters
+                Clear Filters (Today)
               </button>
               <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm">
                 <Download className="w-4 h-4" />
@@ -626,10 +637,10 @@ const page: React.FC = () => {
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-medium">
                                 {formatDate(record.date)}
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-medium">
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text_black font-medium">
                                 {formatTime(record.punchInTime)}
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-medium">
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text_black font-medium">
                                 {formatTime(record.punchOutTime)}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-semibold">
