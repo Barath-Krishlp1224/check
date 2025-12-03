@@ -12,7 +12,7 @@ type PunchType = "IN" | "OUT";
 
 // 👉 MAIN OFFICE LOCATION (your coordinates)
 const OFFICE_LOCATION = {
-  lat: 11.93899, 
+  lat: 11.93899,
   lng: 79.81667,
 };
 
@@ -52,10 +52,20 @@ function getS3Client() {
   return s3;
 }
 
-// 🔹 Utility: get only the date (00:00:00)
-function getTodayDateOnly() {
+/**
+ * 🔹 Get today's date in IST as "YYYY-MM-DD"
+ * This matches Hikvision's dateKey: log.time.slice(0, 10)
+ */
+function getTodayISTDateString(): string {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30
+  const istNow = new Date(now.getTime() + IST_OFFSET_MS);
+
+  const year = istNow.getUTCFullYear();
+  const month = (istNow.getUTCMonth() + 1).toString().padStart(2, "0");
+  const day = istNow.getUTCDate().toString().padStart(2, "0");
+
+  return `${year}-${month}-${day}`; // "YYYY-MM-DD"
 }
 
 // 🔹 Distance helpers (Haversine formula)
@@ -180,8 +190,9 @@ export async function POST(req: Request) {
     }
 
     const attendanceMode: AttendanceMode = mode || "IN_OFFICE";
-    const today = getTodayDateOnly();
-    const dateStr = today.toISOString().slice(0, 10);
+
+    // 🔹 This is the same date style used in Hikvision aggregation: "YYYY-MM-DD"
+    const todayDateStr = getTodayISTDateString();
 
     // 👉 LOCATION VALIDATION for IN_OFFICE
     let distanceFromOfficeMeters: number | null = null;
@@ -228,7 +239,7 @@ export async function POST(req: Request) {
     }
 
     const modeFolder = attendanceMode.toLowerCase();
-    const keyPrefix = `attendance/${dateStr}/${employeeId}/${modeFolder}`;
+    const keyPrefix = `attendance/${todayDateStr}/${employeeId}/${modeFolder}`;
 
     // 🔹 Upload image to S3
     let imageUrl: string;
@@ -252,14 +263,14 @@ export async function POST(req: Request) {
     // 🔹 Find or create attendance doc for this employee + date + mode
     let attendance = await Attendance.findOne({
       employeeId,
-      date: today,
+      date: todayDateStr,
       mode: attendanceMode,
     });
 
     if (!attendance) {
       attendance = new Attendance({
         employeeId,
-        date: today,
+        date: todayDateStr,
         mode: attendanceMode,
       });
     }
@@ -313,7 +324,7 @@ export async function POST(req: Request) {
         attendanceId: attendance._id,
         data: {
           employeeId: attendance.employeeId,
-          date: attendance.date,
+          date: attendance.date, // "YYYY-MM-DD" string, consistent with Hikvision data
           mode: attendance.mode,
           punchInTime: attendance.punchInTime,
           punchOutTime: attendance.punchOutTime,

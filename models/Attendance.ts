@@ -9,7 +9,11 @@ export type AttendanceMode =
 
 export interface IAttendance extends Document {
   employeeId: string;
-  date: Date; // only date part matters (no time)
+  /**
+   * Stored as "YYYY-MM-DD" (IST date),
+   * same style used by Hikvision aggregation.
+   */
+  date: string;
   mode: AttendanceMode;
 
   punchInTime?: Date;
@@ -20,6 +24,7 @@ export interface IAttendance extends Document {
   punchInLongitude?: number;
   punchOutLatitude?: number;
   punchOutLongitude?: number;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,7 +32,9 @@ export interface IAttendance extends Document {
 const AttendanceSchema: Schema<IAttendance> = new Schema(
   {
     employeeId: { type: String, required: true },
-    date: { type: Date, required: true }, // one doc per employee per day per mode
+
+    // 🔹 Important: store as string "YYYY-MM-DD"
+    date: { type: String, required: true },
 
     mode: {
       type: String,

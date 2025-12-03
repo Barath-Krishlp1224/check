@@ -39,7 +39,7 @@ function getDistanceMeters(
 interface AttendanceRecord {
   _id: string;
   employeeId: string;
-  employeeName?: string;
+  employeeName?: string | null;
   date: string;
   punchInTime?: string | null;
   punchOutTime?: string | null;
@@ -65,11 +65,15 @@ const AttendanceRecords: React.FC = () => {
         const res = await fetch("/api/attendance/all");
         const json = await res.json();
 
+        console.log("Attendance API response:", json);
+
         if (!res.ok) {
           throw new Error(json.error || "Failed to load attendance records.");
         }
 
-        const records: AttendanceRecord[] = (json.records || []).sort(
+        const records: AttendanceRecord[] = json.records || [];
+
+        records.sort(
           (a: AttendanceRecord, b: AttendanceRecord) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
@@ -89,6 +93,9 @@ const AttendanceRecords: React.FC = () => {
 
   const formatDate = (value?: string) => {
     if (!value) return "-";
+    if (value.length === 10 && !value.includes("T")) {
+      return value;
+    }
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
     return d.toISOString().slice(0, 10);
@@ -260,7 +267,7 @@ const AttendanceRecords: React.FC = () => {
         <div className="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-300">
           <Calendar className="w-5 h-5 text-red-600" />
           <h2 className="text-2xl font-bold text-gray-900">
-            Attendance Records
+            Attendance Records (Today)
           </h2>
         </div>
       </div>
@@ -269,7 +276,7 @@ const AttendanceRecords: React.FC = () => {
         {loadingAttendance && (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-gray-500">
             <Loader2 className="w-6 h-6 animate-spin mb-2" />
-            <p>Fetching all records...</p>
+            <p>Fetching today&apos;s records...</p>
           </div>
         )}
 
@@ -283,7 +290,7 @@ const AttendanceRecords: React.FC = () => {
         {!loadingAttendance && !attendanceError && attendance.length > 0 && (
           <div className="flex flex-col">
             <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
-              All Attendance Records
+              Today&apos;s Attendance
             </h3>
             <div className="overflow-x-auto overflow-y-auto h-96 border rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
@@ -321,7 +328,7 @@ const AttendanceRecords: React.FC = () => {
                     return (
                       <tr key={record._id}>
                         <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {record.employeeName || "-"}
+                          {record.employeeName || record.employeeId || "-"}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
                           <span
@@ -372,7 +379,7 @@ const AttendanceRecords: React.FC = () => {
         {!loadingAttendance && !attendanceError && attendance.length === 0 && (
           <div className="flex items-center justify-center h-full min-h-[200px] text-gray-500">
             <Clock className="w-5 h-5 mr-2" />
-            <p>No attendance records found.</p>
+            <p>No attendance records for today.</p>
           </div>
         )}
       </div>

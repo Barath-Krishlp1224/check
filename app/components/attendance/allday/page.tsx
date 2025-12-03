@@ -28,7 +28,7 @@ interface AttendanceRecord {
   _id: string;
   employeeId: string;
   employeeName?: string;
-  date: string; // ISO string from API
+  date: string; // "YYYY-MM-DD" or ISO from API
   punchInTime?: string | null;
   punchOutTime?: string | null;
   mode?: AttendanceMode;
@@ -38,7 +38,14 @@ interface AttendanceRecord {
   punchOutLongitude?: number | null;
 }
 
+// Browser-based "today"
 const getTodayDateString = () => new Date().toISOString().slice(0, 10);
+
+// 👉 Single source of truth: take first 10 chars of whatever backend sends
+const getDateKey = (value?: string) => {
+  if (!value) return "";
+  return value.slice(0, 10); // "YYYY-MM-DD"
+};
 
 const page: React.FC = () => {
   const todayDateString = getTodayDateString();
@@ -52,9 +59,9 @@ const page: React.FC = () => {
     "ALL"
   );
 
-  // ⬇️ IMPORTANT: no date filter at start
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  // Default: show "today only"
+  const [fromDate, setFromDate] = useState<string>(todayDateString);
+  const [toDate, setToDate] = useState<string>(todayDateString);
 
   // ----- LOAD DATA FROM /api/attendance/all -----
   const loadAttendance = useCallback(async () => {
@@ -66,7 +73,11 @@ const page: React.FC = () => {
       });
       const json = await res.json();
 
-      console.log("attendance/all records:", json.records?.length, json.records?.[0]);
+      console.log(
+        "attendance/all response:",
+        { count: json.records?.length },
+        json.records?.slice(0, 5)
+      );
 
       if (!res.ok) {
         throw new Error(json.error || "Failed to load attendance records.");
@@ -74,7 +85,8 @@ const page: React.FC = () => {
 
       const records: AttendanceRecord[] = (json.records || []).sort(
         (a: AttendanceRecord, b: AttendanceRecord) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
+          // sort by date key (first 10 chars)
+          getDateKey(b.date).localeCompare(getDateKey(a.date))
       );
 
       setAttendance(records);
@@ -93,10 +105,8 @@ const page: React.FC = () => {
 
   // ----- HELPERS -----
   const formatDate = (value?: string) => {
-    if (!value) return "-";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "-";
-    return d.toISOString().slice(0, 10); // yyyy-mm-dd
+    const key = getDateKey(value);
+    return key || "-";
   };
 
   const formatTime = (value?: string | null) => {
@@ -198,9 +208,14 @@ const page: React.FC = () => {
     return "bg-gray-100 text-gray-800";
   };
 
+  const normalizeMode = (mode?: AttendanceMode): AttendanceMode => {
+    // Hikvision records may not set mode: treat as IN_OFFICE
+    return mode || "IN_OFFICE";
+  };
+
   const getModeLabel = (mode?: AttendanceMode) => {
-    if (!mode) return "-";
-    switch (mode) {
+    const m = normalizeMode(mode);
+    switch (m) {
       case "IN_OFFICE":
         return "In Office";
       case "WORK_FROM_HOME":
@@ -210,12 +225,13 @@ const page: React.FC = () => {
       case "REGULARIZATION":
         return "Regularization";
       default:
-        return mode;
+        return m;
     }
   };
 
   const getModeBadgeClass = (mode?: AttendanceMode) => {
-    switch (mode) {
+    const m = normalizeMode(mode);
+    switch (m) {
       case "IN_OFFICE":
         return "bg-indigo-100 text-indigo-800";
       case "WORK_FROM_HOME":
@@ -257,12 +273,13 @@ const page: React.FC = () => {
       }
 
       // Mode filter
-      if (selectedMode !== "ALL" && r.mode !== selectedMode) {
-        return false;
+      if (selectedMode !== "ALL") {
+        const normalized = normalizeMode(r.mode);
+        if (normalized !== selectedMode) return false;
       }
 
-      // Date filter (only if selected)
-      const recordDateStr = formatDate(r.date); // yyyy-mm-dd
+      // Date filter
+      const recordDateStr = getDateKey(r.date); // yyyy-mm-dd
 
       if (fromDate && recordDateStr < fromDate) return false;
       if (toDate && recordDateStr > toDate) return false;
@@ -274,8 +291,8 @@ const page: React.FC = () => {
   const handleClearFilters = () => {
     setSelectedEmployeeId("ALL");
     setSelectedMode("ALL");
-    setFromDate("");
-    setToDate("");
+    setFromDate(todayDateString);
+    setToDate(todayDateString);
   };
 
   // ----- STATS -----
@@ -400,7 +417,7 @@ const page: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Employee filter */}
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-black mb-2">
+                <label className="text-sm font-semibold text_black mb-2">
                   Employee
                 </label>
                 <select
@@ -519,7 +536,7 @@ const page: React.FC = () => {
             {loadingAttendance && (
               <div className="flex flex-col items-center justify-center py-20 text-black">
                 <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600" />
-                <p className="text-sm font-medium text-black">
+                <p className="text-sm font-medium text_black">
                   Loading attendance records...
                 </p>
               </div>
@@ -574,6 +591,8 @@ const page: React.FC = () => {
                       <tbody className="bg-white divide-y divide-slate-100">
                         {filteredAttendance.map((record) => {
                           const statusLabel = getStatusLabel(record);
+                          const displayName =
+                            record.employeeName || record.employeeId || "-";
 
                           return (
                             <tr
@@ -582,13 +601,11 @@ const page: React.FC = () => {
                             >
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
-                                    {(record.employeeName || "?")
-                                      .charAt(0)
-                                      .toUpperCase()}
+                                  <div className="w-8 h-8 bg-gradient_to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
+                                    {displayName.charAt(0).toUpperCase()}
                                   </div>
                                   <span className="text-sm font-medium text-black">
-                                    {record.employeeName || "-"}
+                                    {displayName}
                                   </span>
                                 </div>
                               </td>
