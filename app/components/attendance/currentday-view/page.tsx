@@ -50,10 +50,6 @@ interface AttendanceRecord {
   punchOutLongitude?: number | null;
 }
 
-// 👉 Helper: browser "today" and normalized date key
-const getTodayDateString = () => new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-const getDateKey = (value?: string) => (value ? value.slice(0, 10) : "");
-
 const AttendanceRecords: React.FC = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
@@ -77,19 +73,12 @@ const AttendanceRecords: React.FC = () => {
 
         const records: AttendanceRecord[] = json.records || [];
 
-        // Sort by date (latest first)
         records.sort(
           (a: AttendanceRecord, b: AttendanceRecord) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
-        // 🔥 Filter to *today's* records only
-        const todayKey = getTodayDateString();
-        const todaysRecords = records.filter(
-          (r) => getDateKey(r.date) === todayKey
-        );
-
-        setAttendance(todaysRecords);
+        setAttendance(records);
         setAttendanceError(null);
       } catch (error) {
         console.error(error);
@@ -102,46 +91,22 @@ const AttendanceRecords: React.FC = () => {
     loadAttendance();
   }, []);
 
-  // --- MODIFIED FUNCTION: formatDate (DD-MM-YYYY) ---
   const formatDate = (value?: string) => {
     if (!value) return "-";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) {
-      // Handle the case where the value is a plain YYYY-MM-DD string
-      if (value.length === 10 && !value.includes("T")) {
-        // Simple manual split/join for reliable DD-MM-YYYY
-        const parts = value.split("-");
-        if (parts.length === 3) {
-          return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-        return value; // Fallback if format is not YYYY-MM-DD
-      }
-      return "-";
+    if (value.length === 10 && !value.includes("T")) {
+      return value;
     }
-
-    // Use toLocaleDateString with options for DD-MM-YYYY format
-    return d
-      .toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "-"); // Replace default slashes with hyphens
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toISOString().slice(0, 10);
   };
-  // ----------------------------------------------------
 
-  // --- MODIFIED FUNCTION: formatTime (12-Hour Clock) ---
   const formatTime = (value?: string | null) => {
     if (!value) return "-";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
-    return d.toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true, // 12-hour format with AM/PM
-    });
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
-  // ----------------------------------------------------
 
   const getDuration = (record: AttendanceRecord) => {
     if (!record.punchInTime || !record.punchOutTime) return "-";

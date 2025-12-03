@@ -1,4 +1,3 @@
-// app/api/attendance/all/route.ts
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Attendance from "@/models/Attendance";
@@ -9,36 +8,42 @@ import DigestFetch from "digest-fetch";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ================= HIKVISION CONFIG =================
-//
-// .env.local:
-// HIKVISION_IP=192.168.1.113
-// HIKVISION_USERNAME=admin
-// HIKVISION_PASSWORD=Lemonpay@321
-// HIKVISION_START_TIME=2025-11-03T00:00:00+05:30
-// ====================================================
 const HIK_CONFIG = {
   ip: process.env.HIKVISION_IP || "192.168.1.113",
   username: process.env.HIKVISION_USERNAME || "admin",
   password: process.env.HIKVISION_PASSWORD || "password",
-  startTime:
-    process.env.HIKVISION_START_TIME || "2025-11-03T00:00:00+05:30",
 };
 
-// Helper: current time in IST without ms, with +05:30
-function getCurrentTimeIST(): string {
+function getISTNow(): Date {
   const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours
-  const istDate = new Date(now.getTime() + istOffset);
-  return istDate.toISOString().replace("Z", "").slice(0, 19) + "+05:30";
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  return new Date(now.getTime() + istOffsetMs);
 }
 
-// Extract YYYY-MM-DD from any date string
+function getCurrentTimeIST(): string {
+  const istDate = getISTNow();
+  const y = istDate.getUTCFullYear();
+  const m = String(istDate.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(istDate.getUTCDate()).padStart(2, "0");
+  const hh = String(istDate.getUTCHours()).padStart(2, "0");
+  const mm = String(istDate.getUTCMinutes()).padStart(2, "0");
+  const ss = String(istDate.getUTCSeconds()).padStart(2, "0");
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}+05:30`;
+}
+
+function getTodayStartIST(): string {
+  const istDate = getISTNow();
+  const y = istDate.getUTCFullYear();
+  const m = String(istDate.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(istDate.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}T00:00:00+05:30`;
+}
+
 function extractDateKey(value: string | Date | undefined | null): string {
   if (!value) return "";
   if (typeof value === "string") {
     if (value.length === 10 && !value.includes("T")) {
-      return value; // already YYYY-MM-DD
+      return value;
     }
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "";
@@ -49,7 +54,6 @@ function extractDateKey(value: string | Date | undefined | null): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ---------- Types ----------
 interface HikvisionLog {
   time: string;
   minor: number;
@@ -79,7 +83,6 @@ interface AttendanceRecordOut {
   punchOutLongitude?: number | null;
 }
 
-// ---------- HIKVISION FETCH ----------
 async function fetchHikvisionLogs(): Promise<HikvisionLog[]> {
   console.log("HIKVISION CONFIG", {
     ip: HIK_CONFIG.ip,
@@ -91,6 +94,7 @@ async function fetchHikvisionLogs(): Promise<HikvisionLog[]> {
   const url = `http://${HIK_CONFIG.ip}/ISAPI/AccessControl/AcsEvent?format=json`;
 
   const endTimeSafe = getCurrentTimeIST();
+  const startTimeToday = getTodayStartIST();
 
   let allLogs: HikvisionLog[] = [];
   let searchPosition = 0;
@@ -104,7 +108,7 @@ async function fetchHikvisionLogs(): Promise<HikvisionLog[]> {
         maxResults: 30,
         major: 0,
         minor: 0,
-        startTime: HIK_CONFIG.startTime,
+        startTime: startTimeToday,
         endTime: endTimeSafe,
       },
     };
@@ -116,10 +120,11 @@ async function fetchHikvisionLogs(): Promise<HikvisionLog[]> {
     });
 
     if (!response.ok) {
+      const text = await response.text().catch(() => "");
       console.error(
-        `Hikvision Error: ${response.status} - ${response.statusText}`
+        `Hikvision Error: ${response.status} - ${response.statusText}. Body: ${text}`
       );
-      break;
+      return allLogs;
     }
 
     const data = await response.json();
@@ -153,14 +158,13 @@ async function fetchHikvisionLogs(): Promise<HikvisionLog[]> {
 
   console.log("Hikvision raw logs count:", allLogs.length);
 
-  return allLogs.reverse(); // newest first
+  return allLogs.reverse();
 }
 
-// Convert Hikvision raw logs -> daily IN/OFFICE records for TODAY only
 function buildHikvisionAttendanceForToday(
   logs: HikvisionLog[]
 ): AttendanceRecordOut[] {
-  const todayIST = getCurrentTimeIST().slice(0, 10); // "YYYY-MM-DD"
+  const todayIST = getCurrentTimeIST().slice(0, 10);
 
   const groups = new Map<
     string,
@@ -174,8 +178,8 @@ function buildHikvisionAttendanceForToday(
   >();
 
   for (const log of logs) {
-    const dateKey = log.time.slice(0, 10); // assumes device time has same pattern
-    if (dateKey !== todayIST) continue; // only today
+    const dateKey = log.time.slice(0, 10);
+    if (dateKey !== todayIST) continue;
 
     const empId =
       log.employeeNoString ||
@@ -184,8 +188,7 @@ function buildHikvisionAttendanceForToday(
       log.name ||
       "UNKNOWN";
 
-    const key = empId; // date is same (today) for all kept logs
-
+    const key = empId;
     const existing = groups.get(key);
 
     if (!existing) {
@@ -246,14 +249,12 @@ function buildHikvisionAttendanceForToday(
   return records;
 }
 
-// ---------- MAIN GET HANDLER: DB (ALL DATES) + HIKVISION (TODAY) ----------
 export async function GET() {
   try {
     await connectDB();
 
     const todayIST = getCurrentTimeIST().slice(0, 10);
 
-    // 1) MongoDB attendance – ALL records
     const dbRecords = await Attendance.find({})
       .sort({ date: -1, createdAt: -1 })
       .lean();
@@ -276,13 +277,15 @@ export async function GET() {
       }
     });
 
-    // 🔹 No "today only" filter here – we keep ALL DB records
-    const dbRecordsWithNames: AttendanceRecordOut[] = dbRecords.map(
+    const dbRecordsToday = dbRecords.filter((r: any) => {
+      return extractDateKey(r.date) === todayIST;
+    });
+
+    const dbRecordsWithNames: AttendanceRecordOut[] = dbRecordsToday.map(
       (r: any) => ({
         _id: r._id.toString(),
         employeeId: r.employeeId,
         employeeName: nameMap.get(r.employeeId) || null,
-        // normalize date to "YYYY-MM-DD"
         date: extractDateKey(r.date),
         punchInTime: r.punchInTime || null,
         punchOutTime: r.punchOutTime || null,
@@ -294,9 +297,8 @@ export async function GET() {
       })
     );
 
-    console.log("DB records count:", dbRecordsWithNames.length);
+    console.log("DB TODAY records count:", dbRecordsWithNames.length);
 
-    // 2) Hikvision attendance (device) – TODAY
     let hikvisionRecords: AttendanceRecordOut[] = [];
     try {
       const logs = await fetchHikvisionLogs();
@@ -307,7 +309,6 @@ export async function GET() {
 
     console.log("Hikvision TODAY records count:", hikvisionRecords.length);
 
-    // 3) Merge DB (all dates) + Hikvision (today)
     const allRecords: AttendanceRecordOut[] = [
       ...dbRecordsWithNames,
       ...hikvisionRecords,
@@ -320,6 +321,9 @@ export async function GET() {
       return new Date(a.date).getTime() < new Date(b.date).getTime() ? 1 : -1;
     });
 
+    console.log("Final allRecords length:", allRecords.length);
+    console.log("Sample record:", allRecords[0]);
+
     return NextResponse.json({ records: allRecords }, { status: 200 });
   } catch (err: any) {
     console.error("Error fetching attendance:", err);
@@ -329,3 +333,4 @@ export async function GET() {
     );
   }
 }
+      
