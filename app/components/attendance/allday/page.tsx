@@ -41,6 +41,13 @@ interface AttendanceRecord {
 // Browser-based "today"
 const getTodayDateString = () => new Date().toISOString().slice(0, 10);
 
+// NEW HELPER: Calculates yesterday's date string (YYYY-MM-DD)
+const getYesterdayDateString = () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().slice(0, 10);
+};
+
 // 👉 Single source of truth: take first 10 chars of whatever backend sends
 const getDateKey = (value?: string) => {
   if (!value) return "";
@@ -49,6 +56,7 @@ const getDateKey = (value?: string) => {
 
 const page: React.FC = () => {
   const todayDateString = getTodayDateString();
+  const yesterdayDateString = getYesterdayDateString(); // NEW
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
@@ -59,8 +67,9 @@ const page: React.FC = () => {
     "ALL"
   );
 
-  // Default: show "today only"
-  const [fromDate, setFromDate] = useState<string>(todayDateString);
+  // UPDATED: Default fromDate to YESTERDAY for a two-day view (Yesterday & Today)
+  const [fromDate, setFromDate] = useState<string>(yesterdayDateString);
+  // Default toDate remains TODAY
   const [toDate, setToDate] = useState<string>(todayDateString);
 
   // ----- LOAD DATA FROM /api/attendance/all -----
@@ -157,11 +166,16 @@ const page: React.FC = () => {
     let isGrace = false;
     let isEarlyLogout = false;
 
+    // Assuming office time starts at 9:30 AM (9:30:00)
+    // Late is after 9:35 AM (9:35:00)
+    // Grace is between 9:30 AM and 9:35 AM (exclusive of 9:35)
+
     if (punchInTime) {
       const d = new Date(punchInTime);
       const h = d.getHours();
       const m = d.getMinutes();
 
+      // Check against local time interpretation of punchInTime
       const after930 = h > 9 || (h === 9 && m >= 30);
       const after935 = h > 9 || (h === 9 && m > 35);
 
@@ -172,6 +186,7 @@ const page: React.FC = () => {
       }
     }
 
+    // Assuming office closing time is 6:30 PM (18:30:00)
     if (punchOutTime) {
       const d = new Date(punchOutTime);
       const h = d.getHours();
@@ -299,11 +314,12 @@ const page: React.FC = () => {
     });
   }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate]);
 
+  // UPDATED: Now clears to a 2-day range (Yesterday to Today)
   const handleClearFilters = () => {
     setSelectedEmployeeId("ALL");
     setSelectedMode("ALL");
-    setFromDate(todayDateString);
-    setToDate(todayDateString);
+    setFromDate(yesterdayDateString); // Set to yesterday
+    setToDate(todayDateString);       // Set to today
   };
 
   // ----- STATS -----
@@ -313,7 +329,7 @@ const page: React.FC = () => {
       getStatusLabel(r).includes("On Time Login")
     ).length;
     const late = filteredAttendance.filter((r) =>
-      getStatusLabel(r).includes("Late")
+      getStatusLabel(r).includes("Late") || getStatusLabel(r).includes("Grace")
     ).length;
     const absent = filteredAttendance.filter((r) =>
       getStatusLabel(r).includes("Absent")
@@ -386,7 +402,7 @@ const page: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-black mb-1">
-                  Late/Early
+                  Late/Grace
                 </p>
                 <p className="text-2xl font-bold text-yellow-600">
                   {stats.late}
@@ -517,7 +533,7 @@ const page: React.FC = () => {
                 onClick={handleClearFilters}
                 className="px-5 py-2.5 rounded-lg border border-slate-300 text-black text-sm font-medium hover:bg-slate-50 transition-colors"
               >
-                Clear Filters (Today)
+                Clear Filters (Yesterday to Today)
               </button>
               <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm">
                 <Download className="w-4 h-4" />

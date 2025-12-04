@@ -6,12 +6,7 @@ import React, {
   useCallback,
   ChangeEvent,
 } from "react";
-import {
-  AlertCircle,
-  LayoutGrid,
-  ListTodo,
-  BarChart2,
-} from "lucide-react";
+import { AlertCircle, LayoutGrid, ListTodo, BarChart2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -53,7 +48,7 @@ const TasksPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   // ⭐ NEW STATE: Tracks if the minimum 2-second display time has passed
-  const [minLoadTimePassed, setMinLoadTimePassed] = useState(false); 
+  const [minLoadTimePassed, setMinLoadTimePassed] = useState(false);
   const [error, setError] = useState("");
   const [viewType, setViewType] = useState<ViewType>("card");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -183,29 +178,27 @@ const TasksPage: React.FC = () => {
         setXlsxLoaded(true);
       })
       .catch(() => {
-        toast.warn("Excel library failed to load. Download functionality may be limited.");
+        toast.warn(
+          "Excel library failed to load. Download functionality may be limited."
+        );
       });
 
     const init = async () => {
-      // Fetch data
       await Promise.all([fetchTasks(), fetchEmployees()]);
       await triggerDueDateNotifications();
-      // Data fetching complete
-      setLoading(false); 
+      setLoading(false);
     };
 
-    // 1. Start timer for minimum load time (2 seconds)
     const timer = setTimeout(() => {
-        setMinLoadTimePassed(true);
+      setMinLoadTimePassed(true);
     }, 2000);
 
-    // 2. Start data fetching
     init();
 
-    return () => clearTimeout(timer); // Cleanup timer
+    return () => clearTimeout(timer);
   }, []);
 
-  // 🔹 Only Tech & IT Admin employees (for assignee dropdowns)
+  // 🔹 Only Tech & IT Admin employees (for assignee dropdowns / lists)
   const techEmployees = useMemo(
     () =>
       employees.filter((e) => {
@@ -219,7 +212,6 @@ const TasksPage: React.FC = () => {
   const visibleTasks = useMemo(() => {
     return tasks.filter((task) => {
       const dept = (task.department || "").toLowerCase();
-      // match "tech", "tech team", "it admin", "it admin team", etc.
       return dept.includes("tech") || dept.includes("it admin");
     });
   }, [tasks]);
@@ -280,7 +272,7 @@ const TasksPage: React.FC = () => {
     setTimeout(() => {
       setSelectedTaskForModal(null);
       cancelEdit();
-    }, 2000); 
+    }, 2000);
   };
 
   const handleEdit = (task: Task) => {
@@ -298,23 +290,43 @@ const TasksPage: React.FC = () => {
     toast.info("Edit cancelled.");
   };
 
+  // 🔥 UPDATED: handleDraftChange now supports checkbox multi-select for assigneeNames
   const handleDraftChange = (
     e: ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
     const { name, value, type } = e.target;
-    let finalValue: string | string[] | number = value;
+
+    // Multi-select via checkbox list in TaskModal
+    if (name === "assigneeNames" && type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+
+      setDraftTask((prev) => {
+        const current = (prev.assigneeNames || []) as string[];
+
+        if (checked) {
+          if (current.includes(value)) return prev;
+          return {
+            ...prev,
+            assigneeNames: [...current, value],
+          };
+        } else {
+          return {
+            ...prev,
+            assigneeNames: current.filter((n) => n !== value),
+          };
+        }
+      });
+
+      return;
+    }
+
+    // Normal fields
+    let finalValue: string | number = value;
 
     if (name === "completion" || name === "taskStoryPoints") {
-      finalValue = Number(value);
-    } else if (name === "assigneeNames" && type === "select-multiple") {
-      finalValue = Array.from(
-        (e.target as HTMLSelectElement).selectedOptions,
-        (option) => option.value
-      );
-    } else if (name === "assigneeNames") {
-      finalValue = [value];
+      finalValue = value === "" ? 0 : Number(value);
     }
 
     setDraftTask((prev) => ({
@@ -353,8 +365,8 @@ const TasksPage: React.FC = () => {
 
   const addSubtask: SubtaskPathHandler = (path) => {
     if (!currentProjectPrefix) {
-        toast.error("Cannot add subtask: Project ID is missing.");
-        return;
+      toast.error("Cannot add subtask: Project ID is missing.");
+      return;
     }
     if (path.length === 0) {
       setSubtasks((prevSubs) => [
@@ -501,7 +513,12 @@ const TasksPage: React.FC = () => {
   };
 
   const handleStartSprint = async (taskId: string) => {
-    if (!window.confirm("Are you sure you want to start the sprint (set status to 'In Progress')?")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to start the sprint (set status to 'In Progress')?"
+      )
+    )
+      return;
 
     try {
       const url = getApiUrl(`/api/tasks/${taskId}`);
@@ -524,7 +541,12 @@ const TasksPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to permanently delete this task?")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete this task?"
+      )
+    )
+      return;
 
     try {
       const url = getApiUrl(`/api/tasks/${id}`);
@@ -542,19 +564,16 @@ const TasksPage: React.FC = () => {
     }
   };
 
-  // Only render the tasks page once data is loaded AND the minimum load time has passed
   if (loading || !minLoadTimePassed)
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
         <div className="text-center">
-          {/* // 🛑 START: Custom GIF Loader (Replace the src with your actual GIF path) */}
           <img
-            src="/load.gif" 
+            src="/load.gif"
             alt="Loading..."
-            className="w-100 h-70 mx-auto mb-4" 
-            style={{ objectFit: 'contain' }}
+            className="w-100 h-70 mx-auto mb-4"
+            style={{ objectFit: "contain" }}
           />
-          {/* // 🛑 END: Custom GIF Loader */}
           <p className="text-slate-700 font-medium">Loading tasks...</p>
         </div>
       </div>
@@ -577,28 +596,27 @@ const TasksPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-white">
-      {/* 🟢 Toast Container added */}
-      <ToastContainer 
-        position="bottom-right" 
-        autoClose={3000} 
-        hideProgressBar={false} 
-        newestOnTop={false} 
-        closeOnClick 
-        rtl={false} 
-        pauseOnFocusLoss 
-        draggable 
-        pauseOnHover 
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
       />
 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
-        {/* ---------- NAVBAR WITH VIEW SELECTOR (Green Active) ---------- */}
+        {/* NAVBAR WITH VIEW SELECTOR */}
         <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
           <button
             onClick={() => setViewType("card")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "card"
-                ? "bg-green-600 text-white shadow-lg" 
-                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" 
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}
             title="Card View"
           >
@@ -609,8 +627,8 @@ const TasksPage: React.FC = () => {
             onClick={() => setViewType("board")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "board"
-                ? "bg-green-600 text-white shadow-lg" 
-                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" 
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}
             title="Board View"
           >
@@ -621,8 +639,8 @@ const TasksPage: React.FC = () => {
             onClick={() => setViewType("chart")}
             className={`p-3 rounded-xl transition-all duration-200 ${
               viewType === "chart"
-                ? "bg-green-600 text-white shadow-lg" 
-                : "text-gray-500 hover:bg-gray-100 hover:text-green-600" 
+                ? "bg-green-600 text-white shadow-lg"
+                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}
             title="Chart View"
           >
@@ -703,7 +721,6 @@ const TasksPage: React.FC = () => {
                 cancelEdit={cancelEdit}
                 handleDraftChange={handleDraftChange}
                 handleSubtaskChange={handleSubtaskChange}
-                // For root-level add:
                 addSubtask={() => addSubtask([])}
                 removeSubtask={removeSubtask}
                 onToggleEdit={handleToggleEdit}
