@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Nunito_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/navbar/page";
+import ConditionalNavbar from "./components/ConditionalNavbar";
 
 // Primary font
 const nunitoSans = Nunito_Sans({
@@ -33,7 +34,7 @@ export default function RootLayout({
       <body
         className={`${nunitoSans.variable} ${geistMono.variable} font-sans antialiased min-h-screen bg-white text-gray-900`}
       >
-        <Navbar />
+        <ConditionalNavbar />
         <main className="relative z-10">{children}</main>
       </body>
     </html>

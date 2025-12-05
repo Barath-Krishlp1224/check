@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { Eye, EyeOff, Mail, Lock, Building2 } from "lucide-react";
+
+type ToastType = "success" | "error";
+
+interface Toast {
+  id: number;
+  message: string;
+  type: ToastType;
+}
 
 type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 type Team =
@@ -15,29 +22,109 @@ type Team =
   | "Accounts"
   | "HR"
   | "Admin & Operations"
-  | "TL Accountant"; // UPDATED: Changed "Senior Accountant" to "TL Accountant"
+  | "TL Accountant";
 
-export default function LoginPage() {
-  const [form, setForm] = useState({ empId: "", password: "" });
+// --- Depth Field Animation Component ---
+const DepthFieldStarscape = () => {
+  const numStars = 50;
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* 1. Deep Background Layer */}
+      {[...Array(numStars)].map((_, i) => (
+        <div
+          key={`star-bg-${i}`}
+          className="absolute w-[1px] h-[1px] bg-cyan-200 rounded-full opacity-30 animate-star-drift-slow"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 5}s`,
+            animationDuration: `${12 + Math.random() * 5}s`,
+            filter: "blur(0.2px)",
+          }}
+        />
+      ))}
+
+      {/* 2. Middle Layer */}
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={`star-mid-${i}`}
+          className="absolute w-[2px] h-[2px] bg-blue-300 rounded-full opacity-40 animate-star-drift-medium"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 3}s`,
+            animationDuration: `${8 + Math.random() * 3}s`,
+            filter: "blur(0.5px)",
+          }}
+        />
+      ))}
+
+      {/* 3. Foreground Layer */}
+      {[...Array(10)].map((_, i) => (
+        <div
+          key={`star-fg-${i}`}
+          className="absolute w-1 h-1 bg-white rounded-full opacity-50 animate-star-drift-fast"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 2}s`,
+            animationDuration: `${4 + Math.random() * 2}s`,
+            boxShadow: "0 0 4px rgba(255, 255, 255, 0.6)",
+          }}
+        />
+      ))}
+
+      {/* 4. Central Nebula Glow */}
+      <div className="absolute w-[40rem] h-[40rem] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[100px] opacity-10 bg-indigo-500 animate-nebula-pulse" />
+    </div>
+  );
+};
+
+// --- Main App Component ---
+
+export default function App() {
+  const [form, setForm] = useState<{ empId: string; password: string }>({
+    empId: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [typingComplete, setTypingComplete] = useState(false);
   const router = useRouter();
 
-  const showValidationError = (message: string) => {
-    toast.error(message, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-    });
+  // Typing text effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTypingComplete(true);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Toast helpers
+  const showToast = (message: string, type: ToastType) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const showValidationError = (message: string) => {
+    showToast(message, "error");
+  };
 
-    if (!form.empId) return showValidationError("Employee ID or Email is required.");
-    if (!form.password) return showValidationError("Password is required.");
+  // Auth submit
+  const handleSubmit = async () => {
+    if (!form.empId) {
+      showValidationError("Employee ID or Email is required.");
+      return;
+    }
+
+    if (!form.password) {
+      showValidationError("Password is required.");
+      return;
+    }
 
     try {
       const res = await fetch("/api/login", {
@@ -52,46 +139,76 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        const errorMessage = data.error || "Login failed. Please check your credentials.";
-        return toast.error(errorMessage);
+        const errorMessage =
+          data?.error || "Login failed. Please check your credentials.";
+        showToast(errorMessage, "error");
+        return;
       }
 
-      toast.success(data.message || "Login successful!", {
-        onClose: () => {
-          if (!data.user?.role || !data.user?.empId) {
-            return toast.error("Login successful but required user data is missing.");
-          }
+      showToast(data.message || "Login successful!", "success");
 
-          const userRole = data.user.role as Role;
-          const userTeam = data.user.team as Team | undefined;
+      setTimeout(() => {
+        if (!data.user?.role || !data.user?.empId) {
+          showToast(
+            "Login successful but required user data is missing.",
+            "error"
+          );
+          return;
+        }
 
+        const userRole = data.user.role as Role;
+        const userTeam = data.user.team as Team | undefined;
+
+        if (typeof window !== "undefined") {
           localStorage.setItem("userRole", userRole);
           localStorage.setItem("userEmpId", data.user.empId);
           if (data.user.name) localStorage.setItem("userName", data.user.name);
           if (userTeam) localStorage.setItem("userTeam", userTeam);
+        }
 
-          if (userRole === "Admin") router.push("/components/admin");
-          else if (userRole === "Manager") router.push("/components/manager");
-          else if (userRole === "TeamLead") router.push("/components/team-lead");
-          else {
-            switch (userTeam) {
-              case "HR": router.push("/components/hr"); break;
-              case "Accounts": router.push("/components/accounts"); break;
-              case "TL Accountant": router.push("/components/tl-accountant"); break; // UPDATED: Directing TL Accountant to accounts dashboard (or create new path)
-              case "Admin & Operations": router.push("/components/admin-operations"); break;
-              case "Tech": router.push("/components/view-task"); break;
-              case "IT Admin": router.push("/components/it-admin"); break;
-              case "Founders": router.push("/components/founders"); break;
-              case "Manager": router.push("/components/manager"); break;
-              case "TL-Reporting Manager": router.push("/components/team-lead"); break;
-              default: router.push("/components/home");
-            }
+        if (userRole === "Admin") {
+          router.push("/components/admin");
+        } else if (userRole === "Manager") {
+          router.push("/components/manager");
+        } else if (userRole === "TeamLead") {
+          router.push("/components/team-lead");
+        } else {
+          switch (userTeam) {
+            case "HR":
+              router.push("/components/hr");
+              break;
+            case "Accounts":
+              router.push("/components/accounts");
+              break;
+            case "TL Accountant":
+              router.push("/components/tl-accountant");
+              break;
+            case "Admin & Operations":
+              router.push("/components/admin-operations");
+              break;
+            case "Tech":
+              router.push("/components/view-task");
+              break;
+            case "IT Admin":
+              router.push("/components/it-admin");
+              break;
+            case "Founders":
+              router.push("/components/founders");
+              break;
+            case "Manager":
+              router.push("/components/manager");
+              break;
+            case "TL-Reporting Manager":
+              router.push("/components/team-lead");
+              break;
+            default:
+              router.push("/components/home");
           }
-        },
-        autoClose: 1000,
-      });
-    } catch {
-      toast.error("Network error. Try again later.");
+        }
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Try again later.", "error");
     }
   };
 
@@ -99,112 +216,307 @@ export default function LoginPage() {
     router.push("/components/forgot-password");
   };
 
-  return (
-    <div className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-white">
-      <ToastContainer position="top-right" autoClose={5000} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
 
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div
-          className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"
-          style={{ animationDelay: "2s" }}
-        ></div>
-        <div
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"
-          style={{ animationDelay: "4s" }}
-        ></div>
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex">
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap");
+
+        @keyframes star-drift-slow {
+          0% {
+            transform: translate(0, 0);
+          }
+          100% {
+            transform: translate(-20px, -10px);
+          }
+        }
+        @keyframes star-drift-medium {
+          0% {
+            transform: translate(0, 0);
+          }
+          100% {
+            transform: translate(30px, 20px);
+          }
+        }
+        @keyframes star-drift-fast {
+          0% {
+            transform: translate(0, 0);
+          }
+          100% {
+            transform: translate(-50px, 30px);
+          }
+        }
+        @keyframes nebula-pulse {
+          0%,
+          100% {
+            opacity: 0.1;
+            transform: scale(1) translate(-50%, -50%);
+          }
+          50% {
+            opacity: 0.2;
+            transform: scale(1.05) translate(-50%, -50%);
+          }
+        }
+        @keyframes slideUp {
+          0% {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideInRight {
+          0% {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes typing {
+          from {
+            width: 0;
+          }
+          to {
+            width: 100%;
+          }
+        }
+        @keyframes blink {
+          50% {
+            border-color: transparent;
+          }
+        }
+
+        .animate-star-drift-slow {
+          animation: star-drift-slow var(--animation-duration, 15s)
+            ease-in-out infinite alternate;
+        }
+        .animate-star-drift-medium {
+          animation: star-drift-medium var(--animation-duration, 10s)
+            ease-in-out infinite alternate;
+        }
+        .animate-star-drift-fast {
+          animation: star-drift-fast var(--animation-duration, 6s)
+            ease-in-out infinite alternate;
+        }
+        .animate-nebula-pulse {
+          animation: nebula-pulse 10s ease-in-out infinite alternate;
+        }
+        .animate-slide-up {
+          animation: slideUp 0.8s ease-out forwards;
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s ease-out forwards;
+        }
+
+        .typing-text {
+          display: inline-block;
+          overflow: hidden;
+          white-space: nowrap;
+          border-right: 3px solid rgba(96, 165, 250, 0.7);
+          animation: typing 3s steps(20, end) 0.5s forwards,
+            blink 0.75s step-end infinite;
+          width: 0;
+        }
+        .typing-text-complete {
+          border-right: none;
+          animation: none;
+          width: 100%;
+        }
+
+        .font-poppins {
+          font-family: "Poppins", sans-serif;
+        }
+        .font-inter {
+          font-family: "Inter", sans-serif;
+        }
+        .font-playfair {
+          font-family: "Playfair Display", serif;
+        }
+        .font-space {
+          font-family: "Space Grotesk", sans-serif;
+        }
+        .font-montserrat {
+          font-family: "Montserrat", sans-serif;
+        }
+      `}</style>
+
+      {/* Toasts */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`animate-slide-in-right px-6 py-4 rounded-lg shadow-xl font-inter text-sm ${
+              toast.type === "success"
+                ? "bg-green-500 text-white"
+                : "bg-red-500 text-white"
+            }`}
+          >
+            {toast.message}
+          </div>
+        ))}
       </div>
 
-      <div className="relative bg-white/95 backdrop-blur-lg rounded-3xl p-8 sm:p-12 w-full max-w-md border border-white/20 shadow-[0_0_30px_8px_rgba(44,62,80,0.45)]">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-extrabold text-[#2c3e50]">Welcome Back...</h2>
-          <p className="mt-5 text-[#2c3e50]">Sign in to access your dashboard</p>
-        </div>
+      {/* LEFT PANEL with video background */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden rounded-br-full shadow-2xl">
+        {/* Background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full rounded-br-full object-cover"
+        >
+          {/* Put your video file in /public/videos/login-bg.mp4 or change this path */}
+          <source src="/2 copy.mp4" type="video/mp4" />
+        </video>
 
-        <div className="space-y-6">
-          <div className="group">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Enter Employee ID / Email
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg
-                  className="w-5 h-5 text-gray-400 transition-colors"
-                  fill="none"
-                  stroke="#2c3e50"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="EMP001 or email@company.com"
-                value={form.empId}
-                onChange={(e) => setForm({ ...form, empId: e.target.value })}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
-                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-[#2c3e50] rounded-xl 
-                text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#2c3e50] 
-                focus:ring-2 focus:ring-[#2c3e50] transition-all duration-300"
+        {/* Gradient overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-blue-900/70 to-indigo-900/85 backdrop-blur-sm" />
+
+        {/* Starscape on top of video */}
+        <DepthFieldStarscape />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col h-full w-full p-12">
+          <div className="flex-grow flex flex-col justify-center items-start">
+            {/* Logo */}
+            <div className="flex-shrink-0 mb-12 animate-slide-up">
+              <img
+                src="/logo hd.png"
+                alt="Company logo"
+                className="w-100 h-auto"
               />
+            </div>
+
+            {/* Welcome text */}
+            <div className="animate-slide-up" style={{ animationDelay: "0.2s" }}>
+              <h2 className="text-5xl font-bold text-white mb-6 leading-tight font-montserrat">
+                Welcome to Your
+                <br />
+                <span
+                  className={`text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 font-space ${
+                    typingComplete ? "typing-text-complete" : "typing-text"
+                  }`}
+                >
+                  Lemonpay Workspace...
+                </span>
+              </h2>
+              <p className="text-white text-lg leading-relaxed mb-12 max-w-md font-inter opacity-90">
+                Experience the next generation of seamless and secure enterprise
+                operations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL: Login */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile icon */}
+          <div className="lg:hidden flex items-center justify-center mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-slate-900 to-blue-900 rounded-lg flex items-center justify-center">
+              <Building2 className="w-7 h-7 text-white" />
             </div>
           </div>
 
-          <div className="group">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Enter Password
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg
-                  className="w-5 h-5 text-gray-400 transition-colors"
-                  fill="none"
-                  stroke="#2c3e50"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 font-poppins">
+              Sign In
+            </h1>
+            <p className="text-gray-600 font-inter">
+              Enter your credentials to access your account
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            {/* Employee ID / Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 font-montserrat">
+                Employee ID / Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="EMP001 or email@company.com"
+                  value={form.empId}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, empId: e.target.value }))
+                  }
+                  onKeyDown={handleKeyDown}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter"
+                />
               </div>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
-                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-[#2c3e50] rounded-xl
-                text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#2c3e50] 
-                focus:ring-2 focus:ring-[#2c3e50] transition-all duration-300"
-              />
             </div>
 
-            <div className="text-right mt-3">
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 font-montserrat">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, password: e.target.value }))
+                  }
+                  onKeyDown={handleKeyDown}
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-inter"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Forgot password */}
+            <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={handleForgotClick}
-                className="text-sm text-[#2c3e50] hover:text-[#2c3e50] font-semibold transition-colors duration-200 hover:underline"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors font-space"
               >
-                Forgot Password?
+                Forgot password?
               </button>
             </div>
-          </div>
 
-          <button
-            onClick={handleSubmit}
-            className="w-full text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0"
-            style={{ backgroundColor: "#2c3e50" }}
-          >
-            Sign In
-          </button>
+            {/* Submit */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0 font-poppins"
+            >
+              Sign In
+            </button>
+          </div>
         </div>
       </div>
     </div>
