@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Calendar, Loader2, Clock, XCircle } from "lucide-react";
 
 type AttendanceMode =
@@ -9,9 +9,12 @@ type AttendanceMode =
   | "ON_DUTY"
   | "REGULARIZATION";
 
+// --- Constants for Geolocation ---
 const OFFICE_LAT = 11.939198361614558;
 const OFFICE_LON = 79.81654494108358;
 const OFFICE_ALLOWED_RADIUS_METERS = 60;
+
+// --- Helper Functions ---
 
 function getDistanceMeters(
   lat1: number,
@@ -36,6 +39,14 @@ function getDistanceMeters(
   return Math.round(R * c);
 }
 
+const getTodayDateKey = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+const extractDateKey = (value?: string | null) => {
+    if (!value) return "";
+    return value.slice(0, 10); // Extracts YYYY-MM-DD
+};
+
+
 interface AttendanceRecord {
   _id: string;
   employeeId: string;
@@ -51,7 +62,9 @@ interface AttendanceRecord {
 }
 
 const AttendanceRecords: React.FC = () => {
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const todayDateKey = getTodayDateKey();
+  
+  const [allAttendance, setAllAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -62,10 +75,8 @@ const AttendanceRecords: React.FC = () => {
     const loadAttendance = async () => {
       try {
         setLoadingAttendance(true);
-        const res = await fetch("/api/attendance/all");
+        const res = await fetch("/api/attendance/all", { cache: "no-store" });
         const json = await res.json();
-
-        console.log("Attendance API response:", json);
 
         if (!res.ok) {
           throw new Error(json.error || "Failed to load attendance records.");
@@ -73,12 +84,13 @@ const AttendanceRecords: React.FC = () => {
 
         const records: AttendanceRecord[] = json.records || [];
 
+        // Sort by date descending (latest first)
         records.sort(
           (a: AttendanceRecord, b: AttendanceRecord) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime()
+            new Date(extractDateKey(b.date)).getTime() - new Date(extractDateKey(a.date)).getTime()
         );
 
-        setAttendance(records);
+        setAllAttendance(records);
         setAttendanceError(null);
       } catch (error) {
         console.error(error);
@@ -91,21 +103,33 @@ const AttendanceRecords: React.FC = () => {
     loadAttendance();
   }, []);
 
+  // --- Filter Records to show only Today's Data ---
+  const todayAttendance = useMemo(() => {
+    return allAttendance.filter(record => extractDateKey(record.date) === todayDateKey);
+  }, [allAttendance, todayDateKey]);
+
+
+  // --- Formatters and Status Helpers ---
+
   const formatDate = (value?: string) => {
-    if (!value) return "-";
-    if (value.length === 10 && !value.includes("T")) {
-      return value;
+    const key = extractDateKey(value);
+    if (!key) return "-";
+    
+    // Format YYYY-MM-DD to DD-MM-YYYY
+    const parts = key.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}-${month}-${year}`;
     }
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "-";
-    return d.toISOString().slice(0, 10);
+    return key;
   };
 
   const formatTime = (value?: string | null) => {
     if (!value) return "-";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    // 12-hour format with AM/PM
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
   };
 
   const getDuration = (record: AttendanceRecord) => {
@@ -130,7 +154,8 @@ const AttendanceRecords: React.FC = () => {
   };
 
   const getStatusLabel = (record: AttendanceRecord): string => {
-    const { punchInTime, punchOutTime } = record;
+    const { punchInTime, punchOutTime, date } = record;
+    const recordDateKey = extractDateKey(date);
 
     if (!punchInTime && !punchOutTime) return "Absent";
 
@@ -138,28 +163,33 @@ const AttendanceRecords: React.FC = () => {
     let isGrace = false;
     let isEarlyLogout = false;
 
+    // Use the date key to create consistent comparison points in local timezone
+    const refDate = new Date(`${recordDateKey}T00:00:00`);
+
+    // Target Times (9:30 AM, 9:35 AM, 6:30 PM)
+    const loginTime_930 = new Date(refDate);
+    loginTime_930.setHours(9, 30, 0, 0);
+
+    const loginTime_935 = new Date(refDate);
+    loginTime_935.setHours(9, 35, 0, 0);
+
+    const logoutTime_1830 = new Date(refDate);
+    logoutTime_1830.setHours(18, 30, 0, 0);
+
     if (punchInTime) {
-      const d = new Date(punchInTime);
-      const h = d.getHours();
-      const m = d.getMinutes();
+      const punchIn = new Date(punchInTime);
 
-      const after930 = h > 9 || (h === 9 && m >= 30);
-      const after935 = h > 9 || (h === 9 && m > 35);
-
-      if (after935) {
+      if (punchIn.getTime() > loginTime_935.getTime()) {
         isLate = true;
-      } else if (after930) {
+      } else if (punchIn.getTime() >= loginTime_930.getTime()) {
         isGrace = true;
       }
     }
 
     if (punchOutTime) {
-      const d = new Date(punchOutTime);
-      const h = d.getHours();
-      const m = d.getMinutes();
+      const punchOut = new Date(punchOutTime);
 
-      const before630 = h < 18 || (h === 18 && m < 30);
-      if (before630) {
+      if (punchOut.getTime() < logoutTime_1830.getTime()) {
         isEarlyLogout = true;
       }
     }
@@ -232,7 +262,7 @@ const AttendanceRecords: React.FC = () => {
   };
 
   const getPunchInDistanceLabel = (record: AttendanceRecord) => {
-    if (record.punchInLatitude == null || record.punchInLongitude == null) {
+    if (record.punchInLatitude == null || record.punchInLongitude == null || record.mode !== "IN_OFFICE") {
       return "-";
     }
     const d = getDistanceMeters(
@@ -245,7 +275,7 @@ const AttendanceRecords: React.FC = () => {
   };
 
   const getPunchInDistanceClass = (record: AttendanceRecord) => {
-    if (record.punchInLatitude == null || record.punchInLongitude == null) {
+    if (record.punchInLatitude == null || record.punchInLongitude == null || record.mode !== "IN_OFFICE") {
       return "text-gray-500";
     }
     const d = getDistanceMeters(
@@ -254,8 +284,10 @@ const AttendanceRecords: React.FC = () => {
       record.punchInLatitude,
       record.punchInLongitude
     );
-    return d <= OFFICE_ALLOWED_RADIUS_METERS ? "text-green-700" : "text-red-700";
+    return d <= OFFICE_ALLOWED_RADIUS_METERS ? "text-green-700 font-bold" : "text-red-700 font-bold";
   };
+
+  // --- Render Component ---
 
   return (
     <div
@@ -267,7 +299,7 @@ const AttendanceRecords: React.FC = () => {
         <div className="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-300">
           <Calendar className="w-5 h-5 text-red-600" />
           <h2 className="text-2xl font-bold text-gray-900">
-            Attendance Records (Today)
+            Attendance Records ({formatDate(todayDateKey)})
           </h2>
         </div>
       </div>
@@ -287,10 +319,10 @@ const AttendanceRecords: React.FC = () => {
           </div>
         )}
 
-        {!loadingAttendance && !attendanceError && attendance.length > 0 && (
+        {!loadingAttendance && !attendanceError && todayAttendance.length > 0 && (
           <div className="flex flex-col">
             <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
-              Today&apos;s Attendance
+              Today&apos;s Attendance Summary
             </h3>
             <div className="overflow-x-auto overflow-y-auto h-96 border rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
@@ -323,10 +355,10 @@ const AttendanceRecords: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {attendance.map((record) => {
+                  {todayAttendance.map((record) => {
                     const statusLabel = getStatusLabel(record);
                     return (
-                      <tr key={record._id}>
+                      <tr key={record._id} className="hover:bg-gray-50">
                         <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                           {record.employeeName || record.employeeId || "-"}
                         </td>
@@ -352,7 +384,7 @@ const AttendanceRecords: React.FC = () => {
                           {getDuration(record)}
                         </td>
                         <td
-                          className={`px-2 py-2 whitespace-nowrap text-xs font-semibold ${getPunchInDistanceClass(
+                          className={`px-2 py-2 whitespace-nowrap text-xs ${getPunchInDistanceClass(
                             record
                           )}`}
                         >
@@ -376,10 +408,10 @@ const AttendanceRecords: React.FC = () => {
           </div>
         )}
 
-        {!loadingAttendance && !attendanceError && attendance.length === 0 && (
-          <div className="flex items-center justify-center h-full min-h-[200px] text-gray-500">
+        {!loadingAttendance && !attendanceError && todayAttendance.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-gray-500">
             <Clock className="w-5 h-5 mr-2" />
-            <p>No attendance records for today.</p>
+            <p className="mt-2 font-medium">No attendance records for today ({formatDate(todayDateKey)}).</p>
           </div>
         )}
       </div>

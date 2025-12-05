@@ -253,8 +253,6 @@ export async function GET() {
   try {
     await connectDB();
 
-    const todayIST = getCurrentTimeIST().slice(0, 10);
-
     const dbRecords = await Attendance.find({})
       .sort({ date: -1, createdAt: -1 })
       .lean();
@@ -277,11 +275,7 @@ export async function GET() {
       }
     });
 
-    const dbRecordsToday = dbRecords.filter((r: any) => {
-      return extractDateKey(r.date) === todayIST;
-    });
-
-    const dbRecordsWithNames: AttendanceRecordOut[] = dbRecordsToday.map(
+    const dbRecordsWithNames: AttendanceRecordOut[] = dbRecords.map(
       (r: any) => ({
         _id: r._id.toString(),
         employeeId: r.employeeId,
@@ -297,7 +291,7 @@ export async function GET() {
       })
     );
 
-    console.log("DB TODAY records count:", dbRecordsWithNames.length);
+    console.log("DB ALL records count:", dbRecordsWithNames.length);
 
     let hikvisionRecords: AttendanceRecordOut[] = [];
     try {
@@ -315,10 +309,14 @@ export async function GET() {
     ];
 
     allRecords.sort((a, b) => {
-      if (a.date === b.date) {
-        return (a.employeeName || "").localeCompare(b.employeeName || "");
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      
+      if (dateA !== dateB) {
+        return dateB - dateA; // Sort by date descending
       }
-      return new Date(a.date).getTime() < new Date(b.date).getTime() ? 1 : -1;
+      // Secondary sort by employee name
+      return (a.employeeName || "").localeCompare(b.employeeName || "");
     });
 
     console.log("Final allRecords length:", allRecords.length);
@@ -333,4 +331,3 @@ export async function GET() {
     );
   }
 }
-      

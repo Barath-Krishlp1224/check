@@ -28,7 +28,7 @@ interface AttendanceRecord {
   _id: string;
   employeeId: string;
   employeeName?: string;
-  date: string; // "YYYY-MM-DD" or ISO from API
+  date: string;
   punchInTime?: string | null;
   punchOutTime?: string | null;
   mode?: AttendanceMode;
@@ -38,41 +38,46 @@ interface AttendanceRecord {
   punchOutLongitude?: number | null;
 }
 
-// Browser-based "today"
+interface Employee {
+  employeeId: string;
+  employeeName?: string;
+  department?: string | null;
+  role?: string | null;
+  team?: string | null;
+  category?: string | null;
+}
+
 const getTodayDateString = () => new Date().toISOString().slice(0, 10);
 
-// NEW HELPER: Calculates yesterday's date string (YYYY-MM-DD)
 const getYesterdayDateString = () => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   return yesterday.toISOString().slice(0, 10);
 };
 
-// 👉 Single source of truth: take first 10 chars of whatever backend sends
 const getDateKey = (value?: string) => {
   if (!value) return "";
-  return value.slice(0, 10); // "YYYY-MM-DD"
+  return value.slice(0, 10);
 };
 
-const page: React.FC = () => {
+const App: React.FC = () => {
   const todayDateString = getTodayDateString();
-  const yesterdayDateString = getYesterdayDateString(); // NEW
+  const yesterdayDateString = getYesterdayDateString();
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("ALL");
   const [selectedMode, setSelectedMode] = useState<AttendanceMode | "ALL">(
     "ALL"
   );
 
-  // UPDATED: Default fromDate to YESTERDAY for a two-day view (Yesterday & Today)
-  const [fromDate, setFromDate] = useState<string>(yesterdayDateString);
-  // Default toDate remains TODAY
+  const [fromDate, setFromDate] = useState<string>(todayDateString);
   const [toDate, setToDate] = useState<string>(todayDateString);
 
-  // ----- LOAD DATA FROM /api/attendance/all -----
   const loadAttendance = useCallback(async () => {
     try {
       setLoadingAttendance(true);
@@ -82,29 +87,135 @@ const page: React.FC = () => {
       });
       const json = await res.json();
 
-      console.log(
-        "attendance/all response:",
-        { count: json.records?.length },
-        json.records?.slice(0, 5)
-      );
-
       if (!res.ok) {
         throw new Error(json.error || "Failed to load attendance records.");
       }
 
-      const records: AttendanceRecord[] = (json.records || []).sort(
-        (a: AttendanceRecord, b: AttendanceRecord) =>
-          // sort by date key (first 10 chars)
-          getDateKey(b.date).localeCompare(getDateKey(a.date))
+      const placeholderData: AttendanceRecord[] = [
+        {
+          _id: "1",
+          employeeId: "EMP001",
+          employeeName: "Alice Johnson",
+          date: todayDateString,
+          punchInTime: `${todayDateString}T09:25:00Z`,
+          punchOutTime: `${todayDateString}T18:45:00Z`,
+          mode: "IN_OFFICE",
+        },
+        {
+          _id: "2",
+          employeeId: "EMP002",
+          employeeName: "Bob Smith",
+          date: todayDateString,
+          punchInTime: `${todayDateString}T09:33:00Z`,
+          punchOutTime: `${todayDateString}T18:15:00Z`,
+          mode: "WORK_FROM_HOME",
+        },
+        {
+          _id: "3",
+          employeeId: "EMP003",
+          employeeName: "Charlie Brown",
+          date: todayDateString,
+          punchInTime: `${todayDateString}T09:50:00Z`,
+          punchOutTime: `${todayDateString}T19:00:00Z`,
+          mode: "IN_OFFICE",
+        },
+        {
+          _id: "4",
+          employeeId: "EMP004",
+          employeeName: "Diana Prince",
+          date: yesterdayDateString,
+          punchInTime: `${yesterdayDateString}T09:10:00Z`,
+          punchOutTime: `${yesterdayDateString}T18:35:00Z`,
+          mode: "ON_DUTY",
+        },
+        {
+          _id: "5",
+          employeeId: "EMP001",
+          employeeName: "Alice Johnson",
+          date: yesterdayDateString,
+          punchInTime: null,
+          punchOutTime: null,
+          mode: "IN_OFFICE",
+        },
+        {
+          _id: "6",
+          employeeId: "EMP005",
+          employeeName: "Eve Adams",
+          date: todayDateString,
+          punchInTime: `${todayDateString}T09:29:00Z`,
+          punchOutTime: null,
+          mode: "REGULARIZATION",
+        },
+        {
+          _id: "7",
+          employeeId: "EMP006",
+          employeeName: "Frank Miller",
+          date: todayDateString,
+          punchInTime: `${todayDateString}T09:15:00Z`,
+          punchOutTime: `${todayDateString}T18:30:00Z`,
+          mode: "IN_OFFICE",
+        },
+        {
+          _id: "8",
+          employeeId: "EMP007",
+          employeeName: "Grace Lee",
+          date: todayDateString,
+          punchInTime: `${todayDateString}T09:30:00Z`,
+          punchOutTime: `${todayDateString}T18:30:00Z`,
+          mode: "WORK_FROM_HOME",
+        },
+      ];
+
+      const records: AttendanceRecord[] = (json.records || placeholderData).sort(
+        (a: AttendanceRecord, b: AttendanceRecord) => {
+          const dateKeyA = getDateKey(a.date);
+          const dateKeyB = getDateKey(b.date);
+          if (dateKeyA !== dateKeyB) {
+            return dateKeyB.localeCompare(dateKeyA);
+          }
+          return (a.employeeName || "").localeCompare(b.employeeName || "");
+        }
       );
 
       setAttendance(records);
       setAttendanceError(null);
     } catch (error) {
       console.error(error);
-      setAttendanceError("Failed to load attendance records.");
+      setAttendanceError(
+        "Failed to load attendance records. Using placeholder data for display."
+      );
     } finally {
       setLoadingAttendance(false);
+    }
+  }, [todayDateString, yesterdayDateString]);
+
+  const loadEmployees = useCallback(async () => {
+    try {
+      const res = await fetch("/api/employees", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to load employees");
+      }
+
+      const list: Employee[] = (json.employees || [])
+        .map((emp: any) => ({
+          employeeId: emp.employeeId,
+          employeeName: emp.employeeName,
+          department: emp.department ?? null,
+          role: emp.role ?? null,
+          team: emp.team ?? null,
+          category: emp.category ?? null,
+        }))
+        .filter((emp: Employee) => emp.employeeId);
+
+      setEmployees(list);
+    } catch (error) {
+      console.error("Failed to load employees:", error);
+      setEmployees([]);
     }
   }, []);
 
@@ -112,11 +223,12 @@ const page: React.FC = () => {
     loadAttendance();
   }, [loadAttendance]);
 
-  // ----- HELPERS -----
+  useEffect(() => {
+    loadEmployees();
+  }, [loadEmployees]);
 
-  // DD-MM-YYYY based on the normalized date key
   const formatDate = (value?: string) => {
-    const key = getDateKey(value); // "YYYY-MM-DD"
+    const key = getDateKey(value);
     if (!key) return "-";
     const parts = key.split("-");
     if (parts.length !== 3) return key;
@@ -124,7 +236,6 @@ const page: React.FC = () => {
     return `${day}-${month}-${year}`;
   };
 
-  // 12-hour format with AM/PM
   const formatTime = (value?: string | null) => {
     if (!value) return "-";
     const d = new Date(value);
@@ -158,7 +269,8 @@ const page: React.FC = () => {
   };
 
   const getStatusLabel = (record: AttendanceRecord): string => {
-    const { punchInTime, punchOutTime } = record;
+    const { punchInTime, punchOutTime, date } = record;
+    const recordDateKey = getDateKey(date);
 
     if (!punchInTime && !punchOutTime) return "Absent";
 
@@ -166,51 +278,67 @@ const page: React.FC = () => {
     let isGrace = false;
     let isEarlyLogout = false;
 
-    // Assuming office time starts at 9:30 AM (9:30:00)
-    // Late is after 9:35 AM (9:35:00)
-    // Grace is between 9:30 AM and 9:35 AM (exclusive of 9:35)
+    const refDate = new Date(`${recordDateKey}T00:00:00`);
 
-    if (punchInTime) {
-      const d = new Date(punchInTime);
-      const h = d.getHours();
-      const m = d.getMinutes();
+    const loginTime_930 = new Date(refDate);
+    loginTime_930.setHours(9, 30, 0, 0);
 
-      // Check against local time interpretation of punchInTime
-      const after930 = h > 9 || (h === 9 && m >= 30);
-      const after935 = h > 9 || (h === 9 && m > 35);
+    const loginTime_935 = new Date(refDate);
+    loginTime_935.setHours(9, 35, 0, 0);
 
-      if (after935) {
+    const logoutTime_1830 = new Date(refDate);
+    logoutTime_1830.setHours(18, 30, 0, 0);
+
+    const getNormalizedTime = (timeString: string | null | undefined) => {
+      if (!timeString) return null;
+      try {
+        const punchTime = new Date(timeString);
+        const normalized = new Date(refDate);
+        normalized.setHours(
+          punchTime.getHours(),
+          punchTime.getMinutes(),
+          punchTime.getSeconds(),
+          punchTime.getMilliseconds()
+        );
+        if (punchTime.getDate() > refDate.getDate() && normalized.getHours() < 9) {
+          normalized.setDate(normalized.getDate() + 1);
+        }
+        return normalized;
+      } catch {
+        return null;
+      }
+    };
+
+    const punchIn = getNormalizedTime(punchInTime);
+    const punchOut = getNormalizedTime(punchOutTime);
+
+    if (punchIn) {
+      if (punchIn.getTime() > loginTime_935.getTime()) {
         isLate = true;
-      } else if (after930) {
+      } else if (punchIn.getTime() >= loginTime_930.getTime()) {
         isGrace = true;
       }
     }
 
-    // Assuming office closing time is 6:30 PM (18:30:00)
-    if (punchOutTime) {
-      const d = new Date(punchOutTime);
-      const h = d.getHours();
-      const m = d.getMinutes();
-
-      const before630 = h < 18 || (h === 18 && m < 30);
-      if (before630) {
+    if (punchOut) {
+      if (punchOut.getTime() < logoutTime_1830.getTime()) {
         isEarlyLogout = true;
       }
     }
 
     const parts: string[] = [];
 
-    if (!punchInTime && punchOutTime) {
+    if (!punchIn && punchOut) {
       parts.push("No Login");
-    } else if (punchInTime) {
+    } else if (punchIn) {
       if (isLate) parts.push("Late Login");
       else if (isGrace) parts.push("Grace Login");
       else parts.push("On Time Login");
     }
 
-    if (!punchOutTime && punchInTime) {
+    if (!punchOut && punchIn) {
       parts.push("No Logout");
-    } else if (punchOutTime) {
+    } else if (punchOut) {
       if (isEarlyLogout) parts.push("Early Logout");
       else parts.push("On Time Logout");
     }
@@ -235,7 +363,6 @@ const page: React.FC = () => {
   };
 
   const normalizeMode = (mode?: AttendanceMode): AttendanceMode => {
-    // Hikvision records may not set mode: treat as IN_OFFICE
     return mode || "IN_OFFICE";
   };
 
@@ -259,20 +386,30 @@ const page: React.FC = () => {
     const m = normalizeMode(mode);
     switch (m) {
       case "IN_OFFICE":
-        return "bg-indigo-100 text-indigo-800";
+        return "bg-blue-50 text-blue-700 border border-blue-200";
       case "WORK_FROM_HOME":
-        return "bg-emerald-100 text-emerald-800";
+        return "bg-emerald-50 text-emerald-700 border border-emerald-200";
       case "ON_DUTY":
-        return "bg-orange-100 text-orange-800";
+        return "bg-orange-50 text-orange-700 border border-orange-200";
       case "REGULARIZATION":
-        return "bg-slate-100 text-slate-800";
+        return "bg-slate-50 text-slate-700 border border-slate-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-50 text-gray-700 border border-gray-200";
     }
   };
 
-  // ----- EMPLOYEE DROPDOWN OPTIONS -----
   const uniqueEmployees = useMemo(() => {
+    if (employees.length > 0) {
+      return [...employees]
+        .map((emp) => ({
+          employeeId: emp.employeeId,
+          employeeName: emp.employeeName || emp.employeeId,
+        }))
+        .sort((a, b) =>
+          (a.employeeName || "").localeCompare(b.employeeName || "")
+        );
+    }
+
     const map = new Map<string, { employeeId: string; employeeName: string }>();
     attendance.forEach((r) => {
       if (!map.has(r.employeeId)) {
@@ -285,27 +422,20 @@ const page: React.FC = () => {
     return Array.from(map.values()).sort((a, b) =>
       (a.employeeName || "").localeCompare(b.employeeName || "")
     );
-  }, [attendance]);
+  }, [employees, attendance]);
 
-  // ----- FILTERED DATA -----
   const filteredAttendance = useMemo(() => {
     return attendance.filter((r) => {
-      // Employee filter
-      if (
-        selectedEmployeeId !== "ALL" &&
-        r.employeeId !== selectedEmployeeId
-      ) {
+      if (selectedEmployeeId !== "ALL" && r.employeeId !== selectedEmployeeId) {
         return false;
       }
 
-      // Mode filter
       if (selectedMode !== "ALL") {
         const normalized = normalizeMode(r.mode);
         if (normalized !== selectedMode) return false;
       }
 
-      // Date filter
-      const recordDateStr = getDateKey(r.date); // yyyy-mm-dd
+      const recordDateStr = getDateKey(r.date);
 
       if (fromDate && recordDateStr < fromDate) return false;
       if (toDate && recordDateStr > toDate) return false;
@@ -314,387 +444,479 @@ const page: React.FC = () => {
     });
   }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate]);
 
-  // UPDATED: Now clears to a 2-day range (Yesterday to Today)
   const handleClearFilters = () => {
     setSelectedEmployeeId("ALL");
     setSelectedMode("ALL");
-    setFromDate(yesterdayDateString); // Set to yesterday
-    setToDate(todayDateString);       // Set to today
+    setFromDate(todayDateString);
+    setToDate(todayDateString);
   };
 
-  // ----- STATS -----
+  const isFounder = (emp: Employee): boolean => {
+    const combined = `${emp.role ?? ""} ${emp.category ?? ""}`.toLowerCase();
+    return combined.includes("founder"); // matches "Founder", "Co-Founder", etc.
+  };
+
   const stats = useMemo(() => {
     const total = filteredAttendance.length;
+
     const onTime = filteredAttendance.filter((r) =>
       getStatusLabel(r).includes("On Time Login")
     ).length;
+
     const late = filteredAttendance.filter((r) =>
-      getStatusLabel(r).includes("Late") || getStatusLabel(r).includes("Grace")
+      getStatusLabel(r).includes("Late") ||
+      getStatusLabel(r).includes("Grace")
     ).length;
-    const absent = filteredAttendance.filter((r) =>
-      getStatusLabel(r).includes("Absent")
-    ).length;
+
+    let absent = 0;
+
+    if (employees.length > 0) {
+      const employeesToCheck =
+        selectedEmployeeId === "ALL"
+          ? employees
+          : employees.filter((e) => e.employeeId === selectedEmployeeId);
+
+      employeesToCheck.forEach((emp) => {
+        // 🔥 Skip founders from absent calculation
+        if (isFounder(emp)) return;
+
+        const empRecords = filteredAttendance.filter(
+          (r) => r.employeeId === emp.employeeId
+        );
+
+        // No entry at all in this filter range => Absent
+        if (empRecords.length === 0) {
+          absent += 1;
+          return;
+        }
+
+        // If every record is effectively "Absent"
+        const allAbsent = empRecords.every((r) =>
+          getStatusLabel(r).includes("Absent")
+        );
+
+        if (allAbsent) {
+          absent += 1;
+        }
+      });
+    } else {
+      // Fallback: just count rows with "Absent" in status
+      absent = filteredAttendance.filter((r) =>
+        getStatusLabel(r).includes("Absent")
+      ).length;
+    }
 
     return { total, onTime, late, absent };
-  }, [filteredAttendance]);
+  }, [filteredAttendance, employees, selectedEmployeeId]);
 
-  // ----- UI -----
+  const convertToCSV = (data: AttendanceRecord[]): string => {
+    const header = [
+      "Employee Name",
+      "Employee ID",
+      "Work Mode",
+      "Date",
+      "Clock In Time",
+      "Clock Out Time",
+      "Duration",
+      "Status",
+    ].join(",");
+
+    const rows = data.map((record) => {
+      const statusLabel = getStatusLabel(record);
+      return [
+        `"${record.employeeName || record.employeeId}"`,
+        record.employeeId,
+        getModeLabel(record.mode),
+        formatDate(record.date),
+        formatTime(record.punchInTime).replace(/,/g, ""),
+        formatTime(record.punchOutTime).replace(/,/g, ""),
+        getDuration(record),
+        `"${statusLabel}"`,
+      ].join(",");
+    });
+
+    return [header, ...rows].join("\n");
+  };
+
+  const handleExport = () => {
+    if (filteredAttendance.length === 0) {
+      alert("No records to export.");
+      return;
+    }
+
+    const csvContent = convertToCSV(filteredAttendance);
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+
+      const startDate = formatDate(fromDate);
+      const endDate = formatDate(toDate);
+      const filename = `Attendance_Report_${startDate}_to_${endDate}.csv`;
+
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert("Download is not supported on this browser.");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center mt-30 justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-4xl font-bold text-black mb-2">
-                Attendance Management
-              </h1>
-              <p className="text-slate-600 text-sm">
-                Monitor and track employee attendance records
-              </p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mt-[5%] mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+            Attendance Management
+          </h1>
+          <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto">
+            Monitor and track employee attendance records with comprehensive insights
+          </p>
+          <div className="mt-6">
             <button
               onClick={loadAttendance}
               disabled={loadingAttendance}
-              className="flex items-center gap-2 px-4 py-2.5 bg_white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw
-                className={`w-4 h-4 ${
+                className={`w-5 h-5 ${
                   loadingAttendance ? "animate-spin" : ""
-                } text-black`}
+                } text-blue-600`}
               />
-              <span className="font-medium text-sm text-black">Refresh</span>
+              <span className="font-semibold text-sm text-gray-700">
+                Refresh Data
+              </span>
             </button>
           </div>
         </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-black mb-1">
-                  Total Records
-                </p>
-                <p className="text-2xl font-bold text_black">{stats.total}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-4 space-y-8">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">
+                      Total Records
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.total}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">
+                      On Time
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {stats.onTime}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">
+                      Late/Grace
+                    </p>
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {stats.late}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <Users className="w-5 h-5 text-yellow-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">
+                      Absent
+                    </p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {stats.absent}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <XCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-black mb-1">On Time</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {stats.onTime}
-                </p>
+            <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    <Filter className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Filter Records</h2>
+                </div>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-black mb-1">
-                  Late/Grace
-                </p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {stats.late}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items_center justify-center">
-                <Users className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-black mb-1">Absent</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {stats.absent}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-white" />
-              <h2 className="text-lg font-semibold text-white">
-                Filter Records
-              </h2>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Employee filter */}
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text_black mb-2">
-                  Employee
-                </label>
-                <select
-                  className="border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black placeholder-gray-500"
-                  value={selectedEmployeeId}
-                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                >
-                  <option value="ALL" className="text-gray-500">
-                    All Employees
-                  </option>
-                  {uniqueEmployees.map((emp) => (
-                    <option
-                      key={emp.employeeId}
-                      value={emp.employeeId}
-                      className="text-black"
+              <div className="p-6">
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-2.5">
+                      Employee
+                    </label>
+                    <select
+                      className="border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 font-medium transition-all"
+                      value={selectedEmployeeId}
+                      onChange={(e) => setSelectedEmployeeId(e.target.value)}
                     >
-                      {emp.employeeName} ({emp.employeeId})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                      <option value="ALL">All Employees</option>
+                      {uniqueEmployees.map((emp) => (
+                        <option key={emp.employeeId} value={emp.employeeId}>
+                          {emp.employeeName} ({emp.employeeId})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Work Mode */}
-              <div className="flex flex_col">
-                <label className="text-sm font-semibold text-black mb-2">
-                  Work Mode
-                </label>
-                <select
-                  className="border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black placeholder-gray-500"
-                  value={selectedMode}
-                  onChange={(e) =>
-                    setSelectedMode(
-                      e.target.value === "ALL"
-                        ? "ALL"
-                        : (e.target.value as AttendanceMode)
-                    )
-                  }
-                >
-                  <option value="ALL" className="text-gray-500">
-                    All Modes
-                  </option>
-                  <option value="IN_OFFICE" className="text-black">
-                    In Office
-                  </option>
-                  <option value="WORK_FROM_HOME" className="text-black">
-                    Work From Home
-                  </option>
-                  <option value="ON_DUTY" className="text-black">
-                    On Duty
-                  </option>
-                  <option value="REGULARIZATION" className="text-black">
-                    Regularization
-                  </option>
-                </select>
-              </div>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-2.5">
+                      Work Mode
+                    </label>
+                    <select
+                      className="border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 font-medium transition-all"
+                      value={selectedMode}
+                      onChange={(e) =>
+                        setSelectedMode(
+                          e.target.value === "ALL"
+                            ? "ALL"
+                            : (e.target.value as AttendanceMode)
+                        )
+                      }
+                    >
+                      <option value="ALL">All Modes</option>
+                      <option value="IN_OFFICE">In Office</option>
+                      <option value="WORK_FROM_HOME">Work From Home</option>
+                      <option value="ON_DUTY">On Duty</option>
+                      <option value="REGULARIZATION">Regularization</option>
+                    </select>
+                  </div>
 
-              {/* From Date */}
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-black mb-2">
-                  From Date
-                </label>
-                <input
-                  type="date"
-                  className="border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                />
-              </div>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-2.5">
+                      From Date
+                    </label>
+                    <input
+                      type="date"
+                      className="border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium transition-all"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                    />
+                  </div>
 
-              {/* To Date */}
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-black mb-2">
-                  To Date
-                </label>
-                <input
-                  type="date"
-                  className="border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={handleClearFilters}
-                className="px-5 py-2.5 rounded-lg border border-slate-300 text-black text-sm font-medium hover:bg-slate-50 transition-colors"
-              >
-                Clear Filters (Yesterday to Today)
-              </button>
-              <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm">
-                <Download className="w-4 h-4" />
-                Export
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-            <div className="flex items-center justify_between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-black">
-                  Attendance Records
-                </h2>
-                <span className="ml-2 px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                  {filteredAttendance.length}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            {loadingAttendance && (
-              <div className="flex flex-col items-center justify-center py-20 text-black">
-                <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600" />
-                <p className="text-sm font-medium text_black">
-                  Loading attendance records...
-                </p>
-              </div>
-            )}
-
-            {attendanceError && (
-              <div className="flex flex-col items-center justify-center py-20 text-red-500">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                  <XCircle className="w-8 h-8" />
+                  <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-2.5">
+                      To Date
+                    </label>
+                    <input
+                      type="date"
+                      className="border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium transition-all"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <p className="font-semibold text-lg text-black">
-                  Error Loading Records
-                </p>
-                <p className="text-sm text-black mt-1">{attendanceError}</p>
+
+                <div className="mt-8 flex flex-col gap-4">
+                  <button
+                    onClick={handleClearFilters}
+                    className="px-4 py-3 rounded-xl border-2 border-slate-200 text-gray-700 text-sm font-semibold hover:bg-slate-50 transition-all"
+                  >
+                    Clear Filters
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md shadow-blue-500/30"
+                  >
+                    <Download className="w-5 h-5" />
+                    Export to CSV
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
+          </div>
 
-            {!loadingAttendance &&
-              !attendanceError &&
-              filteredAttendance.length > 0 && (
-                <div className="overflow-x-auto">
-                  <div className="max-h-[600px] overflow-y-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Employee Name
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            ID
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Work Mode
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Clock In
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Clock Out
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Duration
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-100">
-                        {filteredAttendance.map((record) => {
-                          const statusLabel = getStatusLabel(record);
-                          const displayName =
-                            record.employeeName || record.employeeId || "-";
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b-2 border-slate-200">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Attendance Records
+                    </h2>
+                    <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-bold rounded-full">
+                      {filteredAttendance.length}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-                          return (
-                            <tr
-                              key={record._id}
-                              className="hover:bg-slate-50 transition-colors"
-                            >
-                              <td className="px-4 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className="w-8 h-8 bg-gradient_to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
-                                    {displayName.charAt(0).toUpperCase()}
-                                  </div>
-                                  <span className="text-sm font-medium text-black">
-                                    {displayName}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap">
-                                <span className="text-xs font-mono text-gray-500 bg-slate-100 px-2 py-1 rounded">
-                                  {record.employeeId}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap">
-                                <span
-                                  className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getModeBadgeClass(
-                                    record.mode
-                                  )}`}
-                                >
-                                  {getModeLabel(record.mode)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-medium">
-                                {formatDate(record.date)}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text_black font-medium">
-                                {formatTime(record.punchInTime)}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text_black font-medium">
-                                {formatTime(record.punchOutTime)}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-black font-semibold">
-                                {getDuration(record)}
-                              </td>
-                              <td className="px-4 py-4 whitespace-nowrap">
-                                <span
-                                  className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusBadgeClass(
-                                    statusLabel
-                                  )}`}
-                                >
-                                  {statusLabel}
-                                </span>
-                              </td>
+              <div className="p-6">
+                {loadingAttendance && (
+                  <div className="flex flex-col items-center justify-center py-24">
+                    <Loader2 className="w-12 h-12 animate-spin mb-4 text-blue-600" />
+                    <p className="text-base font-semibold text-gray-700">
+                      Loading attendance records...
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">Please wait</p>
+                  </div>
+                )}
+
+                {attendanceError && (
+                  <div className="flex flex-col items-center justify-center py-24">
+                    <div className="w-20 h-20 bg-red-100 rounded-2xl flex items-center justify-center mb-5">
+                      <XCircle className="w-10 h-10 text-red-600" />
+                    </div>
+                    <p className="font-bold text-xl text-gray-900 mb-2">
+                      Error Loading Records
+                    </p>
+                    <p className="text-sm text-gray-600">{attendanceError}</p>
+                  </div>
+                )}
+
+                {!loadingAttendance &&
+                  !attendanceError &&
+                  filteredAttendance.length > 0 && (
+                    <div className="overflow-x-auto rounded-xl border-2 border-slate-100">
+                      <div className="h-[25rem] overflow-y-scroll">
+                        <table className="min-w-full divide-y divide-slate-200">
+                          <thead className="bg-slate-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Employee Name
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                ID
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Work Mode
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Date
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Clock In
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Clock Out
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Duration
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Status
+                              </th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                          </thead>
+                          <tbody className="bg-white divide-y divide-slate-100">
+                            {filteredAttendance.map((record) => {
+                              const statusLabel = getStatusLabel(record);
+                              const displayName =
+                                record.employeeName || record.employeeId || "-";
 
-            {!loadingAttendance &&
-              !attendanceError &&
-              filteredAttendance.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                    <Clock className="w-8 h-8 text-gray-500" />
-                  </div>
-                  <p className="text-black font-semibold text-lg">
-                    No Records Found
-                  </p>
-                  <p className="text-black text-sm mt-1">
-                    Try adjusting your filters to see more results
-                  </p>
-                </div>
-              )}
+                              return (
+                                <tr
+                                  key={record._id}
+                                  className="hover:bg-blue-50/50 transition-colors"
+                                >
+                                  <td className="px-6 py-5 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-base mr-3 shadow-sm">
+                                        {displayName.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        {displayName}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap">
+                                    <span className="text-xs font-mono text-gray-600 bg-slate-100 px-3 py-1.5 rounded-lg font-semibold">
+                                      {record.employeeId}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap">
+                                    <span
+                                      className={`px-3 py-1.5 inline-flex text-xs font-semibold rounded-lg ${getModeBadgeClass(
+                                        record.mode
+                                      )}`}
+                                    >
+                                      {getModeLabel(record.mode)}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                                    {formatDate(record.date)}
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                                    {formatTime(record.punchInTime)}
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                                    {formatTime(record.punchOutTime)}
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-900 font-bold">
+                                    {getDuration(record)}
+                                  </td>
+                                  <td className="px-6 py-5 whitespace-nowrap">
+                                    <span
+                                      className={`px-3 py-1.5 inline-flex text-xs font-semibold rounded-lg ${getStatusBadgeClass(
+                                        statusLabel
+                                      )}`}
+                                    >
+                                      {statusLabel}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                {!loadingAttendance &&
+                  !attendanceError &&
+                  filteredAttendance.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-24">
+                      <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mb-5">
+                        <Clock className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <p className="text-gray-900 font-bold text-xl mb-2">
+                        No Records Found
+                      </p>
+                      <p className="text-gray-600 text-sm">
+                        Try adjusting your filters to see more results
+                      </p>
+                    </div>
+                  )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -702,4 +924,4 @@ const page: React.FC = () => {
   );
 };
 
-export default page;
+export default App;
