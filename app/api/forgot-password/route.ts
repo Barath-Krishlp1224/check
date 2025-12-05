@@ -1,48 +1,70 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
+import crypto from "crypto";
+import { sendResetMail } from "@/lib/mailer";
 
 export async function POST(req: Request) {
   try {
     await connectDB();
-    const { empIdOrEmail, newPassword } = await req.json();
+    const { empIdOrEmail } = await req.json();
 
-    if (!empIdOrEmail || !newPassword) {
+    if (!empIdOrEmail || !empIdOrEmail.trim()) {
       return NextResponse.json(
-        { error: "Employee ID or Email and new password are required." },
+        { error: "Employee ID or Email is required." },
         { status: 400 }
       );
     }
 
-    // Identify whether user entered email or empId
     const identifier = empIdOrEmail.trim();
+
     const query = identifier.includes("@")
       ? { mailId: new RegExp(`^${identifier}$`, "i") }
       : { empId: new RegExp(`^${identifier}$`, "i") };
 
-    // Check employee exists
     const employee = await Employee.findOne(query);
+
+    // For security: always return same message
     if (!employee) {
       return NextResponse.json(
-        { error: "No employee found." },
-        { status: 404 }
+        {
+          message:
+            "If an account exists with this ID or email, a reset link has been sent.",
+        },
+        { status: 200 }
       );
     }
 
-    // Hash new password securely
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiry = new Date(Date.now() + 30 * 60 * 1000); // 30 mins
 
-    // Update password in DB
-    employee.password = hashedPassword;
+    employee.resetToken = token;
+    employee.resetTokenExpiry = expiry;
     await employee.save();
 
-    return NextResponse.json({
-      success: true,
-      message: "Password updated successfully!"
-    });
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+    try {
+      await sendResetMail(employee.mailId, resetUrl);
+    } catch (mailErr: any) {
+      console.error("Mail send error:", mailErr);
+      // If mail fails, you probably DON'T want to say success:
+      return NextResponse.json(
+        { error: "Failed to send reset email. Contact support." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message:
+          "If an account exists with this ID or email, a reset link has been sent.",
+      },
+      { status: 200 }
+    );
   } catch (err: any) {
-    console.error("Password reset error:", err);
+    console.error("Forgot-password error:", err);
     return NextResponse.json(
       { error: err.message || "Internal Server Error" },
       { status: 500 }

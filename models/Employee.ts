@@ -40,6 +40,10 @@ export interface IEmployee extends Document {
   role: Role;
   createdAt?: Date;
   updatedAt?: Date;
+
+  // 🔐 New fields for password reset
+  resetToken?: string | null;
+  resetTokenExpiry?: Date | null;
 }
 
 const EmployeeSchema = new Schema<IEmployee>(
@@ -122,6 +126,16 @@ const EmployeeSchema = new Schema<IEmployee>(
       enum: ["Admin", "Manager", "TeamLead", "Employee"],
       default: "Employee",
       required: true,
+    },
+
+    // 🔐 Password reset fields
+    resetToken: {
+      type: String,
+      default: null,
+    },
+    resetTokenExpiry: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

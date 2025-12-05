@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, CheckSquare, TrendingUp, Clock } from "lucide-react"; // Import Clock icon for Attendance
+import { Users, CheckSquare, TrendingUp, Clock, FileText, Calendar } from "lucide-react";
 import AttendanceRecords from "../attendance/currentday-view/page";
 
 export default function AdminPage() {
@@ -10,7 +10,6 @@ export default function AdminPage() {
 
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [isQuickActionsOpen] = useState(true);
 
   useEffect(() => {
     setLoaded(true);
@@ -29,249 +28,178 @@ export default function AdminPage() {
     router.push("/components/emp-leave/approval");
   };
   
-  // NEW: Navigation function for Attendance
   const goToAttendancePage = () => {
     router.push("/components/attendance/allday"); 
-    // NOTE: Update the route above if your main attendance view URL is different.
   };
 
+  const actionCards = [
+    {
+      id: "view",
+      title: "Employee Directory",
+      description: "View and manage all employees",
+      icon: Users,
+      onClick: goToEmployeeList,
+      gradient: "from-blue-500 to-blue-600",
+      delay: "0ms"
+    },
+    {
+      id: "tasks",
+      title: "Tasks & Performance",
+      description: "Monitor team metrics",
+      icon: CheckSquare,
+      onClick: () => router.push("/components/all-tasks/task-view"),
+      gradient: "from-purple-500 to-purple-600",
+      delay: "100ms"
+    },
+    {
+      id: "attendance",
+      title: "Attendance",
+      description: "Daily check-ins & records",
+      icon: Clock,
+      onClick: goToAttendancePage,
+      gradient: "from-green-500 to-green-600",
+      delay: "200ms"
+    },
+    {
+      id: "bills",
+      title: "Bills",
+      description: "Financial records & invoices",
+      icon: FileText,
+      onClick: goToBillsPage,
+      gradient: "from-orange-500 to-orange-600",
+      delay: "300ms"
+    },
+    {
+      id: "expenses",
+      title: "Expenses",
+      description: "Track spending & reports",
+      icon: TrendingUp,
+      onClick: goToExpensesPage,
+      gradient: "from-red-500 to-red-600",
+      delay: "400ms"
+    },
+    {
+      id: "leaves",
+      title: "Leave Requests",
+      description: "Approve time off",
+      icon: Calendar,
+      onClick: goToLeavesPage,
+      gradient: "from-indigo-500 to-indigo-600",
+      delay: "500ms"
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="w-full py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div>
-          {/* Header */}
-          <div
-            className={`mb-12 transition-all duration-700 ${
-              loaded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-12"
-            }`}
-          >
-            <div className="relative text-center">
-              <h1 className="text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
-                Welcome to the Founder's Dashboard
-              </h1>
-              <p className="text-gray-600 text-lg mb-4">
-                Overview of your organization's structure and quick access tools
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+      <div className="w-full py-6 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
+        {/* Header */}
+        <div
+          className={`mb-6 sm:mb-8 md:mb-12 transition-all duration-1000 ${
+            loaded ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-8"
+          }`}
+        >
+          <div className="text-center space-y-2 sm:space-y-3">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+              Founder's Dashboard
+            </h1>
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
+              Manage your organization with powerful tools and real-time insights
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 md:gap-8">
+          {/* Quick Actions Section */}
+          <div className="lg:col-span-8">
+            <div
+              className={`transition-all duration-1000 delay-200 ${
+                loaded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-12"
+              }`}
+            >
+              {/* Section Header */}
+              <div className="mb-4 sm:mb-6">
+                <div className="inline-flex items-center gap-2 sm:gap-3 bg-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100">
+                 
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
+                    Quick Actions
+                  </h2>
+                </div>
+              </div>
+
+              {/* Action Cards Grid */}
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {actionCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div
+                      key={card.id}
+                      role="button"
+                      onClick={card.onClick}
+                      className={`group relative bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 
+                        border border-gray-100 cursor-pointer overflow-hidden
+                        transition-all duration-300 hover:shadow-xl hover:-translate-y-1
+                        ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}
+                        ${hoveredButton === card.id ? "scale-[1.02]" : "scale-100"}`}
+                      style={{
+                        transitionDelay: loaded ? card.delay : "0ms",
+                      }}
+                      onMouseEnter={() => setHoveredButton(card.id)}
+                      onMouseLeave={() => setHoveredButton(null)}
+                    >
+                      {/* Gradient Background on Hover */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 
+                        group-hover:opacity-5 transition-opacity duration-300`}></div>
+                      
+                      {/* Content */}
+                      <div className="relative z-10">
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          {/* Icon */}
+                          <div className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl 
+                            bg-gradient-to-br ${card.gradient} 
+                            flex items-center justify-center shadow-lg
+                            group-hover:scale-110 transition-transform duration-300`}>
+                            <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                          </div>
+                          
+                          {/* Text */}
+                          <div className="flex-1 min-w-0 pt-1">
+                            <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg mb-1 
+                              group-hover:text-gray-800 transition-colors truncate">
+                              {card.title}
+                            </h3>
+                            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed line-clamp-2">
+                              {card.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hover Arrow Indicator */}
+                      <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 opacity-0 
+                        group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* LEFT: Quick Actions */}
-            <div className="xl:col-span-2">
-              <div
-                className={`transition-all duration-700 delay-300 ${
-                  loaded ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"
-                }`}
-              >
-                <div className="mb-6 flex items-center gap-4 group">
-                  <div className="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-300">
-                    <CheckSquare className="w-5 h-5 text-blue-600" />
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      Quick Actions
-                    </h2>
-                  </div>
-                </div>
-
-                <div
-                  className={`overflow-hidden transition-all duration-700 ease-in-out ${
-                    isQuickActionsOpen
-                      ? "max-h-[2000px] opacity-100"
-                      : "max-h-0 opacity-0"
-                  }`}
-                >
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-                    {/* View Employee List */}
-                    <div
-                      role="button"
-                      onClick={goToEmployeeList}
-                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${
-                        loaded && isQuickActionsOpen
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-8"
-                      } ${
-                        hoveredButton === "view" ? "scale-[1.02]" : "scale-100"
-                      }`}
-                      style={{
-                        transitionDelay: isQuickActionsOpen ? "0ms" : "0ms",
-                      }}
-                      onMouseEnter={() => setHoveredButton("view")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <Users className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">
-                            View Employee List
-                          </h3>
-                          <p className="text-gray-600 text-xs">
-                            Complete directory
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tasks & Performance */}
-                    <div
-                      role="button"
-                      onClick={() =>
-                        router.push("/components/all-tasks/task-view")
-                      }
-                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${
-                        loaded && isQuickActionsOpen
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-8"
-                      }`}
-                      style={{
-                        transitionDelay: isQuickActionsOpen ? "150ms" : "0ms",
-                      }}
-                      onMouseEnter={() => setHoveredButton("tasks")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <CheckSquare className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">
-                            Tasks & Performance
-                          </h3>
-                          <p className="text-gray-600 text-xs">
-                            Monitor metrics
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* NEW: View Attendance Button */}
-                    <div
-                      role="button"
-                      onClick={goToAttendancePage}
-                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${
-                        loaded && isQuickActionsOpen
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-8"
-                      }`}
-                      style={{
-                        transitionDelay: isQuickActionsOpen ? "300ms" : "0ms", // Adjusted delay
-                      }}
-                      onMouseEnter={() => setHoveredButton("attendance")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <Clock className="w-5 h-5 text-white" /> 
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">
-                            View Attendance
-                          </h3>
-                          <p className="text-gray-600 text-xs">
-                            Daily check-ins
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-
-                    {/* View Bills - shifted delay */}
-                    <div
-                      role="button"
-                      onClick={goToBillsPage}
-                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${
-                        loaded && isQuickActionsOpen
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-8"
-                      }`}
-                      style={{
-                        transitionDelay: isQuickActionsOpen ? "450ms" : "0ms", // Adjusted delay
-                      }}
-                      onMouseEnter={() => setHoveredButton("bills")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <Users className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">
-                            View Bills
-                          </h3>
-                          <p className="text-gray-600 text-xs">
-                            Financial records
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* View Expenses - shifted delay */}
-                    <div
-                      role="button"
-                      onClick={goToExpensesPage}
-                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${
-                        loaded && isQuickActionsOpen
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-8"
-                      }`}
-                      style={{
-                        transitionDelay: isQuickActionsOpen ? "600ms" : "0ms", // Adjusted delay
-                      }}
-                      onMouseEnter={() => setHoveredButton("expenses")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <TrendingUp className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">
-                            View Expenses
-                          </h3>
-                          <p className="text-gray-600 text-xs">
-                            Expense reports
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* View Leaves - shifted delay */}
-                    <div
-                      role="button"
-                      onClick={goToLeavesPage}
-                      className={`group relative p-3 rounded-xl border-2 border-gray-200 transition-all duration-300 cursor-pointer bg-white shadow-md hover:shadow-xl ${
-                        loaded && isQuickActionsOpen
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-8"
-                      }`}
-                      style={{
-                        transitionDelay: isQuickActionsOpen ? "750ms" : "0ms", // Adjusted delay
-                      }}
-                      onMouseEnter={() => setHoveredButton("leaves")}
-                      onMouseLeave={() => setHoveredButton(null)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-600 shadow-lg">
-                          <CheckSquare className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 text-sm mb-0.5 truncate">
-                            View Leaves
-                          </h3>
-                          <p className="text-gray-600 text-xs">
-                            Manage time off
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          {/* Attendance Records Section */}
+          <div className="lg:col-span-4">
+            <div
+              className={`transition-all duration-1000 delay-300 ${
+                loaded ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"
+              }`}
+            >
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <AttendanceRecords />
               </div>
-            </div>
-
-            {/* RIGHT: Attendance Records (split into separate component) */}
-            <div className="xl:col-span-1">
-              <AttendanceRecords />
             </div>
           </div>
         </div>
