@@ -1,4 +1,4 @@
-// ./api/employees/route.ts (GET function)
+// ./api/employees (GET function)
 
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
@@ -8,28 +8,17 @@ export async function GET(request: Request) {
   try {
     await connectDB();
     const url = new URL(request.url);
-    const name = url.searchParams.get("name");   // exact match
-    const search = url.searchParams.get("search"); // partial match
+    const name = url.searchParams.get("name");   // exact match (old flow)
+    const search = url.searchParams.get("search"); // partial match (new flow)
 
-    // Fields required from DB
+    // Fields required by frontend
     const selectFields =
       "name department role empId team category departmentName department_name";
-
-    // Helper: normalize DB employee -> API employee
-    const normalizeEmployee = (emp: any) => ({
-      employeeId: emp.empId || "",
-      employeeName: emp.name || emp.empId || "",
-      department:
-        emp.department || emp.departmentName || emp.department_name || null,
-      role: emp.role || null,
-      team: emp.team || null,
-      category: emp.category || null,
-    });
 
     // ✅ 1) Partial search (for suggestions / filtering)
     if (search) {
       const regex = new RegExp(search, "i");
-      const employeesFromDb = await Employee.find(
+      const employees = await Employee.find(
         {
           $or: [{ name: regex }, { empId: regex }],
         },
@@ -38,39 +27,29 @@ export async function GET(request: Request) {
         .sort({ name: 1 })
         .lean();
 
-      const employees = employeesFromDb
-        .map(normalizeEmployee)
-        .filter((e) => e.employeeId);
-
       return NextResponse.json({ success: true, employees });
     }
 
-    // ✅ 2) Single employee by exact name
+    // ✅ 2) Single employee by exact name (existing behaviour)
     if (name) {
-      const employeeFromDb = await Employee.findOne(
+      const employee = await Employee.findOne(
         { name: { $regex: `^${name}$`, $options: "i" } },
         selectFields
       ).lean();
 
-      if (!employeeFromDb) {
+      if (!employee) {
         return NextResponse.json(
           { success: false, error: "Not found" },
           { status: 404 }
         );
       }
-
-      const employee = normalizeEmployee(employeeFromDb);
       return NextResponse.json({ success: true, employee });
     }
 
-    // ✅ 3) Default: return all employees (for dropdown / absent count)
-    const employeesFromDb = await Employee.find({}, selectFields)
+    // ✅ 3) Default: return all employees (for dropdown list)
+    const employees = await Employee.find({}, selectFields)
       .sort({ name: 1 })
       .lean();
-
-    const employees = employeesFromDb
-      .map(normalizeEmployee)
-      .filter((e) => e.employeeId);
 
     return NextResponse.json({ success: true, employees });
   } catch (error) {
