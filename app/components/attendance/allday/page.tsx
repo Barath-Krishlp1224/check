@@ -87,86 +87,11 @@ const App: React.FC = () => {
       });
       const json = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !json.records) {
         throw new Error(json.error || "Failed to load attendance records.");
       }
 
-      const placeholderData: AttendanceRecord[] = [
-        {
-          _id: "1",
-          employeeId: "EMP001",
-          employeeName: "Alice Johnson",
-          date: todayDateString,
-          punchInTime: `${todayDateString}T09:25:00Z`,
-          punchOutTime: `${todayDateString}T18:45:00Z`,
-          mode: "IN_OFFICE",
-        },
-        {
-          _id: "2",
-          employeeId: "EMP002",
-          employeeName: "Bob Smith",
-          date: todayDateString,
-          punchInTime: `${todayDateString}T09:33:00Z`,
-          punchOutTime: `${todayDateString}T18:15:00Z`,
-          mode: "WORK_FROM_HOME",
-        },
-        {
-          _id: "3",
-          employeeId: "EMP003",
-          employeeName: "Charlie Brown",
-          date: todayDateString,
-          punchInTime: `${todayDateString}T09:50:00Z`,
-          punchOutTime: `${todayDateString}T19:00:00Z`,
-          mode: "IN_OFFICE",
-        },
-        {
-          _id: "4",
-          employeeId: "EMP004",
-          employeeName: "Diana Prince",
-          date: yesterdayDateString,
-          punchInTime: `${yesterdayDateString}T09:10:00Z`,
-          punchOutTime: `${yesterdayDateString}T18:35:00Z`,
-          mode: "ON_DUTY",
-        },
-        {
-          _id: "5",
-          employeeId: "EMP001",
-          employeeName: "Alice Johnson",
-          date: yesterdayDateString,
-          punchInTime: null,
-          punchOutTime: null,
-          mode: "IN_OFFICE",
-        },
-        {
-          _id: "6",
-          employeeId: "EMP005",
-          employeeName: "Eve Adams",
-          date: todayDateString,
-          punchInTime: `${todayDateString}T09:29:00Z`,
-          punchOutTime: null,
-          mode: "REGULARIZATION",
-        },
-        {
-          _id: "7",
-          employeeId: "EMP006",
-          employeeName: "Frank Miller",
-          date: todayDateString,
-          punchInTime: `${todayDateString}T09:15:00Z`,
-          punchOutTime: `${todayDateString}T18:30:00Z`,
-          mode: "IN_OFFICE",
-        },
-        {
-          _id: "8",
-          employeeId: "EMP007",
-          employeeName: "Grace Lee",
-          date: todayDateString,
-          punchInTime: `${todayDateString}T09:30:00Z`,
-          punchOutTime: `${todayDateString}T18:30:00Z`,
-          mode: "WORK_FROM_HOME",
-        },
-      ];
-
-      const records: AttendanceRecord[] = (json.records || placeholderData).sort(
+      const records: AttendanceRecord[] = (json.records as AttendanceRecord[]).sort(
         (a: AttendanceRecord, b: AttendanceRecord) => {
           const dateKeyA = getDateKey(a.date);
           const dateKeyB = getDateKey(b.date);
@@ -181,9 +106,8 @@ const App: React.FC = () => {
       setAttendanceError(null);
     } catch (error) {
       console.error(error);
-      setAttendanceError(
-        "Failed to load attendance records. Using placeholder data for display."
-      );
+      setAttendanceError("Failed to load attendance records.");
+      setAttendance([]);
     } finally {
       setLoadingAttendance(false);
     }
@@ -477,7 +401,7 @@ const App: React.FC = () => {
           : employees.filter((e) => e.employeeId === selectedEmployeeId);
 
       employeesToCheck.forEach((emp) => {
-        // 🔥 Skip founders from absent calculation
+        // Skip founders from absent calculation
         if (isFounder(emp)) return;
 
         const empRecords = filteredAttendance.filter(
@@ -506,7 +430,9 @@ const App: React.FC = () => {
       ).length;
     }
 
-    return { total, onTime, late, absent };
+    const totalEmployees = employees.filter((emp) => !isFounder(emp)).length;
+
+    return { total, onTime, late, absent, totalEmployees };
   }, [filteredAttendance, employees, selectedEmployeeId]);
 
   const convertToCSV = (data: AttendanceRecord[]): string => {
@@ -597,72 +523,60 @@ const App: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-8">
-            <div className="grid grid-cols-2 gap-4">
+            {/* Status cards - no icons */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Total Employees (excluding founders) */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">
-                      Total Records
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {stats.total}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-blue-600" />
-                  </div>
-                </div>
+                <p className="text-xs font-medium text-gray-600 mb-1">
+                  Total Employees
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.totalEmployees}
+                </p>
               </div>
 
+              {/* Total Records */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">
-                      On Time
-                    </p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {stats.onTime}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-green-600" />
-                  </div>
-                </div>
+                <p className="text-xs font-medium text-gray-600 mb-1">
+                  Total Records
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.total}
+                </p>
               </div>
 
+              {/* On Time */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">
-                      Late/Grace
-                    </p>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {stats.late}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-5 h-5 text-yellow-600" />
-                  </div>
-                </div>
+                <p className="text-xs font-medium text-gray-600 mb-1">
+                  On Time
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.onTime}
+                </p>
               </div>
 
+              {/* Late/Grace */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">
-                      Absent
-                    </p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {stats.absent}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                    <XCircle className="w-5 h-5 text-red-600" />
-                  </div>
-                </div>
+                <p className="text-xs font-medium text-gray-600 mb-1">
+                  Late/Grace
+                </p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {stats.late}
+                </p>
+              </div>
+
+              {/* Absent */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-slate-100 hover:shadow-md transition-shadow">
+                <p className="text-xs font-medium text-gray-600 mb-1">
+                  Absent
+                </p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats.absent}
+                </p>
               </div>
             </div>
 
+            {/* Filters card */}
             <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
                 <div className="flex items-center gap-3">
@@ -760,6 +674,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
+          {/* Right side: table */}
           <div className="lg:col-span-8">
             <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm overflow-hidden">
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b-2 border-slate-200">
