@@ -24,65 +24,6 @@ type Team =
   | "Admin & Operations"
   | "TL Accountant";
 
-// --- Depth Field Animation Component ---
-const DepthFieldStarscape = () => {
-  const numStars = 50;
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* 1. Deep Background Layer */}
-      {[...Array(numStars)].map((_, i) => (
-        <div
-          key={`star-bg-${i}`}
-          className="absolute w-[1px] h-[1px] bg-cyan-200 rounded-full opacity-30 animate-star-drift-slow"
-          style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 5}s`,
-            animationDuration: `${12 + Math.random() * 5}s`,
-            filter: "blur(0.2px)",
-          }}
-        />
-      ))}
-
-      {/* 2. Middle Layer */}
-      {[...Array(20)].map((_, i) => (
-        <div
-          key={`star-mid-${i}`}
-          className="absolute w-[2px] h-[2px] bg-blue-300 rounded-full opacity-40 animate-star-drift-medium"
-          style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 3}s`,
-            animationDuration: `${8 + Math.random() * 3}s`,
-            filter: "blur(0.5px)",
-          }}
-        />
-      ))}
-
-      {/* 3. Foreground Layer */}
-      {[...Array(10)].map((_, i) => (
-        <div
-          key={`star-fg-${i}`}
-          className="absolute w-1 h-1 bg-white rounded-full opacity-50 animate-star-drift-fast"
-          style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 2}s`,
-            animationDuration: `${4 + Math.random() * 2}s`,
-            boxShadow: "0 0 4px rgba(255, 255, 255, 0.6)",
-          }}
-        />
-      ))}
-
-      {/* 4. Central Nebula Glow */}
-      <div className="absolute w-[40rem] h-[40rem] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[100px] opacity-10 bg-indigo-500 animate-nebula-pulse" />
-    </div>
-  );
-};
-
-// --- Main App Component ---
-
 export default function App() {
   const [form, setForm] = useState<{ empId: string; password: string }>({
     empId: "",
@@ -232,41 +173,6 @@ export default function App() {
       <style jsx>{`
         @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap");
 
-        @keyframes star-drift-slow {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(-20px, -10px);
-          }
-        }
-        @keyframes star-drift-medium {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(30px, 20px);
-          }
-        }
-        @keyframes star-drift-fast {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(-50px, 30px);
-          }
-        }
-        @keyframes nebula-pulse {
-          0%,
-          100% {
-            opacity: 0.1;
-            transform: scale(1) translate(-50%, -50%);
-          }
-          50% {
-            opacity: 0.2;
-            transform: scale(1.05) translate(-50%, -50%);
-          }
-        }
         @keyframes slideUp {
           0% {
             transform: translateY(20px);
@@ -301,21 +207,6 @@ export default function App() {
           }
         }
 
-        .animate-star-drift-slow {
-          animation: star-drift-slow var(--animation-duration, 15s)
-            ease-in-out infinite alternate;
-        }
-        .animate-star-drift-medium {
-          animation: star-drift-medium var(--animation-duration, 10s)
-            ease-in-out infinite alternate;
-        }
-        .animate-star-drift-fast {
-          animation: star-drift-fast var(--animation-duration, 6s)
-            ease-in-out infinite alternate;
-        }
-        .animate-nebula-pulse {
-          animation: nebula-pulse 10s ease-in-out infinite alternate;
-        }
         .animate-slide-up {
           animation: slideUp 0.8s ease-out forwards;
         }
@@ -371,42 +262,52 @@ export default function App() {
         ))}
       </div>
 
-      {/* LEFT PANEL with video background */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden rounded-br-full shadow-2xl">
-        {/* Background video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full rounded-br-full object-cover"
-        >
-          {/* Put your video file in /public/videos/login-bg.mp4 or change this path */}
-          <source src="/2 copy.mp4" type="video/mp4" />
-        </video>
+      {/* LEFT PANEL – updated to match ForgotPassword right box style */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gray-900 p-12 flex-col relative overflow-hidden rounded-br-full">
+        {/* Background pattern + video */}
+        <div className="absolute inset-0 opacity-20">
+          <div
+            className="absolute inset-0 bg-repeat"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E\")",
+            }}
+          />
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full rounded-br-full object-cover"
+          >
+            <source src="/2 copy.mp4" type="video/mp4" />
+          </video>
+        </div>
 
-        {/* Gradient overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-blue-900/70 to-indigo-900/85 backdrop-blur-sm" />
-
-        {/* Starscape on top of video */}
-        <DepthFieldStarscape />
+        {/* Dark overlay */}
+        <div
+          className="absolute inset-0 rounded-br-full bg-slate-900/40"
+          aria-hidden="true"
+        />
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col h-full w-full p-12">
+        <div className="relative z-10 flex flex-col h-full">
           <div className="flex-grow flex flex-col justify-center items-start">
             {/* Logo */}
             <div className="flex-shrink-0 mb-12 animate-slide-up">
-              <img
-                src="/logo hd.png"
-                alt="Company logo"
-                className="w-100 h-auto"
-              />
+              <div className="rounded-2xl p-4 inline-block">
+                <img
+                  src="/logo hd.png"
+                  alt="Company logo"
+                  className="w-100 h-30 object-contain"
+                />
+              </div>
             </div>
 
-            {/* Welcome text */}
-            <div className="animate-slide-up" style={{ animationDelay: "0.2s" }}>
-              <h2 className="text-5xl font-bold text-white mb-6 leading-tight font-montserrat">
-                Welcome to Your
+            {/* Heading + text */}
+            <div className="max-w-md w-full animate-slide-up">
+              <h1 className="text-5xl font-bold text-white mb-6 leading-tight font-montserrat">
+                Welcome to
                 <br />
                 <span
                   className={`text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 font-space ${
@@ -415,17 +316,17 @@ export default function App() {
                 >
                   Lemonpay Workspace...
                 </span>
-              </h2>
+              </h1>
               <p className="text-white text-lg leading-relaxed mb-12 max-w-md font-inter opacity-90">
-                Experience the next generation of seamless and secure enterprise
-                operations.
+                Sign in to access your personalized workspace, manage approvals,
+                track tasks, and collaborate securely across your teams.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* RIGHT PANEL: Login */}
+      {/* RIGHT PANEL: Login form (unchanged) */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile icon */}
@@ -502,7 +403,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleForgotClick}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors font-space"
+                className="text-sm text-black font-medium transition-colors font-space"
               >
                 Forgot password?
               </button>
