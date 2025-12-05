@@ -68,7 +68,7 @@ export default function ResetPasswordForm() {
       setMessage(data.message || "Password reset successfully.");
 
       setTimeout(() => {
-        router.push("/login-signup");
+        router.push("/components/login-signup");
       }, 2000);
     } catch (err) {
       console.error(err);
@@ -79,7 +79,7 @@ export default function ResetPasswordForm() {
   };
 
   const handleBackToLogin = () => {
-    router.push("/login-signup");
+    router.push("/components/login-signup");
   };
 
   return (
