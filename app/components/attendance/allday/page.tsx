@@ -17,7 +17,7 @@ import {
   Users,
   BarChart3,
 } from "lucide-react";   
-
+    
 type AttendanceMode =
   | "IN_OFFICE"
   | "WORK_FROM_HOME"
