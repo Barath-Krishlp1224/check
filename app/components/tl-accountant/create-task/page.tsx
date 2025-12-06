@@ -3,14 +3,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
-  User,
   Target,
-  Clock,
   FileText,
   CheckCircle2,
   AlertCircle,
+  Briefcase,
+  Users,
+  BarChart3,
+  Plus,
 } from "lucide-react";
 
+// --- Type Definitions and Utility Functions (Unchanged) ---
 interface Employee {
   _id: string;
   name: string;
@@ -65,6 +68,7 @@ function normalizeToCanonicalTeam(raw?: string | null): string | null {
 
   return null;
 }
+// --- End Type Definitions and Utility Functions ---
 
 const EmployeesPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -93,10 +97,18 @@ const EmployeesPage: React.FC = () => {
         const res = await fetch("/api/employees");
         const data = await res.json();
 
-        const rawEmployees: any[] = Array.isArray(data?.employees) ? data.employees : data?.data ?? [];
+        const rawEmployees: any[] = Array.isArray(data?.employees)
+          ? data.employees
+          : data?.data ?? [];
 
         const normalized: Employee[] = rawEmployees.map((e: any) => {
-          const teamRaw = (e.team ?? e.department ?? e.departmentName ?? e.department_name ?? "").toString();
+          const teamRaw = (
+            e.team ??
+            e.department ??
+            e.departmentName ??
+            e.department_name ??
+            ""
+          ).toString();
           const canonical = normalizeToCanonicalTeam(teamRaw) ?? null;
           return {
             _id: e._id ?? e.id ?? String(Math.random()),
@@ -124,43 +136,38 @@ const EmployeesPage: React.FC = () => {
   const filteredAssignees = useMemo(() => {
     const dept = formData.department?.trim();
     if (!dept || employees.length === 0) return [];
-    
+
     const selectedDeptLower = dept.toLowerCase();
     const canonicalSelected = normalizeToCanonicalTeam(dept);
-    const canonicalSelectedLower = canonicalSelected ? canonicalSelected.toLowerCase() : '';
+    const canonicalSelectedLower = canonicalSelected ? canonicalSelected.toLowerCase() : "";
 
     let matchedEmployees: Employee[] = [];
 
     if (canonicalSelected) {
-      // 1. Filter employees based on the primary canonical team match
       matchedEmployees = employees.filter(
         (e) => (e.canonicalTeam ?? "").toLowerCase() === canonicalSelectedLower
       );
-      
-      // 2. SPECIAL CASE: If 'Accounts' is selected, also include 'TL Accountant' staff
-      if (canonicalSelectedLower === 'accounts') {
+
+      if (canonicalSelectedLower === "accounts") {
         const tlAccountantEmployees = employees.filter(
-            (e) => (e.canonicalTeam ?? "").toLowerCase() === 'tl accountant'
+          (e) => (e.canonicalTeam ?? "").toLowerCase() === "tl accountant"
         );
-        // Combine the two lists, ensuring uniqueness if necessary (though canonicalTeam should prevent duplicates)
         const combined = [...matchedEmployees, ...tlAccountantEmployees];
-        // Use a Set to ensure unique employees in case of edge cases, then map back to array
-        const uniqueEmployees = Array.from(new Set(combined.map(e => e._id)))
-            .map(id => combined.find(e => e._id === id))
-            .filter((e): e is Employee => e !== undefined);
-            
+        const uniqueEmployees = Array.from(new Set(combined.map((e) => e._id)))
+          .map((id) => combined.find((e) => e._id === id))
+          .filter((e): e is Employee => e !== undefined);
+
         matchedEmployees = uniqueEmployees;
       }
-      
+
       if (matchedEmployees.length > 0) return matchedEmployees;
     }
-    
-    // Fallback: Filter by checking if any team/department field contains the selected value
+
     return employees.filter((e) => {
       const teamLower = (e.team ?? "").toLowerCase();
       const departmentLower = (e.department ?? "").toLowerCase();
       const categoryLower = (e.category ?? "").toLowerCase();
-      
+
       return (
         teamLower.includes(selectedDeptLower) ||
         departmentLower.includes(selectedDeptLower) ||
@@ -176,55 +183,52 @@ const EmployeesPage: React.FC = () => {
       setFormData((s) => ({ ...s, assigneeNames: [] }));
       return;
     }
-    
+
     const canonicalSelected = normalizeToCanonicalTeam(formData.department) ?? "";
     const canonicalSelectedLower = canonicalSelected.toLowerCase();
 
-    // Determine the set of canonical teams considered valid for the current department selection
     const validCanonicalTeams = new Set([canonicalSelectedLower]);
-    if (canonicalSelectedLower === 'accounts') {
-        validCanonicalTeams.add('tl accountant');
+    if (canonicalSelectedLower === "accounts") {
+      validCanonicalTeams.add("tl accountant");
     }
 
-
-    const currentAssigneesValid = formData.assigneeNames.every(name => {
-        const selected = employees.find((e) => e.name === name);
-        // Validate if the current selected assignee belongs to one of the valid canonical teams
-        return selected && validCanonicalTeams.has((selected.canonicalTeam ?? "").toLowerCase());
+    const currentAssigneesValid = formData.assigneeNames.every((name) => {
+      const selected = employees.find((e) => e.name === name);
+      return (
+        selected && validCanonicalTeams.has((selected.canonicalTeam ?? "").toLowerCase())
+      );
     });
 
     if (!currentAssigneesValid) {
-        setFormData((s) => ({ ...s, assigneeNames: [] }));
+      setFormData((s) => ({ ...s, assigneeNames: [] }));
     }
-
   }, [formData.department, employees]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    
-    // Handle checkbox change (for assigneeNames)
-    if (name === "assigneeNames" && type === "checkbox") {
-        const isChecked = (e.target as HTMLInputElement).checked;
-        const assigneeName = value;
 
-        setFormData((s) => {
-            const currentNames = s.assigneeNames;
-            if (isChecked) {
-                // Add the name if checked and not already present
-                if (!currentNames.includes(assigneeName)) {
-                    return { ...s, assigneeNames: [...currentNames, assigneeName] };
-                }
-            } else {
-                // Remove the name if unchecked
-                return { ...s, assigneeNames: currentNames.filter(n => n !== assigneeName) };
-            }
-            return s; // No change needed
-        });
+    if (name === "assigneeNames" && type === "checkbox") {
+      const isChecked = (e.target as HTMLInputElement).checked;
+      const assigneeName = value;
+
+      setFormData((s) => {
+        const currentNames = s.assigneeNames;
+        if (isChecked) {
+          if (!currentNames.includes(assigneeName)) {
+            return { ...s, assigneeNames: [...currentNames, assigneeName] };
+          }
+        } else {
+          return {
+            ...s,
+            assigneeNames: currentNames.filter((n) => n !== assigneeName),
+          };
+        }
+        return s;
+      });
     } else {
-        // Handle regular inputs/selects
-        setFormData((s) => ({ ...s, [name]: value }));
+      setFormData((s) => ({ ...s, [name]: value }));
     }
   };
 
@@ -250,13 +254,13 @@ const EmployeesPage: React.FC = () => {
     try {
       const payload = {
         ...formData,
-        assigneeName: formData.assigneeNames.join(', '), 
-        assigneeNames: formData.assigneeNames, 
-        completion: formData.completion === "" ? undefined : Number(formData.completion),
+        assigneeName: formData.assigneeNames.join(", "),
+        assigneeNames: formData.assigneeNames,
+        completion:
+          formData.completion === "" ? undefined : Number(formData.completion),
       };
-      
-      const { assigneeName, ...finalPayload } = payload;
 
+      const { assigneeName, ...finalPayload } = payload;
 
       const res = await fetch("/api/tasks/add", {
         method: "POST",
@@ -269,7 +273,7 @@ const EmployeesPage: React.FC = () => {
       if (res.ok) {
         setMessage("✅ Task submitted successfully!");
         setFormData({
-          assigneeNames: [], 
+          assigneeNames: [],
           projectId: "",
           project: "",
           department: "",
@@ -285,9 +289,17 @@ const EmployeesPage: React.FC = () => {
           setFetchingByDept(true);
           const refreshRes = await fetch("/api/employees");
           const refreshJson = await refreshRes.json();
-          const rawEmployees: any[] = Array.isArray(refreshJson?.employees) ? refreshJson.employees : refreshJson?.data ?? [];
+          const rawEmployees: any[] = Array.isArray(refreshJson?.employees)
+            ? refreshJson.employees
+            : refreshJson?.data ?? [];
           const normalized: Employee[] = rawEmployees.map((e: any) => {
-            const teamRaw = (e.team ?? e.department ?? e.departmentName ?? e.department_name ?? "").toString();
+            const teamRaw = (
+              e.team ??
+              e.department ??
+              e.departmentName ??
+              e.department_name ??
+              ""
+            ).toString();
             const canonical = normalizeToCanonicalTeam(teamRaw) ?? null;
             return {
               _id: e._id ?? e.id ?? String(Math.random()),
@@ -315,276 +327,376 @@ const EmployeesPage: React.FC = () => {
 
   const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const colors: Record<string, string> = {
-      Backlog: "bg-slate-100 text-slate-700 border-slate-200",
-      "In Progress": "bg-blue-100 text-blue-700 border-blue-200",
-      Paused: "bg-amber-100 text-amber-700 border-amber-200",
-      Completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
-      "On Hold": "bg-slate-100 text-slate-700 border-slate-200",
+      Backlog: "bg-gray-100 text-gray-700",
+      "In Progress": "bg-blue-100 text-blue-700",
+      Paused: "bg-yellow-100 text-yellow-700",
+      Completed: "bg-green-100 text-green-700",
+      "On Hold": "bg-orange-100 text-orange-700",
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colors[status] || colors.Backlog}`}>
-        {status === "Completed" && <CheckCircle2 className="w-3 h-3" />}
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium ${
+          colors[status] || colors.Backlog
+        }`}
+      >
+        {status === "Completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
         {status}
       </span>
     );
   };
 
+  // ✅ Corrected class: darker placeholder + black input text
+  const formElementClass =
+    "w-full px-3 py-2 border border-gray-300 rounded-md text-sm " +
+    "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent " +
+    "text-black placeholder:text-gray-700";
+
   return (
-    <div className="min-h-screen mt-10 py-8 px-4 bg-slate-50">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div>
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Create New Task</h1>
+              <h1 className="text-2xl mt-20 -mb-10 font-semibold text-gray-900">
+                Task Management
+              </h1>
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Alert Message */}
         {message && (
           <div
-            className={`mb-6 rounded-xl border-l-4 p-4 shadow-sm ${
-              message.includes("successfully") ? "bg-emerald-50 border-emerald-500" : "bg-red-50 border-red-500"
+            className={`mb-6 rounded-lg p-4 ${
+              message.includes("successfully")
+                ? "bg-green-50 border border-green-200"
+                : "bg-red-50 border border-red-200"
             }`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               {message.includes("successfully") ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
               ) : (
-                <AlertCircle className="w-5 h-5 text-red-600" />
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
               )}
-              <p className={`font-medium text-sm ${message.includes("successfully") ? "text-emerald-800" : "text-red-800"}`}>
+              <p
+                className={`text-sm font-medium ${
+                  message.includes("successfully")
+                    ? "text-green-800"
+                    : "text-red-800"
+                }`}
+              >
                 {message}
               </p>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden">
-          <div className="p-8">
-            <div className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-              <div className="flex items-center gap-2 mb-4">
-                <Target className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-slate-900">Project Information</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Project ID *</label>
-                  <input
-                    type="text"
-                    name="projectId"
-                    value={formData.projectId}
-                    onChange={handleChange}
-                    placeholder="PROJ-2024-001"
-                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                  />
+        {/* Main Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Project & Department */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Project Details Card */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Project Details
+                    </h2>
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Project Name *</label>
-                  <input
-                    type="text"
-                    name="project"
-                    value={formData.project}
-                    onChange={handleChange}
-                    placeholder="Enter project name"
-                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department *</label>
-                  <select
-                    name="department"
-                    value={formData.department}
-                    onChange={handleChange}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                  >
-                    <option value="">Select department</option>
-                    {DEPARTMENT_OPTIONS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="w-5 h-5 text-slate-600" />
-                    <h3 className="text-base font-semibold text-slate-900">Assignment</h3>
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Project ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="projectId"
+                        value={formData.projectId}
+                        onChange={handleChange}
+                        placeholder="e.g., PROJ-2024-001"
+                        className={formElementClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Department <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="department"
+                        value={formData.department}
+                        onChange={handleChange}
+                        className={`${formElementClass} bg-white`}
+                      >
+                        <option value="">Select department</option>
+                        {DEPARTMENT_OPTIONS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Assignee(s) *</label>
-
-                    {loading || fetchingByDept ? (
-                      <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-500 bg-slate-50">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                          Loading employees...
-                        </div>
-                      </div>
-                    ) : assigneeDisabled ? (
-                        <div className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-500 bg-slate-50 opacity-60 cursor-not-allowed">
-                            Choose a department first
-                        </div>
-                    ) : (
-                      <div className={`p-4 border rounded-lg bg-white overflow-y-auto max-h-48 shadow-sm ${assigneeDisabled ? 'opacity-60 cursor-not-allowed border-slate-200' : 'border-slate-300'}`}>
-                        {filteredAssignees.length === 0 ? (
-                            <p className="text-sm text-slate-500">No assignees found for {formData.department}</p>
-                        ) : (
-                            filteredAssignees.map((emp) => (
-                                <div key={emp._id} className="flex items-center mb-2">
-                                    <input
-                                        type="checkbox"
-                                        id={`assignee-${emp._id}`}
-                                        name="assigneeNames"
-                                        value={emp.name}
-                                        checked={formData.assigneeNames.includes(emp.name)}
-                                        onChange={handleChange}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
-                                    <label 
-                                        htmlFor={`assignee-${emp._id}`}
-                                        className="ml-3 text-sm font-medium text-slate-700 cursor-pointer"
-                                    >
-                                        {emp.name} {emp.empId ? `• ${emp.empId}` : ""}
-                                    </label>
-                                </div>
-                            ))
-                        )}
-                      </div>
-                    )}
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Project Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="project"
+                      value={formData.project}
+                      onChange={handleChange}
+                      placeholder="Enter project name"
+                      className={formElementClass}
+                    />
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="w-5 h-5 text-slate-600" />
-                    <h3 className="text-base font-semibold text-slate-900">Timeline</h3>
+              {/* Assignees Card */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Team Assignment
+                    </h2>
                   </div>
-                  <div className="space-y-3">
+                </div>
+                <div className="p-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Assignee(s) <span className="text-red-500">*</span>
+                  </label>
+                  {loading || fetchingByDept ? (
+                    <div className="flex items-center justify-center py-8 text-gray-500">
+                      <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mr-3" />
+                      <span className="text-sm">Loading employees...</span>
+                    </div>
+                  ) : assigneeDisabled ? (
+                    <div className="py-8 text-center text-sm text-gray-500 bg-gray-50 rounded-md border border-gray-200">
+                      Please select a department first
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                      {filteredAssignees.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-gray-500">
+                          No employees found for {formData.department}
+                        </div>
+                      ) : (
+                        filteredAssignees.map((emp) => (
+                          <label
+                            key={emp._id}
+                            className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              name="assigneeNames"
+                              value={emp.name}
+                              checked={formData.assigneeNames.includes(emp.name)}
+                              onChange={handleChange}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="ml-3 flex-1">
+                              <div className="text-sm font-medium text-gray-900">
+                                {emp.name}
+                              </div>
+                              {emp.empId && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  ID: {emp.empId}
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  {formData.assigneeNames.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {formData.assigneeNames.map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Timeline Card */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Timeline
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Start Date *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Start Date <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="date"
                         name="startDate"
                         value={formData.startDate}
                         onChange={handleChange}
-                        className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                        className={formElementClass}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">End Date</label>
-                        <input
-                          type="date"
-                          name="endDate"
-                          value={formData.endDate}
-                          onChange={handleChange}
-                          className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Due Date</label>
-                        <input
-                          type="date"
-                          name="dueDate"
-                          value={formData.dueDate}
-                          onChange={handleChange}
-                          className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="w-5 h-5 text-slate-600" />
-                    <h3 className="text-base font-semibold text-slate-900">Task Progress</h3>
-                  </div>
-                  <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                      <select
-                        name="status"
-                        value={formData.status}
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
                         onChange={handleChange}
-                        className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                      >
-                        <option value="Backlog">Backlog</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Paused">Paused</option>
-                        <option value="Completed">Completed</option>
-                        <option value="On Hold">On Hold</option>
-                      </select>
-                      <div className="mt-2">
-                        <StatusBadge status={formData.status} />
-                      </div>
+                        className={formElementClass}
+                      />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Completion Percentage</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          name="completion"
-                          value={formData.completion}
-                          onChange={handleChange}
-                          placeholder="0"
-                          min={0}
-                          max={100}
-                          className="w-full border border-slate-300 rounded-lg px-4 py-2.5 pr-10 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">%</span>
-                      </div>
-                      {formData.completion && (
-                        <div className="mt-2 bg-slate-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
-                            style={{ width: `${Math.min(Number(formData.completion), 100)}%` }}
-                          />
-                        </div>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        name="dueDate"
+                        value={formData.dueDate}
+                        onChange={handleChange}
+                        className={formElementClass}
+                      />
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="w-5 h-5 text-slate-600" />
-                    <h3 className="text-base font-semibold text-slate-900">Additional Notes</h3>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Remarks</label>
-                    <textarea
-                      name="remarks"
-                      value={formData.remarks}
-                      onChange={handleChange}
-                      placeholder="Add any additional comments or context..."
-                      rows={4}
-                      className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none shadow-sm"
-                    />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="px-8 py-6 bg-slate-50 border-t border-slate-200">
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white font-semibold py-3.5 px-6 rounded-xl hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 className="w-5 h-5" />
-              Create Task
-            </button>
+            {/* Right Column - Status & Notes */}
+            <div className="space-y-6">
+              {/* Status Card */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Progress
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Status
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      className={`${formElementClass} bg-white`}
+                    >
+                      <option value="Backlog">Backlog</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Paused">Paused</option>
+                      <option value="Completed">Completed</option>
+                      <option value="On Hold">On Hold</option>
+                    </select>
+                    <div className="mt-2">
+                      <StatusBadge status={formData.status} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Completion %
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        name="completion"
+                        value={formData.completion}
+                        onChange={handleChange}
+                        placeholder="0"
+                        min={0}
+                        max={100}
+                        className={formElementClass}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                        %
+                      </span>
+                    </div>
+                    {formData.completion && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                          <span>Progress</span>
+                          <span className="font-medium">
+                            {formData.completion}%
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-600 transition-all duration-300 rounded-full"
+                            style={{
+                              width: `${Math.min(
+                                Number(formData.completion),
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes Card */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-gray-700" />
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Notes
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Remarks
+                  </label>
+                  <textarea
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleChange}
+                    placeholder="Add any additional notes or context..."
+                    rows={6}
+                    className={`${formElementClass} resize-none`}
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-sm flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Create Task
+              </button>
+            </div>
           </div>
         </form>
       </div>

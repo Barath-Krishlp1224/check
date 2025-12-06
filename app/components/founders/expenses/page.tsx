@@ -479,9 +479,8 @@ const ExpenseDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6 py-12">
       <div className="w-full max-w-7xl">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-2">Expense Dashboard</h1>
-          <p className="text-gray-700">View expenses, track budget, and apply filters (Read-Only Mode)</p>
+        <div className="text-center mt-30 mb-8">
+          <h1 className="text-5xl font-bold text-gray-900 mb-2">Expense Dashboard</h1>          
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
