@@ -1,7 +1,13 @@
 import React from "react";
-import { SquarePen, ListChecks, UserCheck, LucideIcon } from "lucide-react";
+import {
+  SquarePen,
+  ListChecks,
+  UserCheck,
+  ClipboardCheck,
+  LucideIcon
+} from "lucide-react";
 
-export type ActiveView = "CREATE_TASK" | "VIEW_ALL_TASKS" | "MY_TASKS";
+export type ActiveView = "CREATE_TASK" | "VIEW_ALL_TASKS" | "MY_TASKS" | "LEAVE_APPROVAL";
 
 export interface SidebarItem {
   id: ActiveView;
@@ -30,6 +36,11 @@ export const sidebarItems: SidebarItem[] = [
     icon: UserCheck,
     label: "My Tasks",
   },
+  {
+    id: "LEAVE_APPROVAL",
+    icon: ClipboardCheck,
+    label: "Leave Approvals",
+  },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
@@ -42,7 +53,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
             onClick={() => setActiveView(item.id)}
             className={`flex items-center justify-center p-3 rounded-xl transition-all duration-200 ${
               activeView === item.id
-                // CHANGED: bg-indigo-600 to bg-green-600 and hover:text-indigo-600 to hover:text-green-600
                 ? "bg-green-600 text-white shadow-lg"
                 : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
             }`}

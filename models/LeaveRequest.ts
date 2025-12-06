@@ -1,7 +1,13 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export type LeaveType = "sick" | "casual" | "planned" | "unplanned";
-export type LeaveStatus = "pending" | "approved" | "rejected" | "auto-approved";
+
+export type LeaveStatus =
+  | "pending"
+  | "manager-pending"
+  | "approved"
+  | "rejected"
+  | "auto-approved";
 
 export interface ILeaveRequest extends Document {
   employeeName?: string;
@@ -14,6 +20,9 @@ export interface ILeaveRequest extends Document {
   status: LeaveStatus;
   createdAt: Date;
   updatedAt: Date;
+
+  teamLeadApproved?: boolean;
+  managerApproved?: boolean;
 }
 
 const LeaveRequestSchema = new Schema<ILeaveRequest>(
@@ -31,8 +40,16 @@ const LeaveRequestSchema = new Schema<ILeaveRequest>(
     description: { type: String },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "auto-approved"],
+      enum: ["pending", "manager-pending", "approved", "rejected", "auto-approved"],
       default: "pending",
+    },
+    teamLeadApproved: {
+      type: Boolean,
+      default: false,
+    },
+    managerApproved: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

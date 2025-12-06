@@ -109,8 +109,8 @@ export default function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 md:gap-8">
-          {/* Quick Actions Section */}
-          <div className="lg:col-span-8">
+          {/* Quick Actions Section - Changed from lg:col-span-8 to lg:col-span-6 */}
+          <div className="lg:col-span-6"> 
             <div
               className={`transition-all duration-1000 delay-200 ${
                 loaded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-12"
@@ -126,8 +126,8 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Action Cards Grid */}
-              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {/* Action Cards Grid - Changed to max 2 boxes per row: grid-cols-2 */}
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
                 {actionCards.map((card) => {
                   const Icon = card.icon;
                   return (
@@ -190,8 +190,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Attendance Records Section */}
-          <div className="lg:col-span-4">
+          {/* Attendance Records Section - Changed from lg:col-span-4 to lg:col-span-6 */}
+          <div className="lg:col-span-6">
             <div
               className={`transition-all duration-1000 delay-300 ${
                 loaded ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"

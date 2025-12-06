@@ -127,9 +127,14 @@ const App: React.FC = () => {
 
       const list: Employee[] = (json.employees || [])
         .map((emp: any) => ({
-          employeeId: emp.employeeId,
-          employeeName: emp.employeeName,
-          department: emp.department ?? null,
+          // ✅ Map correctly from backend fields
+          employeeId: emp.empId, // backend: empId
+          employeeName: emp.name, // backend: name
+          department:
+            emp.department ??
+            emp.departmentName ??
+            emp.department_name ??
+            null,
           role: emp.role ?? null,
           team: emp.team ?? null,
           category: emp.category ?? null,
@@ -375,9 +380,10 @@ const App: React.FC = () => {
     setToDate(todayDateString);
   };
 
+  // ✅ Updated to also look at team, since "Founders" is a team value in your model
   const isFounder = (emp: Employee): boolean => {
-    const combined = `${emp.role ?? ""} ${emp.category ?? ""}`.toLowerCase();
-    return combined.includes("founder"); // matches "Founder", "Co-Founder", etc.
+    const combined = `${emp.role ?? ""} ${emp.category ?? ""} ${emp.team ?? ""}`.toLowerCase();
+    return combined.includes("founder"); // matches "Founder", "Founders", "Co-Founder", etc.
   };
 
   const stats = useMemo(() => {

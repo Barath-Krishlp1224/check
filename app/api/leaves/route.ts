@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongoose"; // Assuming this utility exists
-import LeaveRequest, { LeaveType, LeaveStatus } from "@/models/LeaveRequest"; // Assuming these models exist
-import Employee from "@/models/Employee"; // Assuming this model exists
+import { connectToDatabase } from "@/lib/mongoose";
+import LeaveRequest, { LeaveType, LeaveStatus } from "@/models/LeaveRequest";
+import Employee from "@/models/Employee";
 
 const ANNUAL_SICK_CASUAL_LIMIT = 12;
 
-// --- POST Handler: Submit New Leave Request ---
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
@@ -27,7 +26,6 @@ export async function POST(req: Request) {
       description?: string;
     } = body;
 
-    // 1. Basic Validation
     if (!empIdOrEmail || !leaveType || !startDate || !endDate || !days) {
       return NextResponse.json(
         {
@@ -38,7 +36,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Find Employee
     const identifier = empIdOrEmail.trim();
     const empQuery = identifier.includes("@")
       ? { mailId: new RegExp(`^${identifier}$`, "i") }
@@ -55,8 +52,8 @@ export async function POST(req: Request) {
 
     const finalEmployeeName = employee.name || "Unknown";
     const finalEmployeeId = employee.empId || employee._id.toString();
+    const isAccountsTeam = employee.team === "Accounts";
 
-    // 3. Date Validation
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -74,7 +71,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Calculate Current Balance (Only based on APPROVED/AUTO-APPROVED leaves)
     const currentYear = start.getFullYear();
     const yearStart = new Date(currentYear, 0, 1);
     const nextYearStart = new Date(currentYear + 1, 0, 1);
@@ -103,9 +99,9 @@ export async function POST(req: Request) {
     let remainingSickAfter = remainingSickBefore;
     let remainingCasualAfter = remainingCasualBefore;
     
-    let status: LeaveStatus = "pending"; // Default status
-
-    // 5. Apply Policy Rules and Check Balance
+    // MODIFIED: Initial status logic
+    let status: LeaveStatus = isAccountsTeam ? "manager-pending" : "pending";
+    let teamLeadApproved = isAccountsTeam;
 
     if (leaveType === "sick") {
       if (days > remainingSickBefore) {
@@ -116,10 +112,9 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      
-      // Auto-Approval Rule for 1 day Sick Leave
       if (days === 1) {
         status = "auto-approved";
+        teamLeadApproved = true;
         remainingSickAfter = remainingSickBefore - days;
       }
     }
@@ -133,17 +128,13 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      
-      // Auto-Approval Rule for 1 day Casual Leave
       if (days === 1) {
         status = "auto-approved";
+        teamLeadApproved = true;
         remainingCasualAfter = remainingCasualBefore - days;
       }
     }
-    
-    // Planned and Unplanned leaves always remain 'pending'
 
-    // 6. Create Leave Request
     const leave = await LeaveRequest.create({
       employeeName: finalEmployeeName,
       employeeId: finalEmployeeId,
@@ -152,10 +143,11 @@ export async function POST(req: Request) {
       endDate: end,
       days,
       description,
-      status, // Will be 'pending' or 'auto-approved'
+      status,
+      teamLeadApproved: teamLeadApproved,
+      managerApproved: false,
     });
 
-    // 7. Success Response
     return NextResponse.json(
       {
         leave,
@@ -170,7 +162,6 @@ export async function POST(req: Request) {
   }
 }
 
-// --- GET Handler: Fetch Balance or List Requests ---
 export async function GET(req: Request) {
   try {
     await connectToDatabase();
@@ -181,23 +172,20 @@ export async function GET(req: Request) {
 
     let employee = null;
     let finalEmployeeId: string | undefined;
-    
-    // 1. Find Employee (Needed for both 'balance' and 'list' modes)
+
     if (empIdOrEmail) {
-        const identifier = empIdOrEmail.trim();
-        const query = identifier.includes("@")
-            ? { mailId: new RegExp(`^${identifier}$`, "i") }
-            : { empId: new RegExp(`^${identifier}$`, "i") };
+      const identifier = empIdOrEmail.trim();
+      const query = identifier.includes("@")
+        ? { mailId: new RegExp(`^${identifier}$`, "i") }
+        : { empId: new RegExp(`^${identifier}$`, "i") };
 
-        employee = await Employee.findOne(query);
+      employee = await Employee.findOne(query);
 
-        if (employee) {
-            finalEmployeeId = employee.empId || employee._id.toString();
-        }
+      if (employee) {
+        finalEmployeeId = employee.empId || employee._id.toString();
+      }
     }
 
-
-    // 2. Fetch Leave Balance (Default GET behavior)
     if (empIdOrEmail && mode !== "list") {
       if (!employee) {
         return NextResponse.json(
@@ -205,14 +193,13 @@ export async function GET(req: Request) {
           { status: 404 }
         );
       }
-      
+
       const currentYear = new Date().getFullYear();
       const yearStart = new Date(currentYear, 0, 1);
       const nextYearStart = new Date(currentYear + 1, 0, 1);
 
       const [approvedSick, approvedCasual, pendingPlanned, pendingUnplanned] =
         await Promise.all([
-          // Used Sick/Casual (Approved/Auto-Approved)
           LeaveRequest.find({
             employeeId: finalEmployeeId,
             leaveType: "sick",
@@ -225,7 +212,6 @@ export async function GET(req: Request) {
             status: { $in: ["approved", "auto-approved"] },
             startDate: { $gte: yearStart, $lt: nextYearStart },
           }),
-          // Pending Planned/Unplanned
           LeaveRequest.find({
             employeeId: finalEmployeeId,
             leaveType: "planned",
@@ -263,10 +249,9 @@ export async function GET(req: Request) {
       );
     }
 
-    // 3. Fetch User's Leave Request List (`mode=list`)
     if (empIdOrEmail && mode === "list") {
       if (!employee) {
-        return NextResponse.json([], { status: 200 }); // Return empty array if employee not found but client asked for list
+        return NextResponse.json([], { status: 200 });
       }
 
       const leaves = await LeaveRequest.find({
@@ -276,11 +261,11 @@ export async function GET(req: Request) {
       return NextResponse.json(leaves, { status: 200 });
     }
 
-    // 4. Admin List/Filter (If no empIdOrEmail is provided, assumes admin request)
     const status = searchParams.get("status");
     const leaveType = searchParams.get("leaveType");
     const filterEmployeeId = searchParams.get("employeeId");
     const filterEmployeeName = searchParams.get("employeeName");
+    const teamLeadApprovedFilter = searchParams.get("teamLeadApproved");
 
     const query: Record<string, any> = {};
     if (status) query.status = status;
@@ -289,6 +274,8 @@ export async function GET(req: Request) {
       query.employeeId = new RegExp(`^${filterEmployeeId}$`, "i");
     if (filterEmployeeName)
       query.employeeName = new RegExp(`^${filterEmployeeName}$`, "i");
+    if (teamLeadApprovedFilter === "true") query.teamLeadApproved = true;
+    if (teamLeadApprovedFilter === "false") query.teamLeadApproved = false;
 
     const leaves = await LeaveRequest.find(query).sort({ createdAt: -1 });
 
