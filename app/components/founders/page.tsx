@@ -135,7 +135,8 @@ export default function AdminPage() {
                       key={card.id}
                       role="button"
                       onClick={card.onClick}
-                      className={`group relative bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 
+                      // Reduced vertical padding (p-4 to p-3) to tighten the box up since the description is gone
+                      className={`group relative bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 
                         border border-gray-100 cursor-pointer overflow-hidden
                         transition-all duration-300 hover:shadow-xl hover:-translate-y-1
                         ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}
@@ -152,24 +153,25 @@ export default function AdminPage() {
                       
                       {/* Content */}
                       <div className="relative z-10">
-                        <div className="flex items-start gap-3 sm:gap-4">
+                        {/* Adjusted gap to align better with just the title */}
+                        <div className="flex items-center gap-3 sm:gap-4"> 
                           {/* Icon */}
-                          <div className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl sm:rounded-2xl 
+                          <div className={`flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl sm:rounded-2xl 
                             bg-gradient-to-br ${card.gradient} 
                             flex items-center justify-center shadow-lg
                             group-hover:scale-110 transition-transform duration-300`}>
-                            <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                            {/* Adjusted icon size to be slightly smaller to fit with the new box size */}
+                            <Icon className="w-5 h-5 sm:w-5 sm:h-5 text-white" />
                           </div>
                           
                           {/* Text */}
-                          <div className="flex-1 min-w-0 pt-1">
-                            <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg mb-1 
-                              group-hover:text-gray-800 transition-colors truncate">
+                          <div className="flex-1 min-w-0">
+                            {/* REMOVED: truncate class */}
+                            <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg 
+                              group-hover:text-gray-800 transition-colors">
                               {card.title}
                             </h3>
-                            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed line-clamp-2">
-                              {card.description}
-                            </p>
+                            {/* REMOVED: Description paragraph */}
                           </div>
                         </div>
                       </div>
