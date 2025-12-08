@@ -34,7 +34,7 @@ function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
     typeof raw.id === "string" && raw.id.length > 0
       ? raw.id
       : Math.random().toString(36).slice(2, 9);
-      
+
   const done = typeof raw.done === "boolean" ? raw.done : Boolean(raw.done);
 
   const amount =
@@ -95,10 +95,13 @@ function computeExpenseTotal(e: IExpense): number {
       ? e.amount
       : Number(e.amount) || 0;
 
-  const subtasksTotal = (e.subtasks || []).reduce((ss: number, st: SubExpense) => {
-    const a = st.amount;
-    return ss + (typeof a === "number" && !Number.isNaN(a) ? a : 0);
-  }, 0);
+  const subtasksTotal = (e.subtasks || []).reduce(
+    (ss: number, st: SubExpense) => {
+      const a = st.amount;
+      return ss + (typeof a === "number" && !Number.isNaN(a) ? a : 0);
+    },
+    0
+  );
 
   return expenseAmount + subtasksTotal;
 }
@@ -113,8 +116,8 @@ export async function GET(request: Request) {
     if (weekStart) {
       const wkItems = (await Expense.find({ weekStart })
         .sort({ date: -1 })
-        .lean() as unknown) as IExpense[];
-        
+        .lean()) as unknown as IExpense[];
+
       const weekTotal = wkItems.reduce(
         (s: number, e: IExpense) => s + computeExpenseTotal(e),
         0
@@ -125,7 +128,9 @@ export async function GET(request: Request) {
       );
     }
 
-    const expenses = (await Expense.find({}).sort({ createdAt: -1 }).lean() as unknown) as IExpense[];
+    const expenses = (await Expense.find({})
+      .sort({ createdAt: -1 })
+      .lean()) as unknown as IExpense[];
     return NextResponse.json(
       { success: true, data: expenses },
       { status: 200 }
@@ -145,16 +150,16 @@ export async function POST(request: Request) {
 
     const description =
       typeof body.description === "string" ? body.description.trim() : "";
-      
+
     const amount =
       typeof body.amount === "number" ? body.amount : Number(body.amount);
-      
+
     const category =
       typeof body.category === "string" ? body.category.trim() : "";
-      
+
     const date = typeof body.date === "string" ? body.date : "";
     const weekStart = typeof body.weekStart === "string" ? body.weekStart : "";
-    
+
     const shop =
       body.shop === undefined || body.shop === null ? "" : String(body.shop);
 
@@ -168,12 +173,12 @@ export async function POST(request: Request) {
       body.employeeId === undefined || body.employeeId === null
         ? undefined
         : String(body.employeeId);
-        
+
     const employeeName =
       typeof body.employeeName === "string"
         ? body.employeeName.trim()
         : undefined;
-        
+
     const subtasks = normalizeSubExpenses(body.subtasks);
 
     if (
@@ -192,7 +197,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    
+
     if (role === "manager" && (!employeeId || !employeeName)) {
       return NextResponse.json(
         {
@@ -263,12 +268,12 @@ export async function PUT(request: Request) {
         { $set: { paid: true } }
       );
     }
-    
+
     if (res) {
-        return NextResponse.json(
-          { success: true, modifiedCount: res.modifiedCount ?? 0 },
-          { status: 200 }
-        );
+      return NextResponse.json(
+        { success: true, modifiedCount: (res as any).modifiedCount ?? 0 },
+        { status: 200 }
+      );
     }
 
     return NextResponse.json(
@@ -288,7 +293,7 @@ export async function PATCH(request: Request) {
   try {
     const body = (await request.json()) as {
       id?: string;
-      updates?: Record<string, unknown>;
+      updates?: Record<string, any>;
     };
     const { id, updates } = body;
 
@@ -316,7 +321,7 @@ export async function PATCH(request: Request) {
     ];
 
     const payload: Record<string, unknown> = {};
-    
+
     for (const key of Object.keys(updates)) {
       if (!allowed.includes(key)) continue;
 
@@ -367,22 +372,36 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
-    
-    if (payload.role === "manager" && !payload.employeeId && !payload.employeeName) {
-        const existing = (await Expense.findById(id).lean() as unknown) as IExpense | null;
-        if (existing && existing.role !== "manager" && (!existing.employeeId || !existing.employeeName)) {
-            return NextResponse.json(
-              { success: false, error: "Employee details are required when setting role to manager." },
-              { status: 400 }
-            );
-        }
+
+    if (
+      payload.role === "manager" &&
+      !payload.employeeId &&
+      !payload.employeeName
+    ) {
+      const existing = (await Expense.findById(id).lean()) as
+        | IExpense
+        | null;
+      if (
+        existing &&
+        existing.role !== "manager" &&
+        (!existing.employeeId || !existing.employeeName)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Employee details are required when setting role to manager.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const updated = (await Expense.findByIdAndUpdate(
       id,
       { $set: payload },
       { new: true }
-    ).lean() as unknown) as IExpense | null;
+    ).lean()) as unknown as IExpense | null;
 
     if (!updated) {
       return NextResponse.json(
@@ -403,14 +422,33 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const url = new URL(request.url);
-    const id = url.searchParams.get("id");
+    let id: string | null = null;
+
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = (await request.json().catch(() => null)) as
+        | { id?: unknown }
+        | null;
+      if (body && typeof body.id === "string" && body.id.trim().length > 0) {
+        id = body.id.trim();
+      }
+    }
+
+    if (!id) {
+      const url = new URL(request.url);
+      const qpId = url.searchParams.get("id");
+      if (qpId && qpId.trim().length > 0) {
+        id = qpId.trim();
+      }
+    }
+
     if (!id) {
       return NextResponse.json(
-        { success: false, error: "Missing id query parameter" },
+        { success: false, error: "Missing id (in body or query param)" },
         { status: 400 }
       );
     }
+
     await ensureConnected();
     const deleted = await Expense.findByIdAndDelete(id).lean();
     if (!deleted) {
@@ -419,10 +457,7 @@ export async function DELETE(request: Request) {
         { status: 404 }
       );
     }
-    return NextResponse.json(
-      { success: true, data: deleted },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, data: deleted }, { status: 200 });
   } catch (err: any) {
     console.error("DELETE Expense Error:", err);
     return NextResponse.json(

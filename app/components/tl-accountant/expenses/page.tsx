@@ -9,9 +9,9 @@ import {
   INITIAL_AMOUNT_CONSTANT,
   getWeekStart,
   isExpensePaid,
-} from "./types"; // Assuming this imports your necessary types
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+} from "./types";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface InitialAmountHistoryEntry {
   amount: number;
@@ -211,9 +211,7 @@ const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
           <label className="text-sm font-medium text-black">Role</label>
           <select
             value={filterRole}
-            onChange={(e) =>
-              setFilterRole(e.target.value as "all" | Role)
-            }
+            onChange={(e) => setFilterRole(e.target.value as "all" | Role)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black"
           >
             <option value="all">All Roles</option>
@@ -286,7 +284,9 @@ const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
 
         {filterEmployee !== "all" && (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-black">Employee Total Paid</label>
+            <label className="text-sm font-medium text-black">
+              Employee Total Paid
+            </label>
             <div className="border border-green-200 bg-green-50 rounded-lg px-4 py-2 text-lg font-bold text-green-700">
               ₹{filterEmployeeTotal.toLocaleString()}
             </div>
@@ -328,7 +328,7 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
 }) => {
   const latestDate = initialAmountHistory[0]?.date
     ? new Date(initialAmountHistory[0].date).toLocaleDateString()
-    : 'N/A';
+    : "N/A";
 
   return (
     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -347,7 +347,9 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
         {isEditingInitialAmount ? (
           <div className="space-y-4">
             <div className="border border-gray-300 rounded-lg p-3">
-              <label className="text-xs font-medium text-black block mb-1">Set New Amount (₹)</label>
+              <label className="text-xs font-medium text-black block mb-1">
+                Set New Amount (₹)
+              </label>
               <input
                 type="number"
                 value={initialAmountInput}
@@ -373,13 +375,26 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
 
             {initialAmountHistory.length > 0 && (
               <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-lg bg-gray-50 p-2">
-                <p className="text-xs font-semibold text-black mb-2">History of Initial Amounts</p>
+                <p className="text-xs font-semibold text-black mb-2">
+                  History of Initial Amounts
+                </p>
                 <table className="w-full text-xs">
                   <tbody className="divide-y divide-gray-200">
                     {initialAmountHistory.map((item, index) => (
-                      <tr key={index} className={index === 0 ? "font-bold text-blue-600" : "text-gray-600"}>
-                        <td className="py-1">{new Date(item.date).toLocaleDateString()}</td>
-                        <td className="py-1 text-right">₹{item.amount.toLocaleString()}</td>
+                      <tr
+                        key={index}
+                        className={
+                          index === 0
+                            ? "font-bold text-blue-600"
+                            : "text-gray-600"
+                        }
+                      >
+                        <td className="py-1">
+                          {new Date(item.date).toLocaleDateString()}
+                        </td>
+                        <td className="py-1 text-right">
+                          ₹{item.amount.toLocaleString()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -392,29 +407,33 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
             <div className="text-2xl font-bold text-black">
               ₹{initialAmount.toLocaleString()}
             </div>
-            <div className="text-xs text-gray-500">
-              Set on: {latestDate}
-            </div>
+            <div className="text-xs text-gray-500">Set on: {latestDate}</div>
           </div>
         )}
       </div>
 
       <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-        <div className="text-sm font-medium text-red-700 mb-3">Total Spent</div>
+        <div className="text-sm font-medium text-red-700 mb-3">
+          Total Spent
+        </div>
         <div className="text-2xl font-bold text-red-900">
           ₹{walletStats.spent.toLocaleString()}
         </div>
       </div>
 
       <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-        <div className="text-sm font-medium text-amber-700 mb-3">Pending (Others)</div>
+        <div className="text-sm font-medium text-amber-700 mb-3">
+          Pending (Others)
+        </div>
         <div className="text-2xl font-bold text-amber-900">
           ₹{walletStats.pending.toLocaleString()}
         </div>
       </div>
 
       <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-        <div className="text-sm font-medium text-green-700 mb-3">Remaining Balance</div>
+        <div className="text-sm font-medium text-green-700 mb-3">
+          Remaining Balance
+        </div>
         <div className="text-2xl font-bold text-green-900">
           ₹{walletStats.remaining.toLocaleString()}
         </div>
@@ -442,6 +461,7 @@ interface SubExpensesSectionProps {
     subtaskId: string,
     isDone: boolean
   ) => void;
+  onDeleteSubtask: (parentExp: Expense, subtaskId: string) => void;
 }
 
 const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
@@ -459,6 +479,7 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
   setSubEmployeeId,
   onAddSubtask,
   onUpdateSubtaskStatus,
+  onDeleteSubtask,
 }) => {
   return (
     <tr className="bg-gray-50">
@@ -469,12 +490,17 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
             className="space-y-4 mb-5"
           >
             <div className="font-semibold text-sm text-black mb-4">
-              Add Sub Expense for: <span className="text-blue-600">{parent.shop || parent.description}</span>
+              Add Sub Expense for:{" "}
+              <span className="text-blue-600">
+                {parent.shop || parent.description}
+              </span>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">Description</label>
+                <label className="text-xs font-medium text-black">
+                  Description
+                </label>
                 <input
                   value={subTitle}
                   onChange={(e) => setSubTitle(e.target.value)}
@@ -483,7 +509,9 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">Amount (₹)</label>
+                <label className="text-xs font-medium text-black">
+                  Amount (₹)
+                </label>
                 <input
                   type="number"
                   value={subAmount}
@@ -517,7 +545,9 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
 
             {subRole === "manager" && (
               <div className="flex flex-col gap-2 max-w-xs">
-                <label className="text-xs font-medium text-black">Employee</label>
+                <label className="text-xs font-medium text-black">
+                  Employee
+                </label>
                 <select
                   value={subEmployeeId}
                   onChange={(e) => setSubEmployeeId(e.target.value)}
@@ -546,24 +576,48 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
               <table className="min-w-full text-xs">
                 <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
-                    <th className="p-3 text-left font-semibold text-black">Description</th>
-                    <th className="p-3 text-right font-semibold text-black">Amount</th>
-                    <th className="p-3 text-left font-semibold text-black">Date</th>
-                    <th className="p-3 text-left font-semibold text-black">Role</th>
-                    <th className="p-3 text-left font-semibold text-black">Employee</th>
-                    <th className="p-3 text-left font-semibold text-black">Status</th>
+                    <th className="p-3 text-left font-semibold text-black">
+                      Description
+                    </th>
+                    <th className="p-3 text-right font-semibold text-black">
+                      Amount
+                    </th>
+                    <th className="p-3 text-left font-semibold text-black">
+                      Date
+                    </th>
+                    <th className="p-3 text-left font-semibold text-black">
+                      Role
+                    </th>
+                    <th className="p-3 text-left font-semibold text-black">
+                      Employee
+                    </th>
+                    <th className="p-3 text-left font-semibold text-black">
+                      Status
+                    </th>
+                    <th className="p-3 text-left font-semibold text-black">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {parent.subtasks.map((sub: Subtask) => (
-                    <tr key={sub.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={sub.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="p-3 text-black">{sub.title}</td>
                       <td className="p-3 text-right font-medium text-black">
                         ₹{(sub.amount || 0).toLocaleString()}
                       </td>
-                      <td className="p-3 text-gray-600">{sub.date || "-"}</td>
-                      <td className="p-3 text-gray-600 capitalize">{sub.role || "-"}</td>
-                      <td className="p-3 text-gray-600">{sub.employeeName || "-"}</td>
+                      <td className="p-3 text-gray-600">
+                        {sub.date || "-"}
+                      </td>
+                      <td className="p-3 text-gray-600 capitalize">
+                        {sub.role || "-"}
+                      </td>
+                      <td className="p-3 text-gray-600">
+                        {sub.employeeName || "-"}
+                      </td>
                       <td className="p-3">
                         <select
                           value={sub.done ? "done" : "pending"}
@@ -576,6 +630,15 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                           <option value="pending">Pending</option>
                           <option value="done">Done</option>
                         </select>
+                      </td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => onDeleteSubtask(parent, sub.id)}
+                          className="border border-red-300 text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -617,6 +680,8 @@ interface ExpensesTableProps {
     isDone: boolean
   ) => void;
   onUpdatePaidStatus: (exp: Expense, isPaid: boolean) => void;
+  onDeleteExpense: (exp: Expense) => void;
+  onDeleteSubtask: (parentExp: Expense, subtaskId: string) => void;
 }
 
 const ExpensesTable: React.FC<ExpensesTableProps> = ({
@@ -639,6 +704,8 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
   onAddSubtask,
   onUpdateSubtaskStatus,
   onUpdatePaidStatus,
+  onDeleteExpense,
+  onDeleteSubtask,
 }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -657,21 +724,42 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
                 <th className="p-4 text-left font-semibold text-black">#</th>
-                <th className="p-4 text-left font-semibold text-black">Shop</th>
-                <th className="p-4 text-left font-semibold text-black">Description</th>
-                <th className="p-4 text-right font-semibold text-black">Amount</th>
-                <th className="p-4 text-right font-semibold text-black">Total (incl. sub)</th>
-                <th className="p-4 text-left font-semibold text-black">Date</th>
-                <th className="p-4 text-left font-semibold text-black">Role</th>
-                <th className="p-4 text-left font-semibold text-black">Employee</th>
-                <th className="p-4 text-left font-semibold text-black">Status</th>
-                <th className="p-4 text-left font-semibold text-black">Actions</th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Shop
+                </th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Description
+                </th>
+                <th className="p-4 text-right font-semibold text-black">
+                  Amount
+                </th>
+                <th className="p-4 text-right font-semibold text-black">
+                  Total (incl. sub)
+                </th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Date
+                </th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Role
+                </th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Employee
+                </th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Status
+                </th>
+                <th className="p-4 text-left font-semibold text-black">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td className="p-8 text-center text-gray-500" colSpan={10}>
+                  <td
+                    className="p-8 text-center text-gray-500"
+                    colSpan={10}
+                  >
                     No expenses found matching your criteria
                   </td>
                 </tr>
@@ -688,8 +776,12 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                     <React.Fragment key={exp._id}>
                       <tr className="hover:bg-gray-50 transition-colors">
                         <td className="p-4 text-gray-600">{idx + 1}</td>
-                        <td className="p-4 text-black font-medium">{exp.shop || "-"}</td>
-                        <td className="p-4 text-black">{exp.description}</td>
+                        <td className="p-4 text-black font-medium">
+                          {exp.shop || "-"}
+                        </td>
+                        <td className="p-4 text-black">
+                          {exp.description}
+                        </td>
                         <td className="p-4 text-right font-medium text-black">
                           ₹{exp.amount.toLocaleString()}
                         </td>
@@ -700,12 +792,15 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                         <td className="p-4 text-gray-600 capitalize">
                           {exp.role || "other"}
                         </td>
-                        <td className="p-4 text-gray-600">{exp.employeeName || "-"}</td>
+                        <td className="p-4 text-gray-600">
+                          {exp.employeeName || "-"}
+                        </td>
                         <td className="p-4">
                           <select
                             value={paid ? "paid" : "unpaid"}
                             onChange={(e) => {
-                              const newStatus = e.target.value === "paid";
+                              const newStatus =
+                                e.target.value === "paid";
                               onUpdatePaidStatus(exp, newStatus);
                             }}
                             className={`border rounded-lg px-3 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer text-black ${
@@ -719,13 +814,22 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                           </select>
                         </td>
                         <td className="p-4">
-                          <button
-                            type="button"
-                            className="border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-black"
-                            onClick={() => onToggleExpand(exp._id)}
-                          >
-                            {expandedId === exp._id ? "Hide" : "View"}
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-black"
+                              onClick={() => onToggleExpand(exp._id)}
+                            >
+                              {expandedId === exp._id ? "Hide" : "View"}
+                            </button>
+                            <button
+                              type="button"
+                              className="border border-red-300 text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                              onClick={() => onDeleteExpense(exp)}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
 
@@ -745,6 +849,7 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                           setSubEmployeeId={setSubEmployeeId}
                           onAddSubtask={onAddSubtask}
                           onUpdateSubtaskStatus={onUpdateSubtaskStatus}
+                          onDeleteSubtask={onDeleteSubtask}
                         />
                       )}
                     </React.Fragment>
@@ -781,15 +886,18 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
   if (!showHistory) return null;
 
   const list = historyEmployeeId ? employeeHistory : historyExpenses;
-  
   const historyListToShow = list.slice(0, 5);
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
       <div className="flex flex-wrap gap-4 items-center mb-6">
-        <div className="font-semibold text-lg text-black">History (Completed)</div>
+        <div className="font-semibold text-lg text-black">
+          History (Completed)
+        </div>
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-black">Filter by Employee</label>
+          <label className="text-xs font-medium text-black">
+            Filter by Employee
+          </label>
           <select
             value={historyEmployeeId}
             onChange={(e) => setHistoryEmployeeId(e.target.value)}
@@ -805,7 +913,9 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
         </div>
         {historyEmployeeId && (
           <div className="ml-auto">
-            <div className="text-xs text-gray-600 mb-1">Total Paid to Employee</div>
+            <div className="text-xs text-gray-600 mb-1">
+              Total Paid to Employee
+            </div>
             <div className="text-lg font-bold text-green-700">
               ₹{employeeHistoryTotal.toLocaleString()}
             </div>
@@ -817,18 +927,33 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 border-b border-gray-200">
             <tr>
-              <th className="p-4 text-left font-semibold text-black">Date</th>
-              <th className="p-4 text-left font-semibold text-black">Shop</th>
-              <th className="p-4 text-left font-semibold text-black">Description</th>
-              <th className="p-4 text-right font-semibold text-black">Total (incl. sub)</th>
-              <th className="p-4 text-left font-semibold text-black">Role</th>
-              <th className="p-4 text-left font-semibold text-black">Employee</th>
+              <th className="p-4 text-left font-semibold text-black">
+                Date
+              </th>
+              <th className="p-4 text-left font-semibold text-black">
+                Shop
+              </th>
+              <th className="p-4 text-left font-semibold text-black">
+                Description
+              </th>
+              <th className="p-4 text-right font-semibold text-black">
+                Total (incl. sub)
+              </th>
+              <th className="p-4 text-left font-semibold text-black">
+                Role
+              </th>
+              <th className="p-4 text-left font-semibold text-black">
+                Employee
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {historyListToShow.length === 0 ? (
               <tr>
-                <td className="p-8 text-center text-gray-500" colSpan={6}>
+                <td
+                  className="p-8 text-center text-gray-500"
+                  colSpan={6}
+                >
                   No completed expenses found
                 </td>
               </tr>
@@ -840,15 +965,24 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
                 );
                 const total = e.amount + subs;
                 return (
-                  <tr key={e._id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={e._id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     <td className="p-4 text-gray-600">{e.date}</td>
-                    <td className="p-4 text-black font-medium">{e.shop || "-"}</td>
+                    <td className="p-4 text-black font-medium">
+                      {e.shop || "-"}
+                    </td>
                     <td className="p-4 text-black">{e.description}</td>
                     <td className="p-4 text-right font-bold text-black">
                       ₹{total.toLocaleString()}
                     </td>
-                    <td className="p-4 text-gray-600 capitalize">{e.role || "other"}</td>
-                    <td className="p-4 text-gray-600">{e.employeeName || "-"}</td>
+                    <td className="p-4 text-gray-600 capitalize">
+                      {e.role || "other"}
+                    </td>
+                    <td className="p-4 text-gray-600">
+                      {e.employeeName || "-"}
+                    </td>
                   </tr>
                 );
               })
@@ -871,37 +1005,43 @@ const ExpensesContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [, setEmployeesLoading] = useState(false);
 
-  const [initialAmountHistory, setInitialAmountHistory] = useState<InitialAmountHistoryEntry[]>(() => {
+  const [initialAmountHistory, setInitialAmountHistory] = useState<
+    InitialAmountHistoryEntry[]
+  >(() => {
     if (typeof window !== "undefined") {
-      const storedData = localStorage.getItem("initialWalletAmountHistory");
+      const storedData = localStorage.getItem(
+        "initialWalletAmountHistory"
+      );
       if (storedData) {
         try {
-          const history = JSON.parse(storedData) as InitialAmountHistoryEntry[];
+          const history = JSON.parse(
+            storedData
+          ) as InitialAmountHistoryEntry[];
           if (Array.isArray(history) && history.length > 0) {
-              return history;
+            return history;
           }
-        } catch (e) {
-        }
+        } catch (e) {}
       }
     }
     return [{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }];
   });
 
-  const initialAmount = initialAmountHistory[0]?.amount || 0; 
+  const initialAmount = initialAmountHistory[0]?.amount || 0;
 
-  const [isEditingInitialAmount, setIsEditingInitialAmount] = useState(false);
+  const [isEditingInitialAmount, setIsEditingInitialAmount] =
+    useState(false);
   const [initialAmountInput, setInitialAmountInput] = useState(
     initialAmount.toString()
   );
-  
+
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+  const [date, setDate] = useState(
+    () => new Date().toISOString().slice(0, 10)
   );
   const [role, setRole] = useState<Role>("founder");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -910,23 +1050,24 @@ const ExpensesContent: React.FC = () => {
 
   const [subTitle, setSubTitle] = useState("");
   const [subAmount, setSubAmount] = useState("");
-  const [subDate, setSubDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+  const [subDate, setSubDate] = useState(
+    () => new Date().toISOString().slice(0, 10)
   );
   const [subRole, setSubRole] = useState<Role>("founder");
   const [subEmployeeId, setSubEmployeeId] = useState("");
 
   const [filterRole, setFilterRole] = useState<"all" | Role>("all");
-  const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "unpaid">(
-    "all"
-  );
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "paid" | "unpaid"
+  >("all");
   const [filterEmployee, setFilterEmployee] = useState<string>("all");
   const [filterSearch, setFilterSearch] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
   const [showHistory, setShowHistory] = useState(false);
-  const [historyEmployeeId, setHistoryEmployeeId] = useState<string>("");
+  const [historyEmployeeId, setHistoryEmployeeId] =
+    useState<string>("");
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -984,17 +1125,20 @@ const ExpensesContent: React.FC = () => {
     if (!Number.isNaN(newAmount) && newAmount >= 0) {
       const newEntry: InitialAmountHistoryEntry = {
         amount: newAmount,
-        date: new Date().toISOString(), 
+        date: new Date().toISOString(),
       };
-      
+
       if (newAmount !== initialAmountHistory[0]?.amount) {
-          const newHistory = [newEntry, ...initialAmountHistory];
-          setInitialAmountHistory(newHistory);
-          
-          if (typeof window !== "undefined") {
-            localStorage.setItem("initialWalletAmountHistory", JSON.stringify(newHistory));
-          }
-          toast.success("Initial amount updated successfully!");
+        const newHistory = [newEntry, ...initialAmountHistory];
+        setInitialAmountHistory(newHistory);
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "initialWalletAmountHistory",
+            JSON.stringify(newHistory)
+          );
+        }
+        toast.success("Initial amount updated successfully!");
       }
       setIsEditingInitialAmount(false);
     } else {
@@ -1073,7 +1217,8 @@ const ExpensesContent: React.FC = () => {
     if (filterEmployee === "all" || !filterEmployee) return 0;
 
     return expenses.reduce((sum, e) => {
-      if (e.employeeId !== filterEmployee || !isExpensePaid(e)) return sum;
+      if (e.employeeId !== filterEmployee || !isExpensePaid(e))
+        return sum;
       const base = e.amount;
       const subs = (e.subtasks || []).reduce(
         (s, sub) => s + (sub.amount || 0),
@@ -1185,8 +1330,8 @@ const ExpensesContent: React.FC = () => {
     const updatedSubtasks = [newSub, ...(parent.subtasks || [])];
 
     const updates = {
-        subtasks: updatedSubtasks,
-        paid: false,
+      subtasks: updatedSubtasks,
+      paid: false,
     };
 
     try {
@@ -1251,12 +1396,12 @@ const ExpensesContent: React.FC = () => {
         toast.error(json.error || "Failed to update subtask status.");
         return;
       }
-      
-      const allSubtasksDone = updatedSubtasks.every(sub => sub.done);
+
+      const allSubtasksDone = updatedSubtasks.every((sub) => sub.done);
       let newPaidStatus = parentExp.paid;
-      
+
       if (!parentExp.paid && allSubtasksDone) {
-          newPaidStatus = true;
+        newPaidStatus = true;
       }
 
       setExpenses((prev) =>
@@ -1266,34 +1411,83 @@ const ExpensesContent: React.FC = () => {
             : exp
         )
       );
-      
+
       if (newPaidStatus !== parentExp.paid) {
-          await handleUpdatePaidStatus({...parentExp, subtasks: updatedSubtasks}, newPaidStatus, false);
+        await handleUpdatePaidStatus(
+          { ...parentExp, subtasks: updatedSubtasks },
+          newPaidStatus,
+          false
+        );
       }
       toast.success("Sub expense status updated!");
     } catch (err: any) {
       toast.error(err.message || "Failed to update subtask status.");
     }
   };
-  
-  const handleUpdatePaidStatus = async (exp: Expense, isPaid: boolean, updateSubtasks: boolean = true) => {
-    
+
+  const handleDeleteSubtask = async (
+    parentExp: Expense,
+    subtaskId: string
+  ) => {
+    const confirmMessage = `Are you sure you want to delete this sub expense from "${parentExp.description}"? This cannot be undone.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    const updatedSubtasks = (parentExp.subtasks || []).filter(
+      (sub) => sub.id !== subtaskId
+    );
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: parentExp._id,
+          updates: {
+            subtasks: updatedSubtasks,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        toast.error(json.error || "Failed to delete sub expense.");
+        return;
+      }
+
+      setExpenses((prev) =>
+        prev.map((exp) =>
+          exp._id === parentExp._id
+            ? { ...exp, subtasks: updatedSubtasks }
+            : exp
+        )
+      );
+
+      toast.success("Sub expense deleted successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete sub expense.");
+    }
+  };
+
+  const handleUpdatePaidStatus = async (
+    exp: Expense,
+    isPaid: boolean,
+    updateSubtasks: boolean = true
+  ) => {
     const action = isPaid ? "Done" : "Pending";
     const confirmMessage = `Are you sure you want to mark the expense "${exp.description}" as ${action}?`;
 
-    // Using toast for confirmation with a small delay for better UX flow (though a custom modal is better)
-    // For a quick fix, we'll keep the native window.confirm, as it blocks execution cleanly.
     if (!window.confirm(confirmMessage)) {
       return;
     }
 
     let updatedSubtasks = exp.subtasks || [];
-    
+
     if (updateSubtasks) {
-        updatedSubtasks = (exp.subtasks || []).map((sub) => ({
-          ...sub,
-          done: isPaid ? true : sub.done,
-        }));
+      updatedSubtasks = (exp.subtasks || []).map((sub) => ({
+        ...sub,
+        done: isPaid ? true : sub.done,
+      }));
     }
 
     const updates = {
@@ -1302,7 +1496,7 @@ const ExpensesContent: React.FC = () => {
     };
 
     try {
-      const res = await fetch("/api/expenses", { 
+      const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1325,9 +1519,34 @@ const ExpensesContent: React.FC = () => {
       setExpenses((prev) =>
         prev.map((e) => (e._id === exp._id ? updatedExpense : e))
       );
-      toast.success(`Expense marked as ${isPaid ? 'Done' : 'Pending'}!`);
+      toast.success(`Expense marked as ${isPaid ? "Done" : "Pending"}!`);
     } catch (err: any) {
       toast.error(err.message || "Failed to update status.");
+    }
+  };
+
+  const handleDeleteExpense = async (exp: Expense) => {
+    const confirmMessage = `Are you sure you want to delete the expense "${exp.description}"? This cannot be undone.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: exp._id }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        toast.error(json.error || "Failed to delete expense.");
+        return;
+      }
+
+      setExpenses((prev) => prev.filter((e) => e._id !== exp._id));
+      toast.success("Expense deleted successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete expense.");
     }
   };
 
@@ -1359,12 +1578,26 @@ const ExpensesContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
-      
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
       <div className="max-w-7xl mt-20 mx-auto space-y-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">Expense Management</h1>
-          <p className="text-black">Track and manage your business expenses</p>
+          <h1 className="text-3xl font-bold text-black mb-2">
+            Expense Management
+          </h1>
+          <p className="text-black">
+            Track and manage your business expenses
+          </p>
         </div>
 
         <ExpensesHeader
@@ -1446,7 +1679,11 @@ const ExpensesContent: React.FC = () => {
               setSubEmployeeId={setSubEmployeeId}
               onAddSubtask={handleAddSubtask}
               onUpdateSubtaskStatus={handleUpdateSubtaskStatus}
-              onUpdatePaidStatus={handleUpdatePaidStatus}
+              onUpdatePaidStatus={(exp, isPaid) =>
+                handleUpdatePaidStatus(exp, isPaid)
+              }
+              onDeleteExpense={handleDeleteExpense}
+              onDeleteSubtask={handleDeleteSubtask}
             />
           </div>
         </div>
