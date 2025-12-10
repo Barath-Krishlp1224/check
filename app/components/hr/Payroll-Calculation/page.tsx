@@ -2,13 +2,9 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  Calendar,
-  Loader2,
-  XCircle,
   Filter,
   Download,
   RefreshCw,
-  DollarSign,
   TrendingUp,
   BarChart3,
   CheckCircle2,
@@ -52,7 +48,6 @@ interface HikeCalculatorProps {
   toDate: string;
 }
 
-// Define the type for date presets
 type DatePreset = "CUSTOM" | "1W" | "1M" | "3M" | "6M" | "9M" | "1Y";
 
 const getTodayDateString = () => new Date().toISOString().slice(0, 10);
@@ -500,7 +495,6 @@ const calculateDateRange = (preset: DatePreset) => {
       break;
     case "CUSTOM":
     default:
-      // For CUSTOM, we rely on the state set by the input fields
       return { from: startDate, to: endDate };
   }
 
@@ -519,14 +513,11 @@ const App: React.FC = () => {
     "ALL"
   );
   
-  // New state for the date range preset
   const [selectedDatePreset, setSelectedDatePreset] = useState<DatePreset>("CUSTOM");
   
-  // Custom date states, initialized to today's date
   const [customFromDate, setCustomFromDate] = useState<string>(todayDateString);
   const [customToDate, setCustomToDate] = useState<string>(todayDateString);
 
-  // Memoized actual fromDate and toDate based on preset
   const { fromDate, toDate } = useMemo(() => {
     if (selectedDatePreset === "CUSTOM") {
         return { fromDate: customFromDate, toDate: customToDate };
@@ -645,6 +636,15 @@ const App: React.FC = () => {
     });
   }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate]);
 
+  // FIX: Filter the employee list based on the selection to correctly update the table and summary data
+  const filteredEmployees = useMemo(() => {
+    if (selectedEmployeeId === "ALL") {
+        return employees;
+    }
+    return employees.filter(emp => emp.employeeId === selectedEmployeeId);
+  }, [employees, selectedEmployeeId]);
+
+
   const handleClearFilters = () => {
     setSelectedEmployeeId("ALL");
     setSelectedMode("ALL");
@@ -688,7 +688,7 @@ const App: React.FC = () => {
           <div className="lg:col-span-6 space-y-8">
             <HikeCalculator
               attendanceRecords={filteredAttendance}
-              employees={employees}
+              employees={filteredEmployees}
               fromDate={fromDate}
               toDate={toDate}
             />
@@ -746,7 +746,6 @@ const App: React.FC = () => {
                     </select>
                   </div>
                   
-                  {/* New Date Range Preset Dropdown */}
                   <div className="flex flex-col">
                     <label className="text-sm font-semibold text-gray-700 mb-2.5">
                       Date Range Preset
@@ -767,7 +766,6 @@ const App: React.FC = () => {
                   </div>
 
 
-                  {/* Custom Date Inputs (Conditionally rendered) */}
                   {selectedDatePreset === "CUSTOM" && (
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col">
@@ -796,7 +794,6 @@ const App: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Displaying Current Applied Range */}
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                     <p className="text-xs font-semibold text-gray-700 mb-1">
                         Applied Date Range
@@ -830,7 +827,7 @@ const App: React.FC = () => {
           <div className="lg:col-span-6">
             <HikeTable
               attendanceRecords={filteredAttendance}
-              employees={employees}
+              employees={filteredEmployees}
               fromDate={fromDate}
               toDate={toDate}
             />
@@ -841,4 +838,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

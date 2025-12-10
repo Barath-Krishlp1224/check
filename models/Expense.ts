@@ -1,3 +1,4 @@
+// models/Expense.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export type Role = "founder" | "manager" | "other";
