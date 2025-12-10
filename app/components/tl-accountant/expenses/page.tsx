@@ -397,6 +397,98 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
 const ROWS_PER_PAGE = 10;
 const INITIAL_ROWS = 5;
 
+const convertToCSV = (data: Expense[], employees: Employee[]) => {
+  const employeeMap = employees.reduce((map, emp) => {
+    map.set(emp._id, emp.name);
+    return map;
+  }, new Map<string, string>());
+
+  const headers = [
+    "Date",
+    "Shop/Vendor",
+    "Description",
+    "Role",
+    "Employee",
+    "Amount (Base)",
+    "Sub Expenses Total",
+    "Total Expense",
+    "Status",
+  ];
+
+  let grandTotalAmountBase = 0;
+  let grandTotalSubExpenses = 0;
+  let grandTotalExpense = 0;
+
+  const detailRows = data.map((exp) => {
+    const subsTotal = (exp.subtasks || []).reduce(
+      (s, sub) => s + (sub.amount || 0),
+      0
+    );
+    const total = exp.amount + subsTotal;
+    const paid = isExpensePaid(exp) ? "Done" : "Pending";
+    const employeeName = exp.employeeId
+      ? employeeMap.get(exp.employeeId) || exp.employeeName || "-"
+      : "-";
+
+    grandTotalAmountBase += exp.amount;
+    grandTotalSubExpenses += subsTotal;
+    grandTotalExpense += total;
+
+    const mainRow = [
+      formatDate(exp.date),
+      (exp.shop || "-").replace(/,/g, ""),
+      (exp.description).replace(/,/g, ""),
+      exp.role,
+      employeeName.replace(/,/g, ""),
+      exp.amount.toFixed(2),
+      subsTotal.toFixed(2),
+      total.toFixed(2),
+      paid,
+    ];
+
+    const subRows = (exp.subtasks || []).map((sub) => {
+      const subEmployeeName = sub.employeeId
+        ? employeeMap.get(sub.employeeId) || sub.employeeName || "-"
+        : "-";
+      
+      const subAmountValue = sub.amount ?? 0;
+
+      return [
+        formatDate(sub.date),
+        "",
+        `  -> ${sub.title}`.replace(/,/g, ""),
+        exp.role,
+        subEmployeeName.replace(/,/g, ""),
+        "0.00",
+        subAmountValue.toFixed(2),
+        subAmountValue.toFixed(2),
+        sub.done ? "Done (Sub)" : "Pending (Sub)",
+      ];
+    });
+
+    return [mainRow, ...subRows];
+  }).flat();
+
+  const totalRow = [
+    "",
+    "",
+    "GRAND TOTAL",
+    "",
+    "",
+    grandTotalAmountBase.toFixed(2),
+    grandTotalSubExpenses.toFixed(2),
+    grandTotalExpense.toFixed(2),
+    "",
+  ];
+  
+  const csvContent =
+    "data:text/csv;charset=utf-8," +
+    [headers.join(","), ...detailRows.map((e) => e.join(",")), totalRow.join(",")].join("\n");
+
+  return encodeURI(csvContent);
+};
+
+
 const ExpensesContent: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1138,6 +1230,22 @@ const ExpensesContent: React.FC = () => {
   const cancelEditSubtask = () => setEditingSubtask(null);
   const cancelAddForm = () => setShowAddForm(false);
 
+  const handleDownloadCSV = () => {
+    if (filteredExpenses.length === 0) {
+      toast.warn("No expenses match the current filters to download.");
+      return;
+    }
+
+    const csvUri = convertToCSV(filteredExpenses, employees);
+    const link = document.createElement("a");
+    link.setAttribute("href", csvUri);
+    link.setAttribute("download", `expenses_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`${filteredExpenses.length} expenses downloaded!`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 p-8">
       <ToastContainer position="bottom-right" autoClose={3000} />
@@ -1341,6 +1449,39 @@ const ExpensesContent: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filterFrom}
+                    onChange={(e) => setFilterFrom(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filterTo}
+                    onChange={(e) => setFilterTo(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                  />
+                </div>
+                
+                <div className="pt-4">
+                  <button
+                    type="button"
+                    onClick={handleDownloadCSV}
+                    className="w-full px-6 py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg transition-all flex items-center justify-center text-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Filtered ({filteredExpenses.length})
+                  </button>
                 </div>
               </div>
             </div>
