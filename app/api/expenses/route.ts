@@ -9,7 +9,6 @@ type RawSubExpense = {
   done?: unknown;
   amount?: unknown;
   date?: unknown;
-  role?: unknown;
   employeeId?: unknown;
   employeeName?: unknown;
 };
@@ -51,12 +50,6 @@ function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
       ? String(raw.date)
       : undefined;
 
-  const role =
-    typeof raw.role === "string" &&
-    ["founder", "manager", "other"].includes(raw.role)
-      ? (raw.role as Role)
-      : undefined;
-
   const employeeId =
     raw.employeeId === undefined || raw.employeeId === null
       ? undefined
@@ -75,7 +68,6 @@ function normalizeSubExpense(raw: RawSubExpense): SubExpense | null {
 
   if (amount !== undefined && !Number.isNaN(amount)) subExpense.amount = amount;
   if (date) subExpense.date = date;
-  if (role) subExpense.role = role;
   if (employeeId) subExpense.employeeId = employeeId;
   if (employeeName) subExpense.employeeName = employeeName;
 
@@ -107,8 +99,6 @@ function computeExpenseTotal(e: IExpense): number {
 }
 
 function dedupeShopsFromExpenses(expenses: IExpense[]): string[] {
-  // expenses is expected to be ordered by recency if desired.
-  // We'll keep the first occurrence (most recent) and ignore later duplicates.
   const seen = new Set<string>();
   const shops: string[] = [];
   for (const e of expenses) {
@@ -130,8 +120,6 @@ export async function GET(request: Request) {
     const weekStart = url.searchParams.get("weekStart");
 
     if (weekStart) {
-      // For week-specific queries we return week items (sorted by date desc),
-      // weekTotal and shops derived from those items (recent-first).
       const wkItems = (await Expense.find({ weekStart })
         .sort({ date: -1 })
         .lean()) as unknown as IExpense[];
@@ -149,7 +137,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // Default: return all expenses sorted by createdAt desc (newest first)
     const expenses = (await Expense.find({})
       .sort({ createdAt: -1 })
       .lean()) as unknown as IExpense[];
@@ -179,9 +166,6 @@ export async function POST(request: Request) {
     const amount =
       typeof body.amount === "number" ? body.amount : Number(body.amount);
 
-    const category =
-      typeof body.category === "string" ? body.category.trim() : "";
-
     const date = typeof body.date === "string" ? body.date : "";
     const weekStart = typeof body.weekStart === "string" ? body.weekStart : "";
 
@@ -208,7 +192,6 @@ export async function POST(request: Request) {
 
     if (
       !description ||
-      !category ||
       !date ||
       !weekStart ||
       !(typeof amount === "number" && !Number.isNaN(amount) && amount >= 0)
@@ -217,7 +200,7 @@ export async function POST(request: Request) {
         {
           success: false,
           error:
-            "Missing or invalid fields. Required: description (string), amount (number >= 0), category (string), date (string), weekStart (string)",
+            "Missing or invalid fields. Required: description (string), amount (number >= 0), date (string), weekStart (string)",
         },
         { status: 400 }
       );
@@ -238,7 +221,6 @@ export async function POST(request: Request) {
     const created = new Expense({
       description,
       amount,
-      category,
       date,
       shop,
       weekStart,
@@ -334,7 +316,6 @@ export async function PATCH(request: Request) {
     const allowed = [
       "description",
       "amount",
-      "category",
       "date",
       "shop",
       "paid",
@@ -362,7 +343,6 @@ export async function PATCH(request: Request) {
           payload.subtasks = normalizeSubExpenses(updates.subtasks);
           break;
         case "date":
-        case "category":
         case "description":
         case "weekStart":
           payload[key] = String(updates[key] || "").trim();

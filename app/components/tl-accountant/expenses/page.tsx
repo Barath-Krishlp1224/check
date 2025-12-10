@@ -36,8 +36,6 @@ const formatDate = (dateString: string | undefined) => {
 interface ExpenseFormProps {
   shopName: string;
   setShopName: (v: string) => void;
-  category: string;
-  setCategory: (v: string) => void;
   date: string;
   setDate: (v: string) => void;
   description: string;
@@ -56,8 +54,6 @@ interface ExpenseFormProps {
 const ExpenseForm: React.FC<ExpenseFormProps> = ({
   shopName,
   setShopName,
-  category,
-  setCategory,
   date,
   setDate,
   description,
@@ -96,15 +92,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </datalist>
         </div>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Category</label>
-          <input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-            placeholder="Enter category"
-          />
-        </div>
-        <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-black">Date</label>
           <input
             type="date"
@@ -113,9 +100,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
           />
         </div>
-      </div>
-
-      <div className="grid gap-5 md:grid-cols-3 mt-5">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-black">Description</label>
           <input
@@ -125,6 +109,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             placeholder="Enter description"
           />
         </div>
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-3 mt-5">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-black">Amount (₹)</label>
           <input
@@ -147,10 +134,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <option value="other">Other</option>
           </select>
         </div>
-      </div>
-
-      {role === "manager" && (
-        <div className="flex flex-col gap-2 max-w-xs mt-5">
+        <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-black">Employee</label>
           <select
             value={selectedEmployeeId}
@@ -165,7 +149,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             ))}
           </select>
         </div>
-      )}
+      </div>
 
       <div className="mt-6 pt-5 border-t border-gray-200">
         <button
@@ -474,8 +458,6 @@ interface SubExpensesSectionProps {
   setSubAmount: (v: string) => void;
   subDate: string;
   setSubDate: (v: string) => void;
-  subRole: Role;
-  setSubRole: (v: Role) => void;
   subEmployeeId: string;
   setSubEmployeeId: (v: string) => void;
   onAddSubtask: (e: React.FormEvent, parent: Expense) => void;
@@ -496,8 +478,6 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
   setSubAmount,
   subDate,
   setSubDate,
-  subRole,
-  setSubRole,
   subEmployeeId,
   setSubEmployeeId,
   onAddSubtask,
@@ -553,23 +533,8 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">Role</label>
-                <select
-                  value={subRole}
-                  onChange={(e) => setSubRole(e.target.value as Role)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black"
-                >
-                  <option value="founder">Founder</option>
-                  <option value="manager">Manager</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-
-            {subRole === "manager" && (
-              <div className="flex flex-col gap-2 max-w-xs">
                 <label className="text-xs font-medium text-black">
-                  Employee
+                  Employee (optional)
                 </label>
                 <select
                   value={subEmployeeId}
@@ -584,7 +549,7 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                   ))}
                 </select>
               </div>
-            )}
+            </div>
 
             <button
               type="submit"
@@ -609,9 +574,6 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                       Date
                     </th>
                     <th className="p-3 text-left font-semibold text-black">
-                      Role
-                    </th>
-                    <th className="p-3 text-left font-semibold text-black">
                       Employee
                     </th>
                     <th className="p-3 text-left font-semibold text-black">
@@ -634,9 +596,6 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                       </td>
                       <td className="p-3 text-gray-600">
                         {formatDate(sub.date)}
-                      </td>
-                      <td className="p-3 text-gray-600 capitalize">
-                        {sub.role || "-"}
                       </td>
                       <td className="p-3 text-gray-600">
                         {sub.employeeName || "-"}
@@ -692,8 +651,6 @@ interface ExpensesTableProps {
   setSubAmount: (v: string) => void;
   subDate: string;
   setSubDate: (v: string) => void;
-  subRole: Role;
-  setSubRole: (v: Role) => void;
   subEmployeeId: string;
   setSubEmployeeId: (v: string) => void;
   onAddSubtask: (e: React.FormEvent, parent: Expense) => void;
@@ -720,8 +677,6 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
   setSubAmount,
   subDate,
   setSubDate,
-  subRole,
-  setSubRole,
   subEmployeeId,
   setSubEmployeeId,
   onAddSubtask,
@@ -866,8 +821,6 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                           setSubAmount={setSubAmount}
                           subDate={subDate}
                           setSubDate={setSubDate}
-                          subRole={subRole}
-                          setSubRole={setSubRole}
                           subEmployeeId={subEmployeeId}
                           setSubEmployeeId={setSubEmployeeId}
                           onAddSubtask={onAddSubtask}
@@ -906,27 +859,34 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
   employeeHistory,
   employeeHistoryTotal,
 }) => {
-  if (!showHistory) return null;
+  if (!showHistory) {
+    return null;
+  }
 
-  const list = historyEmployeeId ? employeeHistory : historyExpenses;
-  const historyListToShow = list.slice(0, 5);
+  const allTimeTotal = historyExpenses.reduce((sum, e) => {
+    const base = e.amount;
+    const subs = (e.subtasks || []).reduce(
+      (s, sub) => s + (sub.amount || 0),
+      0
+    );
+    return sum + base + subs;
+  }, 0);
+
+  const expensesToDisplay = historyEmployeeId ? employeeHistory : historyExpenses;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-      <div className="flex flex-wrap gap-4 items-center mb-6">
-        <div className="font-semibold text-lg text-black">
-          History (Completed)
-        </div>
+      <h2 className="text-xl font-bold text-black mb-4">Expense History (Paid/Done)</h2>
+
+      <div className="grid gap-5 md:grid-cols-3 mb-5">
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-black">
-            Filter by Employee
-          </label>
+          <label className="text-sm font-medium text-black">Filter by Employee</label>
           <select
             value={historyEmployeeId}
             onChange={(e) => setHistoryEmployeeId(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer text-black"
+            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black"
           >
-            <option value="">All Employees</option>
+            <option value="">All Paid Expenses</option>
             {employees.map((emp) => (
               <option key={emp._id} value={emp._id}>
                 {emp.name}
@@ -934,78 +894,53 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
             ))}
           </select>
         </div>
-        {historyEmployeeId && (
-          <div className="ml-auto">
-            <div className="text-xs text-gray-600 mb-1">
-              Total Paid to Employee
-            </div>
-            <div className="text-lg font-bold text-green-700">
-              ₹{employeeHistoryTotal.toLocaleString()}
-            </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-black">
+            {historyEmployeeId ? "Selected Employee Total" : "All Time Total Paid"}
+          </label>
+          <div className={`border rounded-lg px-4 py-2.5 text-lg font-bold ${historyEmployeeId ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-green-200 bg-green-50 text-green-700'}`}>
+            ₹{(historyEmployeeId ? employeeHistoryTotal : allTimeTotal).toLocaleString()}
           </div>
-        )}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 border-b border-gray-200">
             <tr>
-              <th className="p-4 text-left font-semibold text-black">
-                Date
-              </th>
-              <th className="p-4 text-left font-semibold text-black">
-                Shop
-              </th>
-              <th className="p-4 text-left font-semibold text-black">
-                Description
-              </th>
-              <th className="p-4 text-right font-semibold text-black">
-                Total (incl. sub)
-              </th>
-              <th className="p-4 text-left font-semibold text-black">
-                Role
-              </th>
-              <th className="p-4 text-left font-semibold text-black">
-                Employee
-              </th>
+              <th className="p-3 text-left font-semibold text-black">Date</th>
+              <th className="p-3 text-left font-semibold text-black">Description</th>
+              <th className="p-3 text-left font-semibold text-black">Shop</th>
+              <th className="p-3 text-right font-semibold text-black">Amount</th>
+              <th className="p-3 text-right font-semibold text-black">Total</th>
+              <th className="p-3 text-left font-semibold text-black">Employee</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {historyListToShow.length === 0 ? (
+            {expensesToDisplay.length === 0 ? (
               <tr>
-                <td
-                  className="p-8 text-center text-gray-500"
-                  colSpan={6}
-                >
-                  No completed expenses found
+                <td colSpan={6} className="p-4 text-center text-gray-500">
+                  {historyEmployeeId
+                    ? "No paid expenses found for this employee."
+                    : "No paid expenses in history."}
                 </td>
               </tr>
             ) : (
-              historyListToShow.map((e) => {
-                const subs = (e.subtasks || []).reduce(
+              expensesToDisplay.map((exp) => {
+                const subsTotal = (exp.subtasks || []).reduce(
                   (s, sub) => s + (sub.amount || 0),
                   0
                 );
-                const total = e.amount + subs;
+                const total = exp.amount + subsTotal;
+
                 return (
-                  <tr
-                    key={e._id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="p-4 text-gray-600">{formatDate(e.date)}</td>
-                    <td className="p-4 text-black font-medium">
-                      {e.shop || "-"}
-                    </td>
-                    <td className="p-4 text-black">{e.description}</td>
-                    <td className="p-4 text-right font-bold text-black">
-                      ₹{total.toLocaleString()}
-                    </td>
-                    <td className="p-4 text-gray-600 capitalize">
-                      {e.role || "other"}
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      {e.employeeName || "-"}
-                    </td>
+                  <tr key={exp._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-3 text-gray-600">{formatDate(exp.date)}</td>
+                    <td className="p-3 text-black">{exp.description}</td>
+                    <td className="p-3 text-black">{exp.shop || "-"}</td>
+                    <td className="p-3 text-right text-gray-600">₹{exp.amount.toLocaleString()}</td>
+                    <td className="p-3 text-right font-bold text-black">₹{total.toLocaleString()}</td>
+                    <td className="p-3 text-gray-600">{exp.employeeName || "-"}</td>
                   </tr>
                 );
               })
@@ -1013,14 +948,10 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
           </tbody>
         </table>
       </div>
-      {list.length > 5 && (
-        <div className="mt-4 text-center text-sm text-gray-500">
-          Showing the latest 5 completed transactions.
-        </div>
-      )}
     </div>
   );
 };
+
 
 const ExpensesContent: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -1061,7 +992,6 @@ const ExpensesContent: React.FC = () => {
 
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("General");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(
     () => new Date().toISOString().slice(0, 10)
@@ -1076,7 +1006,6 @@ const ExpensesContent: React.FC = () => {
   const [subDate, setSubDate] = useState(
     () => new Date().toISOString().slice(0, 10)
   );
-  const [subRole, setSubRole] = useState<Role>("founder");
   const [subEmployeeId, setSubEmployeeId] = useState("");
 
   const [filterRole, setFilterRole] = useState<"all" | Role>("all");
@@ -1112,11 +1041,10 @@ const ExpensesContent: React.FC = () => {
             subtasks,
           } as Expense;
         });
-        
-        // 1. Enforce sorting by date (Oldest first) upon fetching
+
         const sortedExpenses = fetchedExpenses.sort((a, b) => {
-            if (a.date > b.date) return 1; // a comes after b (b is older)
-            if (a.date < b.date) return -1; // a comes before b (a is older)
+            if (a.date > b.date) return 1;
+            if (a.date < b.date) return -1;
             return 0;
         });
 
@@ -1201,7 +1129,6 @@ const ExpensesContent: React.FC = () => {
     return { spent, pending, remaining };
   }, [expenses, initialAmount]);
 
-  // NEW: shop suggestions derived from expenses (unique list)
   const shopSuggestions = useMemo(() => {
     const arr = expenses
       .map((e) => (e.shop || "").trim())
@@ -1242,7 +1169,6 @@ const ExpensesContent: React.FC = () => {
       return true;
     });
 
-    // 2. Ensure filtered list is still sorted by date (Oldest first)
     return filtered.sort((a, b) => {
         if (a.date > b.date) return 1;
         if (a.date < b.date) return -1;
@@ -1275,8 +1201,8 @@ const ExpensesContent: React.FC = () => {
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !amount || !category.trim() || !date) {
-      toast.warn("Description, category, amount, date are required.");
+    if (!description.trim() || !amount || !date) {
+      toast.warn("Description, amount, date are required.");
       return;
     }
 
@@ -1288,7 +1214,6 @@ const ExpensesContent: React.FC = () => {
     const payload = {
       description: description.trim(),
       amount: Number(amount),
-      category: category.trim(),
       date,
       weekStart: getWeekStart(date),
       shop: shopName.trim(),
@@ -1322,8 +1247,6 @@ const ExpensesContent: React.FC = () => {
 
       setExpenses((prev) => {
         const newExpenses = [...prev, created];
-        
-        // Ensure the list remains sorted by date (Oldest first) after adding the new item
         return newExpenses.sort((a, b) => {
             if (a.date > b.date) return 1;
             if (a.date < b.date) return -1;
@@ -1333,7 +1256,6 @@ const ExpensesContent: React.FC = () => {
 
       setShopName("");
       setDescription("");
-      setCategory("General");
       setAmount("");
       setDate(new Date().toISOString().slice(0, 10));
       setRole("founder");
@@ -1349,7 +1271,6 @@ const ExpensesContent: React.FC = () => {
     setSubTitle("");
     setSubAmount("");
     setSubDate(new Date().toISOString().slice(0, 10));
-    setSubRole("founder");
     setSubEmployeeId("");
   };
 
@@ -1364,18 +1285,12 @@ const ExpensesContent: React.FC = () => {
       return;
     }
 
-    if (subRole === "manager" && !subEmployeeId) {
-      toast.warn("Select employee for Manager.");
-      return;
-    }
-
     const newSub: Subtask = {
       id: Math.random().toString(36).slice(2, 9),
       title: subTitle.trim(),
-      done: subRole === "founder" || isExpensePaid(parent),
+      done: isExpensePaid(parent),
       amount: Number(subAmount),
       date: subDate,
-      role: subRole,
       employeeId: subEmployeeId || undefined,
       employeeName:
         subEmployeeId &&
@@ -1418,7 +1333,6 @@ const ExpensesContent: React.FC = () => {
       setSubTitle("");
       setSubAmount("");
       setSubDate(new Date().toISOString().slice(0, 10));
-      setSubRole("founder");
       setSubEmployeeId("");
       toast.success("Sub expense added successfully!");
     } catch (err: any) {
@@ -1676,8 +1590,6 @@ const ExpensesContent: React.FC = () => {
         <ExpenseForm
           shopName={shopName}
           setShopName={setShopName}
-          category={category}
-          setCategory={setCategory}
           date={date}
           setDate={setDate}
           description={description}
@@ -1729,8 +1641,6 @@ const ExpensesContent: React.FC = () => {
               setSubAmount={setSubAmount}
               subDate={subDate}
               setSubDate={setSubDate}
-              subRole={subRole}
-              setSubRole={setSubRole}
               subEmployeeId={subEmployeeId}
               setSubEmployeeId={setSubEmployeeId}
               onAddSubtask={handleAddSubtask}

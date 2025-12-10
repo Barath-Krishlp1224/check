@@ -8,7 +8,6 @@ export interface SubExpense {
   done: boolean;
   amount?: number;
   date?: string;
-  role?: Role;
   employeeId?: string;
   employeeName?: string;
 }
@@ -16,14 +15,12 @@ export interface SubExpense {
 export interface IExpense extends Document {
   description: string;
   amount: number;
-  category: string;
   date: string;
   createdAt: Date;
   shop: string;
   paid: boolean;
   weekStart: string;
   subtasks: SubExpense[];
-
   role: Role;
   employeeId?: string;
   employeeName?: string;
@@ -36,11 +33,6 @@ const SubExpenseSchema = new Schema<SubExpense>(
     done: { type: Boolean, default: false },
     amount: { type: Number, required: false },
     date: { type: String, required: false },
-    role: {
-      type: String,
-      enum: ["founder", "manager", "other"],
-      required: false,
-    },
     employeeId: { type: String, required: false },
     employeeName: { type: String, required: false, trim: true },
   },
@@ -51,7 +43,6 @@ const ExpenseSchema = new Schema<IExpense>(
   {
     description: { type: String, required: true, trim: true },
     amount: { type: Number, required: true },
-    category: { type: String, required: true, trim: true },
     date: { type: String, required: true },
     shop: { type: String, default: "", trim: true },
     paid: { type: Boolean, default: false },
