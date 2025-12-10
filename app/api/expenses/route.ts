@@ -106,6 +106,22 @@ function computeExpenseTotal(e: IExpense): number {
   return expenseAmount + subtasksTotal;
 }
 
+function dedupeShopsFromExpenses(expenses: IExpense[]): string[] {
+  // expenses is expected to be ordered by recency if desired.
+  // We'll keep the first occurrence (most recent) and ignore later duplicates.
+  const seen = new Set<string>();
+  const shops: string[] = [];
+  for (const e of expenses) {
+    const s = (e.shop || "").trim();
+    if (!s) continue;
+    if (!seen.has(s)) {
+      seen.add(s);
+      shops.push(s);
+    }
+  }
+  return shops;
+}
+
 export async function GET(request: Request) {
   try {
     await ensureConnected();
@@ -114,6 +130,8 @@ export async function GET(request: Request) {
     const weekStart = url.searchParams.get("weekStart");
 
     if (weekStart) {
+      // For week-specific queries we return week items (sorted by date desc),
+      // weekTotal and shops derived from those items (recent-first).
       const wkItems = (await Expense.find({ weekStart })
         .sort({ date: -1 })
         .lean()) as unknown as IExpense[];
@@ -122,17 +140,24 @@ export async function GET(request: Request) {
         (s: number, e: IExpense) => s + computeExpenseTotal(e),
         0
       );
+
+      const shops = dedupeShopsFromExpenses(wkItems);
+
       return NextResponse.json(
-        { success: true, data: wkItems, weekTotal },
+        { success: true, data: wkItems, weekTotal, shops },
         { status: 200 }
       );
     }
 
+    // Default: return all expenses sorted by createdAt desc (newest first)
     const expenses = (await Expense.find({})
       .sort({ createdAt: -1 })
       .lean()) as unknown as IExpense[];
+
+    const shops = dedupeShopsFromExpenses(expenses);
+
     return NextResponse.json(
-      { success: true, data: expenses },
+      { success: true, data: expenses, shops },
       { status: 200 }
     );
   } catch (err: any) {

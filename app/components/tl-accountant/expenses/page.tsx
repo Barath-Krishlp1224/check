@@ -18,6 +18,21 @@ interface InitialAmountHistoryEntry {
   date: string;
 }
 
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return "-";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/\s/g, '-');
+  } catch (error) {
+    return dateString;
+  }
+};
+
 interface ExpenseFormProps {
   shopName: string;
   setShopName: (v: string) => void;
@@ -35,6 +50,7 @@ interface ExpenseFormProps {
   setSelectedEmployeeId: (id: string) => void;
   employees: Employee[];
   onSubmit: (e: React.FormEvent) => void;
+  shops: string[];
 }
 
 const ExpenseForm: React.FC<ExpenseFormProps> = ({
@@ -54,6 +70,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   setSelectedEmployeeId,
   employees,
   onSubmit,
+  shops,
 }) => {
   return (
     <form
@@ -68,9 +85,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           <input
             value={shopName}
             onChange={(e) => setShopName(e.target.value)}
+            list="shops-list"
             className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
             placeholder="Enter shop or vendor name"
           />
+          <datalist id="shops-list">
+            {shops.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-black">Category</label>
@@ -390,7 +413,7 @@ const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
                         }
                       >
                         <td className="py-1">
-                          {new Date(item.date).toLocaleDateString()}
+                          {formatDate(item.date)}
                         </td>
                         <td className="py-1 text-right">
                           ₹{item.amount.toLocaleString()}
@@ -610,7 +633,7 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                         ₹{(sub.amount || 0).toLocaleString()}
                       </td>
                       <td className="p-3 text-gray-600">
-                        {sub.date || "-"}
+                        {formatDate(sub.date)}
                       </td>
                       <td className="p-3 text-gray-600 capitalize">
                         {sub.role || "-"}
@@ -788,7 +811,7 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                         <td className="p-4 text-right font-bold text-black">
                           ₹{total.toLocaleString()}
                         </td>
-                        <td className="p-4 text-gray-600">{exp.date}</td>
+                        <td className="p-4 text-gray-600">{formatDate(exp.date)}</td>
                         <td className="p-4 text-gray-600 capitalize">
                           {exp.role || "other"}
                         </td>
@@ -969,7 +992,7 @@ const ExpensesHistory: React.FC<ExpensesHistoryProps> = ({
                     key={e._id}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="p-4 text-gray-600">{e.date}</td>
+                    <td className="p-4 text-gray-600">{formatDate(e.date)}</td>
                     <td className="p-4 text-black font-medium">
                       {e.shop || "-"}
                     </td>
@@ -1078,19 +1101,26 @@ const ExpensesContent: React.FC = () => {
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "Failed to fetch");
 
-        setExpenses(
-          (json.data || []).map((e: any) => {
-            const paid = typeof e.paid === "boolean" ? e.paid : false;
-            const subtasks: Subtask[] = Array.isArray(e.subtasks)
-              ? e.subtasks
-              : [];
-            return {
-              ...e,
-              paid,
-              subtasks,
-            } as Expense;
-          })
-        );
+        const fetchedExpenses: Expense[] = (json.data || []).map((e: any) => {
+          const paid = typeof e.paid === "boolean" ? e.paid : false;
+          const subtasks: Subtask[] = Array.isArray(e.subtasks)
+            ? e.subtasks
+            : [];
+          return {
+            ...e,
+            paid,
+            subtasks,
+          } as Expense;
+        });
+        
+        // 1. Enforce sorting by date (Oldest first) upon fetching
+        const sortedExpenses = fetchedExpenses.sort((a, b) => {
+            if (a.date > b.date) return 1; // a comes after b (b is older)
+            if (a.date < b.date) return -1; // a comes before b (a is older)
+            return 0;
+        });
+
+        setExpenses(sortedExpenses);
       } catch (err: any) {
         setError(err.message || "Failed to load expenses");
         toast.error(err.message || "Failed to load expenses");
@@ -1171,8 +1201,16 @@ const ExpensesContent: React.FC = () => {
     return { spent, pending, remaining };
   }, [expenses, initialAmount]);
 
+  // NEW: shop suggestions derived from expenses (unique list)
+  const shopSuggestions = useMemo(() => {
+    const arr = expenses
+      .map((e) => (e.shop || "").trim())
+      .filter((s) => s.length > 0);
+    return Array.from(new Set(arr));
+  }, [expenses]);
+
   const filteredExpenses = useMemo(() => {
-    return expenses.filter((e) => {
+    const filtered = expenses.filter((e) => {
       const paid = isExpensePaid(e);
 
       if (filterRole !== "all" && e.role !== filterRole) return false;
@@ -1202,6 +1240,13 @@ const ExpensesContent: React.FC = () => {
       }
 
       return true;
+    });
+
+    // 2. Ensure filtered list is still sorted by date (Oldest first)
+    return filtered.sort((a, b) => {
+        if (a.date > b.date) return 1;
+        if (a.date < b.date) return -1;
+        return 0;
     });
   }, [
     expenses,
@@ -1275,7 +1320,17 @@ const ExpensesContent: React.FC = () => {
           : [],
       };
 
-      setExpenses((prev) => [created, ...prev]);
+      setExpenses((prev) => {
+        const newExpenses = [...prev, created];
+        
+        // Ensure the list remains sorted by date (Oldest first) after adding the new item
+        return newExpenses.sort((a, b) => {
+            if (a.date > b.date) return 1;
+            if (a.date < b.date) return -1;
+            return 0;
+        });
+      });
+
       setShopName("");
       setDescription("");
       setCategory("General");
@@ -1635,6 +1690,7 @@ const ExpensesContent: React.FC = () => {
           setSelectedEmployeeId={setSelectedEmployeeId}
           employees={employees}
           onSubmit={handleAddExpense}
+          shops={shopSuggestions}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
