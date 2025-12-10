@@ -1,7 +1,6 @@
-// components/ExpensesContent.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   type Role,
   type Employee,
@@ -14,13 +13,11 @@ import {
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-/* ---------- helper types ---------- */
 interface InitialAmountHistoryEntry {
   amount: number;
   date: string;
 }
 
-/* ---------- format helper ---------- */
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return "-";
   try {
@@ -36,7 +33,6 @@ const formatDate = (dateString: string | undefined) => {
   }
 };
 
-/* ---------- ExpenseForm (unchanged) ---------- */
 interface ExpenseFormProps {
   shopName: string;
   setShopName: (v: string) => void;
@@ -53,6 +49,7 @@ interface ExpenseFormProps {
   employees: Employee[];
   onSubmit: (e: React.FormEvent) => void;
   shops: string[];
+  onCancel: () => void;
 }
 
 const ExpenseForm: React.FC<ExpenseFormProps> = ({
@@ -71,79 +68,98 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   employees,
   onSubmit,
   shops,
+  onCancel,
 }) => {
   return (
     <form
       onSubmit={onSubmit}
-      className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white rounded-2xl p-8 shadow-lg border-2 border-gray-100"
     >
-      <h3 className="text-lg font-semibold text-black mb-6">Add New Expense</h3>
-
-      <div className="grid gap-5 md:grid-cols-3">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Shop Name</label>
-          <input
-            value={shopName}
-            onChange={(e) => setShopName(e.target.value)}
-            list="shops-list"
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-            placeholder="Enter shop or vendor name"
-          />
-          <datalist id="shops-list">
-            {shops.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Description</label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-            placeholder="Enter description"
-          />
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-bold text-gray-900">New Expense</h3>
+        <div className="h-1 flex-1 mx-6 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full"></div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3 mt-5">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Amount (₹)</label>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-            placeholder="0.00"
-          />
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Shop / Vendor
+            </label>
+            <input
+              value={shopName}
+              onChange={(e) => setShopName(e.target.value)}
+              list="shops-list"
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
+              placeholder="Enter shop name"
+            />
+            <datalist id="shops-list">
+              {shops.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Description
+            </label>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
+              placeholder="What is this expense for?"
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Role</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black"
-          >
-            <option value="founder">Founder</option>
-            <option value="manager">Manager</option>
-            <option value="other">Other</option>
-          </select>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Amount (₹)
+            </label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Role
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as Role)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all bg-white cursor-pointer"
+            >
+              <option value="founder">Founder</option>
+              <option value="manager">Manager</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-black">Employee</label>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Assign to Employee
+          </label>
           <select
             value={selectedEmployeeId}
             onChange={(e) => setSelectedEmployeeId(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black"
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all bg-white cursor-pointer"
           >
             <option value="">Select Employee</option>
             {employees.map((emp) => (
@@ -155,10 +171,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </div>
       </div>
 
-      <div className="mt-6 pt-5 border-t border-gray-200">
+      <div className="mt-8 flex justify-end gap-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-6 py-3 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
+        >
+          Cancel
+        </button>
         <button
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+          className="px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
         >
           Add Expense
         </button>
@@ -166,12 +189,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     </form>
   );
 };
-
-/* ---------- Filters, Header, Table, History — unchanged except for edit hooks ---------- */
-/* For brevity I keep the UI structure but the important changes (edit support) come below. */
-/* Reuse your existing ExpensesFilters, ExpensesHeader, ExpensesTable and ExpensesHistory components with small modifications to accept new props for editing. */
-
-/* ---------- SubExpensesSection (modified to include edit subtask support) ---------- */
 
 interface SubExpensesSectionProps {
   parent: Expense;
@@ -211,61 +228,65 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
   onStartEditSubtask,
 }) => {
   return (
-    <tr className="bg-gray-50">
+    <tr className="bg-gradient-to-r from-blue-50 to-teal-50">
       <td className="p-6" colSpan={10}>
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <form
-            onSubmit={(ev) => onAddSubtask(ev, parent)}
-            className="space-y-4 mb-5"
-          >
-            <div className="font-semibold text-sm text-black mb-4">
-              Add Sub Expense for:{" "}
+        <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-lg">
+          <div className="mb-6 pb-4 border-b-2 border-gray-100">
+            <h4 className="text-lg font-bold text-gray-900">
+              Sub Expenses for:{" "}
               <span className="text-blue-600">
                 {parent.shop || parent.description}
               </span>
-            </div>
+            </h4>
+          </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">
+          <form
+            onSubmit={(ev) => onAddSubtask(ev, parent)}
+            className="mb-6 p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200"
+          >
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
                   Description
                 </label>
                 <input
                   value={subTitle}
                   onChange={(e) => setSubTitle(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
                   placeholder="Sub expense title"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
                   Amount (₹)
                 </label>
                 <input
                   type="number"
                   value={subAmount}
                   onChange={(e) => setSubAmount(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
                   placeholder="0.00"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">Date</label>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                  Date
+                </label>
                 <input
                   type="date"
                   value={subDate}
                   onChange={(e) => setSubDate(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-black">
-                  Employee (optional)
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                  Employee
                 </label>
                 <select
                   value={subEmployeeId}
                   onChange={(e) => setSubEmployeeId(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black"
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white cursor-pointer"
                 >
                   <option value="">Select Employee</option>
                   {employees.map((emp) => (
@@ -279,33 +300,33 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
 
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm"
+              className="px-6 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-md transition-all text-sm"
             >
-              Save Sub Expense
+              Add Sub Expense
             </button>
           </form>
 
           {(parent.subtasks || []).length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full text-xs">
-                <thead className="bg-gray-100 border-b border-gray-200">
+            <div className="overflow-x-auto rounded-xl border-2 border-gray-200">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gradient-to-r from-gray-100 to-gray-50">
                   <tr>
-                    <th className="p-3 text-left font-semibold text-black">
+                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
                       Description
                     </th>
-                    <th className="p-3 text-right font-semibold text-black">
+                    <th className="p-4 text-right font-bold text-gray-900 uppercase tracking-wide text-xs">
                       Amount
                     </th>
-                    <th className="p-3 text-left font-semibold text-black">
+                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
                       Date
                     </th>
-                    <th className="p-3 text-left font-semibold text-black">
+                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
                       Employee
                     </th>
-                    <th className="p-3 text-left font-semibold text-black">
+                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
                       Status
                     </th>
-                    <th className="p-3 text-left font-semibold text-black">
+                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
                       Actions
                     </th>
                   </tr>
@@ -314,42 +335,44 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
                   {parent.subtasks.map((sub: Subtask) => (
                     <tr
                       key={sub.id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-blue-50 transition-colors"
                     >
-                      <td className="p-3 text-black">{sub.title}</td>
-                      <td className="p-3 text-right font-medium text-black">
+                      <td className="p-4 text-gray-900 font-medium">{sub.title}</td>
+                      <td className="p-4 text-right font-bold text-gray-900">
                         ₹{(sub.amount || 0).toLocaleString()}
                       </td>
-                      <td className="p-3 text-gray-600">{formatDate(sub.date)}</td>
-                      <td className="p-3 text-gray-600">
+                      <td className="p-4 text-gray-600">
+                        {formatDate(sub.date)}
+                      </td>
+                      <td className="p-4 text-gray-600">
                         {sub.employeeName || "-"}
                       </td>
-                      <td className="p-3">
+                      <td className="p-4">
                         <select
                           value={sub.done ? "done" : "pending"}
                           onChange={(e) => {
                             const newStatus = e.target.value === "done";
                             onUpdateSubtaskStatus(parent, sub.id, newStatus);
                           }}
-                          className="border border-gray-300 rounded-md px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer text-black"
+                          className="border-2 border-gray-200 rounded-lg px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-500 bg-white cursor-pointer text-gray-900"
                         >
                           <option value="pending">Pending</option>
                           <option value="done">Done</option>
                         </select>
                       </td>
-                      <td className="p-3">
+                      <td className="p-4">
                         <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => onStartEditSubtask(parent, sub)}
-                            className="border border-blue-300 text-blue-700 hover:bg-blue-50 px-3 py-1 rounded-lg text-xs font-medium"
+                            className="px-4 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 transition-all"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => onDeleteSubtask(parent, sub.id)}
-                            className="border border-red-300 text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg text-xs font-medium"
+                            className="px-4 py-1.5 rounded-lg text-xs font-semibold text-red-700 bg-red-100 hover:bg-red-200 transition-all"
                           >
                             Delete
                           </button>
@@ -361,8 +384,8 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
               </table>
             </div>
           ) : (
-            <div className="text-xs text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
-              No sub expenses yet.
+            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+              <p className="text-sm font-medium">No sub expenses added yet</p>
             </div>
           )}
         </div>
@@ -371,10 +394,10 @@ const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
   );
 };
 
-/* ---------- Main component ---------- */
+const ROWS_PER_PAGE = 10;
+const INITIAL_ROWS = 5;
 
 const ExpensesContent: React.FC = () => {
-  /* ---- state (same as before) --- */
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -401,8 +424,7 @@ const ExpensesContent: React.FC = () => {
 
   const initialAmount = initialAmountHistory[0]?.amount || 0;
 
-  const [isEditingInitialAmount, setIsEditingInitialAmount] =
-    useState(false);
+  const [isEditingInitialAmount, setIsEditingInitialAmount] = useState(false);
   const [initialAmountInput, setInitialAmountInput] = useState(
     initialAmount.toString()
   );
@@ -428,6 +450,7 @@ const ExpensesContent: React.FC = () => {
     "all"
   );
   const [filterEmployee, setFilterEmployee] = useState<string>("all");
+  const [filterShop, setFilterShop] = useState<string>("all");
   const [filterSearch, setFilterSearch] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
@@ -435,7 +458,6 @@ const ExpensesContent: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [historyEmployeeId, setHistoryEmployeeId] = useState<string>("");
 
-  /* ---------- Editing states ---------- */
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editExpenseFields, setEditExpenseFields] = useState({
     shop: "",
@@ -455,7 +477,12 @@ const ExpensesContent: React.FC = () => {
     employeeId?: string;
   } | null>(null);
 
-  /* ---------- fetch expenses ---------- */
+  const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const [showAddForm, setShowAddForm] = useState(false);
+
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
@@ -467,7 +494,9 @@ const ExpensesContent: React.FC = () => {
 
         const fetchedExpenses: Expense[] = (json.data || []).map((e: any) => {
           const paid = typeof e.paid === "boolean" ? e.paid : false;
-          const subtasks: Subtask[] = Array.isArray(e.subtasks) ? e.subtasks : [];
+          const subtasks: Subtask[] = Array.isArray(e.subtasks)
+            ? e.subtasks
+            : [];
           return {
             ...e,
             paid,
@@ -499,17 +528,17 @@ const ExpensesContent: React.FC = () => {
         setEmployeesLoading(true);
         const res = await fetch("/api/employees");
         const data = await res.json();
-        const arr: Employee[] = Array.isArray(data) ? data : data.employees || [];
+        const arr: Employee[] = Array.isArray(data)
+          ? data
+          : data.employees || [];
         setEmployees(arr);
-      } catch {
-      } finally {
+      } catch {} finally {
         setEmployeesLoading(false);
       }
     };
     fetchEmployees();
   }, []);
 
-  /* ---------- initial amount update ---------- */
   const handleUpdateInitialAmount = () => {
     const newAmount = Number(initialAmountInput);
     if (!Number.isNaN(newAmount) && newAmount >= 0) {
@@ -523,7 +552,10 @@ const ExpensesContent: React.FC = () => {
         setInitialAmountHistory(newHistory);
 
         if (typeof window !== "undefined") {
-          localStorage.setItem("initialWalletAmountHistory", JSON.stringify(newHistory));
+          localStorage.setItem(
+            "initialWalletAmountHistory",
+            JSON.stringify(newHistory)
+          );
         }
         toast.success("Initial amount updated successfully!");
       }
@@ -533,7 +565,6 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  /* ---------- wallet stats ---------- */
   const walletStats = useMemo(() => {
     let spent = 0;
     let pending = 0;
@@ -559,13 +590,13 @@ const ExpensesContent: React.FC = () => {
     return { spent, pending, remaining };
   }, [expenses, initialAmount]);
 
-  /* ---------- shop suggestions ---------- */
   const shopSuggestions = useMemo(() => {
-    const arr = expenses.map((e) => (e.shop || "").trim()).filter((s) => s.length > 0);
+    const arr = expenses
+      .map((e) => (e.shop || "").trim())
+      .filter((s) => s.length > 0);
     return Array.from(new Set(arr));
   }, [expenses]);
 
-  /* ---------- filtering ---------- */
   const filteredExpenses = useMemo(() => {
     const filtered = expenses.filter((e) => {
       const paid = isExpensePaid(e);
@@ -573,13 +604,26 @@ const ExpensesContent: React.FC = () => {
       if (filterRole !== "all" && e.role !== filterRole) return false;
       if (filterStatus === "paid" && !paid) return false;
       if (filterStatus === "unpaid" && paid) return false;
-      if (filterEmployee !== "all" && filterEmployee && e.employeeId !== filterEmployee) return false;
+      if (
+        filterEmployee !== "all" &&
+        filterEmployee &&
+        e.employeeId !== filterEmployee
+      )
+        return false;
+      if (filterShop !== "all" && filterShop && e.shop !== filterShop) return false;
+
       if (filterFrom && e.date < filterFrom) return false;
       if (filterTo && e.date > filterTo) return false;
 
       if (filterSearch) {
         const s = filterSearch.toLowerCase();
-        if (!(e.description.toLowerCase().includes(s) || (e.shop || "").toLowerCase().includes(s))) return false;
+        if (
+          !(
+            e.description.toLowerCase().includes(s) ||
+            (e.shop || "").toLowerCase().includes(s)
+          )
+        )
+          return false;
       }
 
       return true;
@@ -590,7 +634,70 @@ const ExpensesContent: React.FC = () => {
       if (a.date < b.date) return -1;
       return 0;
     });
-  }, [expenses, filterRole, filterStatus, filterEmployee, filterFrom, filterTo, filterSearch]);
+  }, [
+    expenses,
+    filterRole,
+    filterStatus,
+    filterEmployee,
+    filterShop,
+    filterFrom,
+    filterTo,
+    filterSearch,
+  ]);
+
+  const loadMoreRows = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleRowCount((prevCount) =>
+        Math.min(prevCount + ROWS_PER_PAGE, filteredExpenses.length)
+      );
+      setIsLoadingMore(false);
+    }, 300);
+  };
+
+  useEffect(() => {
+    setVisibleRowCount(INITIAL_ROWS);
+  }, [
+    filterRole,
+    filterStatus,
+    filterEmployee,
+    filterShop,
+    filterFrom,
+    filterTo,
+    filterSearch,
+  ]);
+
+  const visibleExpenses = useMemo(() => {
+    return filteredExpenses.slice(0, visibleRowCount);
+  }, [filteredExpenses, visibleRowCount]);
+
+  const hasMoreExpenses = visibleRowCount < filteredExpenses.length;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (tableRef.current) {
+        const { scrollTop, clientHeight, scrollHeight } = tableRef.current;
+
+        if (
+          scrollHeight - (scrollTop + clientHeight) < 200 &&
+          !isLoadingMore &&
+          visibleRowCount < filteredExpenses.length
+        ) {
+          loadMoreRows();
+        }
+      }
+    };
+
+    if (tableRef.current) {
+      tableRef.current.addEventListener("scroll", handleScroll);
+    }
+
+    return () => {
+      if (tableRef.current) {
+        tableRef.current.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [visibleRowCount, filteredExpenses.length, isLoadingMore]);
 
   const filterEmployeeTotal = useMemo(() => {
     if (filterEmployee === "all" || !filterEmployee) return 0;
@@ -603,7 +710,6 @@ const ExpensesContent: React.FC = () => {
     }, 0);
   }, [filterEmployee, expenses]);
 
-  /* ---------- add expense ---------- */
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || !amount || !date) {
@@ -663,13 +769,13 @@ const ExpensesContent: React.FC = () => {
       setDate(new Date().toISOString().slice(0, 10));
       setRole("founder");
       setSelectedEmployeeId("");
+      setShowAddForm(false);
       toast.success("Expense added successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to add expense.");
     }
   };
 
-  /* ---------- expand toggle ---------- */
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
     setSubTitle("");
@@ -678,7 +784,6 @@ const ExpensesContent: React.FC = () => {
     setSubEmployeeId("");
   };
 
-  /* ---------- add subtask ---------- */
   const handleAddSubtask = async (e: React.FormEvent, parent: Expense) => {
     e.preventDefault();
     if (!expandedId) return;
@@ -717,7 +822,9 @@ const ExpensesContent: React.FC = () => {
 
       setExpenses((prev) =>
         prev.map((exp) =>
-          exp._id === parent._id ? { ...exp, subtasks: updatedSubtasks, paid: false } : exp
+          exp._id === parent._id
+            ? { ...exp, subtasks: updatedSubtasks, paid: false }
+            : exp
         )
       );
       setSubTitle("");
@@ -730,8 +837,11 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  /* ---------- update subtask status ---------- */
-  const handleUpdateSubtaskStatus = async (parentExp: Expense, subtaskId: string, isDone: boolean) => {
+  const handleUpdateSubtaskStatus = async (
+    parentExp: Expense,
+    subtaskId: string,
+    isDone: boolean
+  ) => {
     const updatedSubtasks = (parentExp.subtasks || []).map((sub) =>
       sub.id === subtaskId ? { ...sub, done: isDone } : sub
     );
@@ -740,7 +850,10 @@ const ExpensesContent: React.FC = () => {
       const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: parentExp._id, updates: { subtasks: updatedSubtasks } }),
+        body: JSON.stringify({
+          id: parentExp._id,
+          updates: { subtasks: updatedSubtasks },
+        }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -757,12 +870,18 @@ const ExpensesContent: React.FC = () => {
 
       setExpenses((prev) =>
         prev.map((exp) =>
-          exp._id === parentExp._id ? { ...exp, subtasks: updatedSubtasks, paid: newPaidStatus } : exp
+          exp._id === parentExp._id
+            ? { ...exp, subtasks: updatedSubtasks, paid: newPaidStatus }
+            : exp
         )
       );
 
       if (newPaidStatus !== parentExp.paid) {
-        await handleUpdatePaidStatus({ ...parentExp, subtasks: updatedSubtasks }, newPaidStatus, false);
+        await handleUpdatePaidStatus(
+          { ...parentExp, subtasks: updatedSubtasks },
+          newPaidStatus,
+          false
+        );
       }
       toast.success("Sub expense status updated!");
     } catch (err: any) {
@@ -770,20 +889,24 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  /* ---------- delete subtask ---------- */
   const handleDeleteSubtask = async (parentExp: Expense, subtaskId: string) => {
     const confirmMessage = `Are you sure you want to delete this sub expense from "${parentExp.description}"? This cannot be undone.`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
 
-    const updatedSubtasks = (parentExp.subtasks || []).filter((sub) => sub.id !== subtaskId);
+    const updatedSubtasks = (parentExp.subtasks || []).filter(
+      (sub) => sub.id !== subtaskId
+    );
 
     try {
       const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: parentExp._id, updates: { subtasks: updatedSubtasks } }),
+        body: JSON.stringify({
+          id: parentExp._id,
+          updates: { subtasks: updatedSubtasks },
+        }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -791,15 +914,22 @@ const ExpensesContent: React.FC = () => {
         return;
       }
 
-      setExpenses((prev) => prev.map((exp) => (exp._id === parentExp._id ? { ...exp, subtasks: updatedSubtasks } : exp)));
+      setExpenses((prev) =>
+        prev.map((exp) =>
+          exp._id === parentExp._id ? { ...exp, subtasks: updatedSubtasks } : exp
+        )
+      );
       toast.success("Sub expense deleted successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to delete sub expense.");
     }
   };
 
-  /* ---------- update paid status ---------- */
-  const handleUpdatePaidStatus = async (exp: Expense, isPaid: boolean, updateSubtasks = true) => {
+  const handleUpdatePaidStatus = async (
+    exp: Expense,
+    isPaid: boolean,
+    updateSubtasks = true
+  ) => {
     const action = isPaid ? "Done" : "Pending";
     const confirmMessage = `Are you sure you want to mark the expense "${exp.description}" as ${action}?`;
 
@@ -810,7 +940,10 @@ const ExpensesContent: React.FC = () => {
     let updatedSubtasks = exp.subtasks || [];
 
     if (updateSubtasks) {
-      updatedSubtasks = (exp.subtasks || []).map((sub) => ({ ...sub, done: isPaid ? true : sub.done }));
+      updatedSubtasks = (exp.subtasks || []).map((sub) => ({
+        ...sub,
+        done: isPaid ? true : sub.done,
+      }));
     }
 
     const updates = { paid: isPaid, subtasks: updatedSubtasks };
@@ -827,16 +960,21 @@ const ExpensesContent: React.FC = () => {
         return;
       }
 
-      const updatedExpense: Expense = { ...exp, paid: isPaid, subtasks: updatedSubtasks };
+      const updatedExpense: Expense = {
+        ...exp,
+        paid: isPaid,
+        subtasks: updatedSubtasks,
+      };
 
-      setExpenses((prev) => prev.map((e) => (e._id === exp._id ? updatedExpense : e)));
+      setExpenses((prev) =>
+        prev.map((e) => (e._id === exp._id ? updatedExpense : e))
+      );
       toast.success(`Expense marked as ${isPaid ? "Done" : "Pending"}!`);
     } catch (err: any) {
       toast.error(err.message || "Failed to update status.");
     }
   };
 
-  /* ---------- delete expense ---------- */
   const handleDeleteExpense = async (exp: Expense) => {
     const confirmMessage = `Are you sure you want to delete the expense "${exp.description}"? This cannot be undone.`;
     if (!window.confirm(confirmMessage)) {
@@ -862,7 +1000,6 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  /* ---------- history helpers ---------- */
   const historyExpenses = useMemo(
     () =>
       expenses
@@ -880,13 +1017,15 @@ const ExpensesContent: React.FC = () => {
     () =>
       employeeHistory.reduce((sum, e) => {
         const base = e.amount;
-        const subs = (e.subtasks || []).reduce((s, sub) => s + (sub.amount || 0), 0);
+        const subs = (e.subtasks || []).reduce(
+          (s, sub) => s + (sub.amount || 0),
+          0
+        );
         return sum + base + subs;
       }, 0),
     [employeeHistory]
   );
 
-  /* ---------- EDIT: start edit expense ---------- */
   const onStartEditExpense = (exp: Expense) => {
     setEditingExpense(exp);
     setEditExpenseFields({
@@ -899,7 +1038,6 @@ const ExpensesContent: React.FC = () => {
     });
   };
 
-  /* ---------- EDIT: save expense ---------- */
   const handleSaveEditExpense = async () => {
     if (!editingExpense) return;
     const updates: any = {
@@ -927,7 +1065,9 @@ const ExpensesContent: React.FC = () => {
       }
 
       const updated = json.data;
-      setExpenses((prev) => prev.map((e) => (e._id === updated._id ? { ...e, ...updated } : e)));
+      setExpenses((prev) =>
+        prev.map((e) => (e._id === updated._id ? { ...e, ...updated } : e))
+      );
       setEditingExpense(null);
       toast.success("Expense updated successfully!");
     } catch (err: any) {
@@ -935,7 +1075,6 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  /* ---------- EDIT SUBTASK: start ---------- */
   const onStartEditSubtask = (parent: Expense, sub: Subtask) => {
     setEditingSubtask({
       parentId: parent._id,
@@ -947,7 +1086,6 @@ const ExpensesContent: React.FC = () => {
     });
   };
 
-  /* ---------- EDIT SUBTASK: save ---------- */
   const handleSaveEditSubtask = async () => {
     if (!editingSubtask) return;
     const parent = expenses.find((e) => e._id === editingSubtask.parentId);
@@ -975,7 +1113,10 @@ const ExpensesContent: React.FC = () => {
       const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: parent._id, updates: { subtasks: updatedSubtasks } }),
+        body: JSON.stringify({
+          id: parent._id,
+          updates: { subtasks: updatedSubtasks },
+        }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -983,7 +1124,9 @@ const ExpensesContent: React.FC = () => {
         return;
       }
 
-      setExpenses((prev) => prev.map((e) => (e._id === parent._id ? { ...e, subtasks: updatedSubtasks } : e)));
+      setExpenses((prev) =>
+        prev.map((e) => (e._id === parent._id ? { ...e, subtasks: updatedSubtasks } : e))
+      );
       setEditingSubtask(null);
       toast.success("Sub expense updated successfully!");
     } catch (err: any) {
@@ -991,190 +1134,334 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  /* ---------- cancel editing ---------- */
   const cancelEditExpense = () => setEditingExpense(null);
   const cancelEditSubtask = () => setEditingSubtask(null);
+  const cancelAddForm = () => setShowAddForm(false);
 
-  /* ---------- UI render ---------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 p-8">
       <ToastContainer position="bottom-right" autoClose={3000} />
 
-      <div className="max-w-7xl mt-20 mx-auto space-y-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">Expense Management</h1>
-          <p className="text-black">Track and manage your business expenses</p>
+      <div className="max-w-[1600px] mx-auto space-y-8">
+        <div className="text-center mb-12 mt-16">
+          <h1 className="text-5xl font-black text-gray-900 mb-3 tracking-tight">
+            Expense Tracker
+          </h1>
+          <p className="text-lg text-gray-600">Manage your business finances with ease</p>
         </div>
 
-        {/* Header kept same but uses walletStats */}
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {/* Initial Amount card (simplified) */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow lg:col-span-1">
-            <div className="flex justify-between items-start mb-3">
-              <div className="text-sm font-medium text-black">Initial Amount</div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-gray-100 hover:shadow-2xl transition-shadow">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1">
+                  Initial Budget
+                </div>
+                {!isEditingInitialAmount && (
+                  <div className="text-3xl font-black text-gray-900">
+                    ₹{initialAmount.toLocaleString()}
+                  </div>
+                )}
+              </div>
               {!isEditingInitialAmount && (
                 <button
                   onClick={() => {
                     setIsEditingInitialAmount(true);
                     setInitialAmountInput(initialAmount.toString());
                   }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                  className="px-3 py-1 rounded-lg text-xs font-bold text-blue-600 bg-blue-100 hover:bg-blue-200 transition-all"
                 >
-                  Edit/History
+                  Edit
                 </button>
               )}
             </div>
-            {isEditingInitialAmount ? (
-              <div className="space-y-4">
-                <div className="border border-gray-300 rounded-lg p-3">
-                  <label className="text-xs font-medium text-black block mb-1">Set New Amount (₹)</label>
-                  <input
-                    type="number"
-                    value={initialAmountInput}
-                    onChange={(e) => setInitialAmountInput(e.target.value)}
-                    className="w-full border-b border-gray-300 pb-1 text-sm outline-none focus:border-blue-500 text-black"
-                    placeholder="New Amount"
-                  />
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={handleUpdateInitialAmount} className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm">Save</button>
-                    <button onClick={() => { setIsEditingInitialAmount(false); setInitialAmountInput(initialAmount.toString()); }} className="flex-1 border border-gray-300 hover:bg-gray-50 px-3 py-2 rounded-lg text-xs font-medium transition-colors text-black">Cancel</button>
-                  </div>
+            {isEditingInitialAmount && (
+              <div className="space-y-3">
+                <input
+                  type="number"
+                  value={initialAmountInput}
+                  onChange={(e) => setInitialAmountInput(e.target.value)}
+                  className="w-full border-2 border-gray-300 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                  placeholder="Enter new amount"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleUpdateInitialAmount}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingInitialAmount(false);
+                      setInitialAmountInput(initialAmount.toString());
+                    }}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-lg text-sm font-bold transition-all"
+                  >
+                    Cancel
+                  </button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="text-2xl font-bold text-black">₹{initialAmount.toLocaleString()}</div>
               </div>
             )}
           </div>
 
-          <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm font-medium text-red-700 mb-3">Total Spent</div>
-            <div className="text-2xl font-bold text-red-900">₹{walletStats.spent.toLocaleString()}</div>
+          <div className="bg-gradient-to-br from-white to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
+            <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">
+              Total Spent
+            </div>
+            <div className="text-3xl font-black text-black">
+              ₹{walletStats.spent.toLocaleString()}
+            </div>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm font-medium text-amber-700 mb-3">Pending (Others)</div>
-            <div className="text-2xl font-bold text-amber-900">₹{walletStats.pending.toLocaleString()}</div>
+          <div className="bg-gradient-to-br from-white to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
+            <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">
+              Pending
+            </div>
+            <div className="text-3xl font-black text-black">
+              ₹{walletStats.pending.toLocaleString()}
+            </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm font-medium text-green-700 mb-3">Remaining Balance</div>
-            <div className="text-2xl font-bold text-green-900">₹{walletStats.remaining.toLocaleString()}</div>
+          <div className="bg-gradient-to-br from-white to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
+            <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">
+              Remaining
+            </div>
+            <div className="text-3xl font-black text-black">
+              ₹{walletStats.remaining.toLocaleString()}
+            </div>
           </div>
         </div>
 
-        {/* Add Expense Form */}
-        <ExpenseForm
-          shopName={shopName}
-          setShopName={setShopName}
-          date={date}
-          setDate={setDate}
-          description={description}
-          setDescription={setDescription}
-          amount={amount}
-          setAmount={setAmount}
-          role={role}
-          setRole={setRole}
-          selectedEmployeeId={selectedEmployeeId}
-          setSelectedEmployeeId={setSelectedEmployeeId}
-          employees={employees}
-          onSubmit={handleAddExpense}
-          shops={shopSuggestions}
-        />
+        {showAddForm && (
+          <ExpenseForm
+            shopName={shopName}
+            setShopName={setShopName}
+            date={date}
+            setDate={setDate}
+            description={description}
+            setDescription={setDescription}
+            amount={amount}
+            setAmount={setAmount}
+            role={role}
+            setRole={setRole}
+            selectedEmployeeId={selectedEmployeeId}
+            setSelectedEmployeeId={setSelectedEmployeeId}
+            employees={employees}
+            onSubmit={handleAddExpense}
+            shops={shopSuggestions}
+            onCancel={cancelAddForm}
+          />
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Filters column: you can reuse your ExpensesFilters component - omitted here to keep file compact */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1">
-            {/* REPLACE with your existing ExpensesFilters component if available */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-semibold text-black">Filters</h3>
-                <button type="button" onClick={() => setShowHistory((s) => !s)} className="border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-black">
-                  {showHistory ? "Hide History" : "View History"}
+            <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-gray-100 sticky top-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black text-gray-900">Filters</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowHistory((s) => !s)}
+                  className="px-4 py-2 rounded-lg text-xs font-bold text-teal-700 bg-teal-100 hover:bg-teal-200 transition-all"
+                >
+                  {showHistory ? "Hide" : "History"}
                 </button>
               </div>
-              {/* Add minimal filter UI for demo (you likely have a larger component) */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-xs">Search</label>
-                  <input value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} className="w-full border px-2 py-1 rounded" placeholder="Shop or description..." />
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    Search
+                  </label>
+                  <input
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
+                    placeholder="Search..."
+                  />
                 </div>
                 <div>
-                  <label className="text-xs">Role</label>
-                  <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as any)} className="w-full border px-2 py-1 rounded">
-                    <option value="all">All</option>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    Shop
+                  </label>
+                  <select
+                    value={filterShop}
+                    onChange={(e) => setFilterShop(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                  >
+                    <option value="all">All Shops</option>
+                    {shopSuggestions.map((shop) => (
+                      <option key={shop} value={shop}>
+                        {shop}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    Role
+                  </label>
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value as any)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                  >
+                    <option value="all">All Roles</option>
                     <option value="founder">Founder</option>
                     <option value="manager">Manager</option>
                     <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    Status
+                  </label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as any)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="paid">Done/Paid</option>
+                    <option value="unpaid">Pending</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                    Employee
+                  </label>
+                  <select
+                    value={filterEmployee}
+                    onChange={(e) => setFilterEmployee(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                  >
+                    <option value="all">All Employees</option>
+                    {employees.map((emp) => (
+                      <option key={emp._id} value={emp._id}>
+                        {emp.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="lg:col-span-2">
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-2xl overflow-hidden shadow-xl border-2 border-gray-100">
               {loading ? (
-                <div className="p-8 text-center text-gray-600">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <p className="mt-3 text-sm">Loading expenses…</p>
+                <div className="p-16 text-center">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+                  <p className="mt-4 text-gray-600 font-medium">Loading expenses...</p>
                 </div>
               ) : error ? (
-                <div className="p-8 text-center text-red-600 bg-red-50">
-                  <p className="text-sm font-medium">{error}</p>
+                <div className="p-16 text-center">
+                  <div className="inline-block w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                    <span className="text-3xl text-red-600">!</span>
+                  </div>
+                  <p className="text-red-600 font-bold">{error}</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-100 border-b border-gray-200">
+                <div
+                  ref={tableRef}
+                  className="overflow-x-auto"
+                  style={{ maxHeight: "70vh" }}
+                >
+                  <table className="min-w-full">
+                    <thead className="bg-gradient-to-r from-gray-900 to-gray-800 sticky top-0">
                       <tr>
-                        <th className="p-4 text-left font-semibold text-black">#</th>
-                        <th className="p-4 text-left font-semibold text-black">Shop</th>
-                        <th className="p-4 text-left font-semibold text-black">Description</th>
-                        <th className="p-4 text-right font-semibold text-black">Amount</th>
-                        <th className="p-4 text-right font-semibold text-black">Total (incl. sub)</th>
-                        <th className="p-4 text-left font-semibold text-black">Date</th>
-                        <th className="p-4 text-left font-semibold text-black">Role</th>
-                        <th className="p-4 text-left font-semibold text-black">Employee</th>
-                        <th className="p-4 text-left font-semibold text-black">Status</th>
-                        <th className="p-4 text-left font-semibold text-black">Actions</th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          #
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Shop
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Description
+                        </th>
+                        <th className="p-4 text-right font-black text-white uppercase tracking-wide text-xs">
+                          Amount
+                        </th>
+                        <th className="p-4 text-right font-black text-white uppercase tracking-wide text-xs">
+                          Total
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Date
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Role
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Employee
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Status
+                        </th>
+                        <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {filteredExpenses.length === 0 ? (
+                    <tbody className="divide-y-2 divide-gray-100">
+                      {visibleExpenses.length === 0 &&
+                      filteredExpenses.length === 0 ? (
                         <tr>
-                          <td className="p-8 text-center text-gray-500" colSpan={10}>
-                            No expenses found matching your criteria
+                          <td
+                            className="p-16 text-center text-gray-500"
+                            colSpan={10}
+                          >
+                            <div className="text-6xl mb-4">📊</div>
+                            <p className="font-bold text-lg">No expenses found</p>
+                            <p className="text-sm">Try adjusting your filters</p>
                           </td>
                         </tr>
                       ) : (
-                        filteredExpenses.map((exp, idx) => {
-                          const subsTotal = (exp.subtasks || []).reduce((s, sub) => s + (sub.amount || 0), 0);
+                        visibleExpenses.map((exp, idx) => {
+                          const subsTotal = (exp.subtasks || []).reduce(
+                            (s, sub) => s + (sub.amount || 0),
+                            0
+                          );
                           const total = exp.amount + subsTotal;
                           const paid = isExpensePaid(exp);
 
                           return (
                             <React.Fragment key={exp._id}>
-                              <tr className="hover:bg-gray-50 transition-colors">
-                                <td className="p-4 text-gray-600">{idx + 1}</td>
-                                <td className="p-4 text-black font-medium">{exp.shop || "-"}</td>
-                                <td className="p-4 text-black">{exp.description}</td>
-                                <td className="p-4 text-right font-medium text-black">₹{exp.amount.toLocaleString()}</td>
-                                <td className="p-4 text-right font-bold text-black">₹{total.toLocaleString()}</td>
-                                <td className="p-4 text-gray-600">{formatDate(exp.date)}</td>
-                                <td className="p-4 text-gray-600 capitalize">{exp.role || "other"}</td>
-                                <td className="p-4 text-gray-600">{exp.employeeName || "-"}</td>
+                              <tr className="hover:bg-blue-50 transition-colors">
+                                <td className="p-4 text-gray-600 font-bold">
+                                  {idx + 1}
+                                </td>
+                                <td className="p-4 text-gray-900 font-bold">
+                                  {exp.shop || "-"}
+                                </td>
+                                <td className="p-4 text-gray-900">
+                                  {exp.description}
+                                </td>
+                                <td className="p-4 text-right font-bold text-gray-900">
+                                  ₹{exp.amount.toLocaleString()}
+                                </td>
+                                <td className="p-4 text-right font-black text-gray-900 text-lg">
+                                  ₹{total.toLocaleString()}
+                                </td>
+                                <td className="p-4 text-gray-600 text-sm">
+                                  {formatDate(exp.date)}
+                                </td>
+                                <td className="p-4 text-gray-600 capitalize text-sm">
+                                  {exp.role || "other"}
+                                </td>
+                                <td className="p-4 text-gray-600 text-sm">
+                                  {exp.employeeName || "-"}
+                                </td>
                                 <td className="p-4">
                                   <select
                                     value={paid ? "paid" : "unpaid"}
                                     onChange={(e) => {
-                                      const newStatus = e.target.value === "paid";
+                                      const newStatus =
+                                        e.target.value === "paid";
                                       handleUpdatePaidStatus(exp, newStatus);
                                     }}
-                                    className={`border rounded-lg px-3 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer text-black ${
-                                      paid ? "border-green-300 bg-green-50 text-green-700" : "border-amber-300 bg-amber-50 text-amber-700"
+                                    className={`border-2 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer ${
+                                      paid
+                                        ? "border-green-300 bg-green-50 text-green-700"
+                                        : "border-orange-300 bg-orange-50 text-orange-700"
                                     }`}
                                   >
                                     <option value="unpaid">Pending</option>
@@ -1183,13 +1470,25 @@ const ExpensesContent: React.FC = () => {
                                 </td>
                                 <td className="p-4">
                                   <div className="flex flex-wrap gap-2">
-                                    <button type="button" className="border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-black" onClick={() => toggleExpand(exp._id)}>
+                                    <button
+                                      type="button"
+                                      className="px-4 py-2 rounded-lg text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
+                                      onClick={() => toggleExpand(exp._id)}
+                                    >
                                       {expandedId === exp._id ? "Hide" : "View"}
                                     </button>
-                                    <button type="button" className="border border-blue-300 text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" onClick={() => onStartEditExpense(exp)}>
+                                    <button
+                                      type="button"
+                                      className="px-4 py-2 rounded-lg text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 transition-all"
+                                      onClick={() => onStartEditExpense(exp)}
+                                    >
                                       Edit
                                     </button>
-                                    <button type="button" className="border border-red-300 text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" onClick={() => handleDeleteExpense(exp)}>
+                                    <button
+                                      type="button"
+                                      className="px-4 py-2 rounded-lg text-xs font-bold text-red-700 bg-red-100 hover:bg-red-200 transition-all"
+                                      onClick={() => handleDeleteExpense(exp)}
+                                    >
                                       Delete
                                     </button>
                                   </div>
@@ -1209,7 +1508,9 @@ const ExpensesContent: React.FC = () => {
                                   subEmployeeId={subEmployeeId}
                                   setSubEmployeeId={setSubEmployeeId}
                                   onAddSubtask={handleAddSubtask}
-                                  onUpdateSubtaskStatus={handleUpdateSubtaskStatus}
+                                  onUpdateSubtaskStatus={
+                                    handleUpdateSubtaskStatus
+                                  }
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onStartEditSubtask={onStartEditSubtask}
                                 />
@@ -1220,20 +1521,43 @@ const ExpensesContent: React.FC = () => {
                       )}
                     </tbody>
                   </table>
+
+                  <div className="text-center py-6 text-sm font-bold text-gray-600 bg-gray-50">
+                    {isLoadingMore && <p>Loading more expenses...</p>}
+                    {!hasMoreExpenses && filteredExpenses.length > 0 && (
+                      <p>All expenses loaded</p>
+                    )}
+                    {hasMoreExpenses && !isLoadingMore && (
+                      <button
+                        onClick={loadMoreRows}
+                        className="text-blue-600 hover:text-blue-800 font-bold"
+                      >
+                        Load More ({filteredExpenses.length - visibleRowCount}{" "}
+                        remaining)
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* History area (simple) */}
         {showHistory && (
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-black mb-4">Expense History (Paid/Done)</h2>
-            <div className="grid gap-5 md:grid-cols-3 mb-5">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-black">Filter by Employee</label>
-                <select value={historyEmployeeId} onChange={(e) => setHistoryEmployeeId(e.target.value)} className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white cursor-pointer text-black">
+          <div className="bg-white rounded-2xl p-8 shadow-xl border-2 border-gray-100">
+            <h2 className="text-2xl font-black text-gray-900 mb-6">
+              Payment History
+            </h2>
+            <div className="grid gap-6 md:grid-cols-2 mb-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Filter by Employee
+                </label>
+                <select
+                  value={historyEmployeeId}
+                  onChange={(e) => setHistoryEmployeeId(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                >
                   <option value="">All Paid Expenses</option>
                   {employees.map((emp) => (
                     <option key={emp._id} value={emp._id}>
@@ -1242,48 +1566,106 @@ const ExpensesContent: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-black">{historyEmployeeId ? "Selected Employee Total" : "All Time Total Paid"}</label>
-                <div className={`border rounded-lg px-4 py-2.5 text-lg font-bold ${historyEmployeeId ? "border-blue-200 bg-blue-50 text-blue-700" : "border-green-200 bg-green-50 text-green-700"}`}>
-                  ₹{(historyEmployeeId ? employeeHistoryTotal : historyExpenses.reduce((sum, e) => sum + e.amount + (e.subtasks || []).reduce((s, sub) => s + (sub.amount || 0), 0), 0)).toLocaleString()}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  {historyEmployeeId
+                    ? "Selected Employee Total"
+                    : "All Time Total"}
+                </label>
+                <div
+                  className={`border-2 rounded-xl px-6 py-4 text-2xl font-black ${
+                    historyEmployeeId
+                      ? "border-blue-300 bg-blue-50 text-blue-700"
+                      : "border-green-300 bg-green-50 text-green-700"
+                  }`}
+                >
+                  ₹
+                  {(historyEmployeeId
+                    ? employeeHistoryTotal
+                    : historyExpenses.reduce(
+                        (sum, e) =>
+                          sum +
+                          e.amount +
+                          (e.subtasks || []).reduce(
+                            (s, sub) => s + (sub.amount || 0),
+                            0
+                          ),
+                        0
+                      )
+                  ).toLocaleString()}
                 </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-100 border-b border-gray-200">
+            <div className="overflow-x-auto rounded-xl border-2 border-gray-200">
+              <table className="min-w-full">
+                <thead className="bg-gradient-to-r from-gray-900 to-gray-800">
                   <tr>
-                    <th className="p-3 text-left font-semibold text-black">Date</th>
-                    <th className="p-3 text-left font-semibold text-black">Description</th>
-                    <th className="p-3 text-left font-semibold text-black">Shop</th>
-                    <th className="p-3 text-right font-semibold text-black">Amount</th>
-                    <th className="p-3 text-right font-semibold text-black">Total</th>
-                    <th className="p-3 text-left font-semibold text-black">Employee</th>
+                    <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                      Date
+                    </th>
+                    <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                      Description
+                    </th>
+                    <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                      Shop
+                    </th>
+                    <th className="p-4 text-right font-black text-white uppercase tracking-wide text-xs">
+                      Amount
+                    </th>
+                    <th className="p-4 text-right font-black text-white uppercase tracking-wide text-xs">
+                      Total
+                    </th>
+                    <th className="p-4 text-left font-black text-white uppercase tracking-wide text-xs">
+                      Employee
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {(historyEmployeeId ? employeeHistory : historyExpenses).length === 0 ? (
+                <tbody className="divide-y-2 divide-gray-100">
+                  {(historyEmployeeId ? employeeHistory : historyExpenses)
+                    .length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-4 text-center text-gray-500">
-                        {historyEmployeeId ? "No paid expenses found for this employee." : "No paid expenses in history."}
+                      <td
+                        colSpan={6}
+                        className="p-16 text-center text-gray-500"
+                      >
+                        <div className="text-6xl mb-4">📜</div>
+                        <p className="font-bold text-lg">No payment history</p>
                       </td>
                     </tr>
                   ) : (
-                    (historyEmployeeId ? employeeHistory : historyExpenses).map((exp) => {
-                      const subsTotal = (exp.subtasks || []).reduce((s, sub) => s + (sub.amount || 0), 0);
-                      const total = exp.amount + subsTotal;
-                      return (
-                        <tr key={exp._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-3 text-gray-600">{formatDate(exp.date)}</td>
-                          <td className="p-3 text-black">{exp.description}</td>
-                          <td className="p-3 text-black">{exp.shop || "-"}</td>
-                          <td className="p-3 text-right text-gray-600">₹{exp.amount.toLocaleString()}</td>
-                          <td className="p-3 text-right font-bold text-black">₹{total.toLocaleString()}</td>
-                          <td className="p-3 text-gray-600">{exp.employeeName || "-"}</td>
-                        </tr>
-                      );
-                    })
+                    (historyEmployeeId ? employeeHistory : historyExpenses).map(
+                      (exp) => {
+                        const subsTotal = (exp.subtasks || []).reduce(
+                          (s, sub) => s + (sub.amount || 0),
+                          0
+                        );
+                        const total = exp.amount + subsTotal;
+                        return (
+                          <tr
+                            key={exp._id}
+                            className="hover:bg-blue-50 transition-colors"
+                          >
+                            <td className="p-4 text-gray-600 text-sm">
+                              {formatDate(exp.date)}
+                            </td>
+                            <td className="p-4 text-gray-900 font-bold">
+                              {exp.description}
+                            </td>
+                            <td className="p-4 text-gray-900">{exp.shop || "-"}</td>
+                            <td className="p-4 text-right text-gray-600 font-bold">
+                              ₹{exp.amount.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right font-black text-gray-900 text-lg">
+                              ₹{total.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-gray-600">
+                              {exp.employeeName || "-"}
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )
                   )}
                 </tbody>
               </table>
@@ -1292,44 +1674,114 @@ const ExpensesContent: React.FC = () => {
         )}
       </div>
 
-      {/* ---------- Edit Expense Modal ---------- */}
+      {!showAddForm && (
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="fixed bottom-8 right-8 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white w-16 h-16 rounded-full flex items-center justify-center text-4xl font-light shadow-2xl transition-all duration-300 transform hover:scale-110 z-50"
+          aria-label="Add New Expense"
+        >
+          +
+        </button>
+      )}
+
       {editingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg space-y-4">
-            <h2 className="text-lg font-semibold text-black">Edit Expense</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8">
+            <h2 className="text-2xl font-black text-gray-900 mb-6">Edit Expense</h2>
 
-            <div className="grid gap-3">
-              <div>
-                <label className="text-sm font-medium text-black">Shop</label>
-                <input value={editExpenseFields.shop} onChange={(e) => setEditExpenseFields((p) => ({ ...p, shop: e.target.value }))} className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-black">Description</label>
-                <input value={editExpenseFields.description} onChange={(e) => setEditExpenseFields((p) => ({ ...p, description: e.target.value }))} className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-black">Amount</label>
-                  <input type="number" value={editExpenseFields.amount} onChange={(e) => setEditExpenseFields((p) => ({ ...p, amount: e.target.value }))} className="w-full border px-3 py-2 rounded" />
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Shop</label>
+                  <input
+                    value={editExpenseFields.shop}
+                    onChange={(e) =>
+                      setEditExpenseFields((p) => ({ ...p, shop: e.target.value }))
+                    }
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                  />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-black">Date</label>
-                  <input type="date" value={editExpenseFields.date} onChange={(e) => setEditExpenseFields((p) => ({ ...p, date: e.target.value }))} className="w-full border px-3 py-2 rounded" />
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <input
+                    value={editExpenseFields.description}
+                    onChange={(e) =>
+                      setEditExpenseFields((p) => ({
+                        ...p,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={editExpenseFields.amount}
+                    onChange={(e) =>
+                      setEditExpenseFields((p) => ({
+                        ...p,
+                        amount: e.target.value,
+                      }))
+                    }
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={editExpenseFields.date}
+                    onChange={(e) =>
+                      setEditExpenseFields((p) => ({
+                        ...p,
+                        date: e.target.value,
+                      }))
+                    }
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-black">Role</label>
-                  <select value={editExpenseFields.role} onChange={(e) => setEditExpenseFields((p) => ({ ...p, role: e.target.value as Role }))} className="w-full border px-3 py-2 rounded">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Role</label>
+                  <select
+                    value={editExpenseFields.role}
+                    onChange={(e) =>
+                      setEditExpenseFields((p) => ({
+                        ...p,
+                        role: e.target.value as Role,
+                      }))
+                    }
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
+                  >
                     <option value="founder">Founder</option>
                     <option value="manager">Manager</option>
                     <option value="other">Other</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-black">Employee</label>
-                  <select value={editExpenseFields.employeeId} onChange={(e) => setEditExpenseFields((p) => ({ ...p, employeeId: e.target.value }))} className="w-full border px-3 py-2 rounded">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Employee
+                  </label>
+                  <select
+                    value={editExpenseFields.employeeId}
+                    onChange={(e) =>
+                      setEditExpenseFields((p) => ({
+                        ...p,
+                        employeeId: e.target.value,
+                      }))
+                    }
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
+                  >
                     <option value="">None</option>
                     {employees.map((emp) => (
                       <option key={emp._id} value={emp._id}>
@@ -1341,36 +1793,83 @@ const ExpensesContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <button className="px-4 py-2 border rounded-lg" onClick={cancelEditExpense}>Cancel</button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg" onClick={handleSaveEditExpense}>Save Changes</button>
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                className="px-6 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
+                onClick={cancelEditExpense}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
+                onClick={handleSaveEditExpense}
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ---------- Edit Subtask Modal ---------- */}
       {editingSubtask && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md space-y-4">
-            <h2 className="text-lg font-semibold text-black">Edit Sub Expense</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+            <h2 className="text-2xl font-black text-gray-900 mb-6">
+              Edit Sub Expense
+            </h2>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-black">Title</label>
-                <input value={editingSubtask.title} onChange={(e) => setEditingSubtask((p) => (p ? { ...p, title: e.target.value } : p))} className="w-full border px-3 py-2 rounded" />
+                <label className="block text-sm font-bold text-gray-700 mb-2">Title</label>
+                <input
+                  value={editingSubtask.title}
+                  onChange={(e) =>
+                    setEditingSubtask((p) =>
+                      p ? { ...p, title: e.target.value } : p
+                    )
+                  }
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                />
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Amount</label>
-                <input type="number" value={editingSubtask.amount} onChange={(e) => setEditingSubtask((p) => (p ? { ...p, amount: e.target.value } : p))} className="w-full border px-3 py-2 rounded" />
+                <label className="block text-sm font-bold text-gray-700 mb-2">Amount</label>
+                <input
+                  type="number"
+                  value={editingSubtask.amount}
+                  onChange={(e) =>
+                    setEditingSubtask((p) =>
+                      p ? { ...p, amount: e.target.value } : p
+                    )
+                  }
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                />
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Date</label>
-                <input type="date" value={editingSubtask.date} onChange={(e) => setEditingSubtask((p) => (p ? { ...p, date: e.target.value } : p))} className="w-full border px-3 py-2 rounded" />
+                <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={editingSubtask.date}
+                  onChange={(e) =>
+                    setEditingSubtask((p) =>
+                      p ? { ...p, date: e.target.value } : p
+                    )
+                  }
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
+                />
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Employee</label>
-                <select value={editingSubtask.employeeId} onChange={(e) => setEditingSubtask((p) => (p ? { ...p, employeeId: e.target.value } : p))} className="w-full border px-3 py-2 rounded">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Employee
+                </label>
+                <select
+                  value={editingSubtask.employeeId}
+                  onChange={(e) =>
+                    setEditingSubtask((p) =>
+                      p ? { ...p, employeeId: e.target.value } : p
+                    )
+                  }
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
+                >
                   <option value="">None</option>
                   {employees.map((emp) => (
                     <option key={emp._id} value={emp._id}>
@@ -1381,9 +1880,19 @@ const ExpensesContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <button className="px-4 py-2 border rounded-lg" onClick={cancelEditSubtask}>Cancel</button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg" onClick={handleSaveEditSubtask}>Save</button>
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                className="px-6 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
+                onClick={cancelEditSubtask}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
+                onClick={handleSaveEditSubtask}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
