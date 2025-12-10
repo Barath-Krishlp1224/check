@@ -6,6 +6,10 @@ import Employee from "@/models/Employee";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function escapeRegex(input: string) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
@@ -15,58 +19,48 @@ export async function POST(req: NextRequest) {
       body = await req.json();
     } catch (err) {
       console.error("Failed to parse JSON body in /api/login:", err);
-      return NextResponse.json(
-        { error: "Invalid request body." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const empIdOrEmail = body?.empIdOrEmail?.trim();
+    const empIdOrEmailRaw = body?.empIdOrEmail;
     const password = body?.password;
 
-    if (!empIdOrEmail || !password) {
+    if (!empIdOrEmailRaw || !password) {
       return NextResponse.json(
         { error: "Employee ID / Email and Password are required." },
         { status: 400 }
       );
     }
 
-    const identifierLower = empIdOrEmail.toLowerCase();
+    const empIdOrEmailEscaped = escapeRegex(empIdOrEmailRaw.trim());
+    const emailRegex = new RegExp(`^${empIdOrEmailEscaped}$`, "i");
+    const empIdRegex = new RegExp(`^${empIdOrEmailEscaped}$`, "i");
 
-    // Single query that supports both email and empId (case-insensitive)
     const employee = await Employee.findOne({
-      $or: [
-        { mailId: new RegExp(`^${identifierLower}$`, "i") },
-        { empId: new RegExp(`^${empIdOrEmail}$`, "i") },
-      ],
-    });
+      $or: [{ mailId: emailRegex }, { empId: empIdRegex }],
+    }).lean();
 
     if (!employee) {
-      console.warn("Login failed: user not found for:", empIdOrEmail);
+      console.warn("Login failed: user not found for:", empIdOrEmailRaw);
       return NextResponse.json(
         { error: "User not found with given Employee ID or Email." },
-        { status: 401 }
+        { status: 404 }
       );
     }
 
-    if (!employee.password) {
-      console.error(
-        "Employee found but password missing for empId:",
-        employee.empId
-      );
+    // Note: treat missing/empty password as "no password set"
+    if (!employee.password || (typeof employee.password === "string" && employee.password.trim() === "")) {
+      console.error("Employee found but password missing for empId:", employee.empId);
       return NextResponse.json(
-        { error: "User does not have a password set. Contact admin." },
-        { status: 500 }
+        { error: "User does not have a password set. Contact admin to set/reset password." },
+        { status: 401 }
       );
     }
 
     const isMatch = await bcrypt.compare(password, employee.password);
     if (!isMatch) {
       console.warn("Login failed: invalid password for empId:", employee.empId);
-      return NextResponse.json(
-        { error: "Invalid password." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid password." }, { status: 401 });
     }
 
     const user = {
@@ -77,18 +71,9 @@ export async function POST(req: NextRequest) {
       department: employee.department || null,
     };
 
-    return NextResponse.json(
-      {
-        message: "Login successful",
-        user,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Login successful", user }, { status: 200 });
   } catch (error: any) {
     console.error("Login error in /api/login:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
