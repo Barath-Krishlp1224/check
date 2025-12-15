@@ -1,11 +1,8 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {TrendingDown, Calendar, Filter, RefreshCw, X, Store, AlertCircle, Menu, ChevronDown, ChevronUp } from 'lucide-react';
-// 1. Import ToastContainer and toast
+import {TrendingDown, Calendar, Filter, RefreshCw, X, Store, AlertCircle, Menu, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
-// 1. Import the necessary CSS (requires external setup, conceptually included)
-// import 'react-toastify/dist/ReactToastify.css'; 
 
 interface SubExpense {
   id: string;
@@ -28,6 +25,14 @@ interface Expense {
   subtasks?: SubExpense[];
 }
 
+// Define the type for the Initial Amount History entry (matching your Mongoose model)
+interface InitialAmountHistoryEntry {
+    _id: string;
+    amount: number;
+    date: string;
+    createdAt: string;
+}
+
 type DateFilter =
   | 'all'
   | 'this_week'
@@ -40,8 +45,7 @@ type DateFilter =
   | 'custom'
   | '';
 
-const BUDGET_STORAGE_KEY = 'expense_tracker_budget';
-const DEFAULT_BUDGET = 50000.00;
+// Removed BUDGET_STORAGE_KEY and DEFAULT_BUDGET constants as the source of truth is now the API/DB.
 
 const getWeekStartISO = (d: Date) => {
   const date = new Date(d);
@@ -57,7 +61,7 @@ const getFilterDates = (filter: DateFilter): { startDate: string | null; endDate
   const today = new Date();
   let startDate: Date | null = null;
   let endDate: Date = new Date();
-  endDate.setHours(23, 59, 59, 999); // Set end time to end of day
+  endDate.setHours(23, 59, 59, 999); 
 
   switch (filter) {
     case 'all':
@@ -110,18 +114,12 @@ const categoryIcons: Record<string, string> = {
 };
 
 const ExpenseDashboard: React.FC = () => {
-  const [mainBudget, setMainBudget] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-        const savedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
-        return savedBudget ? parseFloat(savedBudget) : DEFAULT_BUDGET;
-    }
-    return DEFAULT_BUDGET;
-  });
-
+  // Initialize mainBudget to 0, it will be updated from the API
+  const [mainBudget, setMainBudget] = useState<number>(0); 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
+  const [budgetLoading, setBudgetLoading] = useState(false); // New state for budget loading
 
-  // Default to this_week as requested for initial view
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_week'); 
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -129,6 +127,10 @@ const ExpenseDashboard: React.FC = () => {
   const [showExpenseTotalId, setShowExpenseTotalId] = useState<string | null>(null);
 
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  // Initialize newBudgetValue with 0 or a placeholder, it will be updated when the budget loads
+  const [newBudgetValue, setNewBudgetValue] = useState('0.00'); 
 
   const toggleWeekExpanded = (week: string) => {
     setExpandedWeeks(prev => {
@@ -144,23 +146,50 @@ const ExpenseDashboard: React.FC = () => {
 
   const currentWeekStart = getWeekStartISO(new Date());
 
+  // NEW FUNCTION: Fetch the latest budget amount from the API
+  const fetchInitialBudget = async () => {
+    setBudgetLoading(true);
+    try {
+        // ASSUMPTION: Your InitialAmount API is at /api/initial-amount
+        const res = await fetch('/api/initial-amount'); 
+        const json = await res.json();
+        
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            // Your GET API sorts by createdAt descending, so the first element is the latest.
+            const latestBudget: InitialAmountHistoryEntry = json.data[0];
+            const amount = latestBudget.amount;
+            setMainBudget(amount);
+            setNewBudgetValue(amount.toFixed(2));
+            toast.success(`Budget loaded from database: ₹${amount.toLocaleString('en-IN')}.`);
+        } else {
+            // Handle case where no budget is found in the DB (you might set a default here or keep it at 0)
+            setMainBudget(0);
+            setNewBudgetValue('0.00');
+            toast.warn('No initial budget found in database. Set a new one.');
+        }
+    } catch (err) {
+        console.error('Failed to fetch initial budget', err);
+        setMainBudget(0);
+        setNewBudgetValue('0.00');
+        toast.error('Network error while fetching initial budget.');
+    } finally {
+        setBudgetLoading(false);
+    }
+  }
+
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      // Simulate API call to /api/expenses - assuming this works
       const res = await fetch('/api/expenses');
       const json = await res.json();
       if (json.success) {
         setExpenses(json.data);
-        // 3. Add success toast notification
         toast.success(`Expenses refreshed successfully! (${json.data.length} items found)`);
       } else {
-        // 4. Replace console.error with a toast.error
         console.error('Failed to fetch expenses', json);
         toast.error('Failed to fetch expenses: API error.');
       }
     } catch (err) {
-      // 4. Replace console.error with a toast.error
       console.error('Fetch error', err);
       toast.error('Network error while fetching data.');
     } finally {
@@ -168,9 +197,58 @@ const ExpenseDashboard: React.FC = () => {
     }
   };
 
+  // MODIFIED FUNCTION: Send budget update to the API
+  const handleUpdateBudget = async () => {
+    const value = parseFloat(newBudgetValue);
+    if (isNaN(value) || value <= 0) {
+        toast.error('Please enter a valid budget amount.');
+        return;
+    }
+    
+    if (value === mainBudget) {
+        toast.info('Budget remains unchanged.');
+        setIsEditingBudget(false);
+        return;
+    }
+
+    setBudgetLoading(true);
+
+    try {
+        // Send POST request to your API
+        const res = await fetch('/api/initial-amount', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                amount: value, 
+                // Use today's date for the new budget entry
+                date: new Date().toISOString().split('T')[0] 
+            }),
+        });
+
+        const json = await res.json();
+
+        if (json.success) {
+            setMainBudget(value);
+            setNewBudgetValue(value.toFixed(2));
+            toast.success(`Main budget successfully updated to ₹${value.toLocaleString('en-IN')}.`);
+        } else {
+            toast.error(`Failed to save budget: ${json.error || 'API error'}`);
+        }
+    } catch (error) {
+        console.error('Budget update error:', error);
+        toast.error('Network error while saving budget.');
+    } finally {
+        setIsEditingBudget(false);
+        setBudgetLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchExpenses();
+    fetchInitialBudget(); // Fetch the initial budget on mount
   }, []);
+
+  // ... (rest of the component logic remains the same, only renderSidebar and renderBudgetEditModal updated to show loading)
 
   const getExpenseTotal = (e: Expense): number => {
     const expenseAmount = typeof e.amount === 'number' && !Number.isNaN(e.amount) ? e.amount : Number(e.amount) || 0;
@@ -212,8 +290,6 @@ const ExpenseDashboard: React.FC = () => {
   }, [expenses, dateFilter, customStartDate, customEndDate]);
 
   const isFilterActive = useMemo(() => {
-    // Treat 'this_week' as the default view, not an "active filter" for the purpose of the UI labels,
-    // but treat all others including shop filter as an active filter.
     const isDateFilterSet = dateFilter !== 'this_week' && dateFilter !== '';
     const isShopFilterSet = shopFilter.trim() !== '';
     return isDateFilterSet || isShopFilterSet;
@@ -230,9 +306,6 @@ const ExpenseDashboard: React.FC = () => {
         });
     }
 
-    // Removed the logic that filtered for !exp.paid when dateFilter was ''
-    // The initial view is now 'this_week' which will show all paid/unpaid items for the week.
-
     return filtered;
   }, [dateFilteredExpenses, shopFilter]);
 
@@ -242,12 +315,10 @@ const ExpenseDashboard: React.FC = () => {
   const expensesByWeek = useMemo(() => {
     const map = new Map<string, Expense[]>();
     for (const e of finalFilteredExpenses) {
-        // Use weekStart if available, otherwise calculate it
         const wk = e.weekStart || getWeekStartISO(new Date(e.date));
         if (!map.has(wk)) map.set(wk, []);
         map.get(wk)!.push(e);
     }
-    // Sort by week start date descending (most recent week first)
     const sorted = Array.from(map.entries()).sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
     return sorted;
   }, [finalFilteredExpenses]);
@@ -265,61 +336,133 @@ const ExpenseDashboard: React.FC = () => {
     return Array.from(totals.entries()).map(([shop, total]) => ({ shop, total }));
   }, [unpaidExpensesInView]);
 
-  // Grand total is the total of expenses currently in the filtered view
   const grandTotal = finalFilteredExpenses.reduce((s, e) => s + getExpenseTotal(e), 0);
+
+  const renderBudgetEditModal = () => {
+    if (!isEditingBudget) return null;
+
+    return (
+        <div className="fixed inset-0 bg-white/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setIsEditingBudget(false)}>
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">Update Main Budget</h3>
+                  <button
+                    onClick={() => setIsEditingBudget(false)}
+                    className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">New Budget Amount (₹)</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        value={newBudgetValue}
+                        onChange={(e) => setNewBudgetValue(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 text-gray-900 text-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g., 60000.00"
+                        disabled={budgetLoading}
+                    />
+                    <p className="text-xs text-gray-500 mt-2">Current Budget: ₹{mainBudget.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                        **IMPORTANT:** This will create a **new** budget entry in the database.
+                    </p>
+                </div>
+
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                  <button
+                    onClick={() => setIsEditingBudget(false)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700 font-medium transition-colors"
+                    disabled={budgetLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateBudget}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition-colors flex items-center gap-2"
+                    disabled={parseFloat(newBudgetValue) === mainBudget || budgetLoading}
+                  >
+                    {budgetLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+                  </button>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
 
   const renderSidebar = () => {
     const totalPaid = paidExpenses.reduce((sum, e) => sum + getExpenseTotal(e), 0);
     const remainingBalance = mainBudget - totalPaid;
     const isOverBudget = remainingBalance < 0;
-    const percentageUsed = (totalPaid / mainBudget) * 100;
+    // Handle division by zero if mainBudget is 0
+    const percentageUsed = mainBudget > 0 ? (totalPaid / mainBudget) * 100 : 0;
     
-    // Budget Overview Section
     const budgetDisplay = (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2 text-white">
             <h3 className="text-lg font-semibold">Budget Overview</h3>
           </div>
+          <button 
+            onClick={() => {
+                setNewBudgetValue(mainBudget.toFixed(2));
+                setIsEditingBudget(true);
+            }} 
+            className="text-white text-sm font-medium opacity-80 hover:opacity-100 transition-opacity p-1 rounded flex items-center gap-1"
+            disabled={budgetLoading}
+          >
+            <DollarSign className='w-4 h-4' /> Edit
+          </button>
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-600">Initial Budget</span>
-              <span className="text-lg font-bold text-gray-900">₹{mainBudget.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          {budgetLoading ? (
+            <div className="flex items-center justify-center py-6">
+                <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+                <span className="ml-3 text-gray-600">Loading Budget...</span>
             </div>
+          ) : (
+            <>
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-600">Initial Budget</span>
+                    <span className="text-lg font-bold text-gray-900">₹{mainBudget.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-600">Total Paid</span>
-              <span className="text-lg font-bold text-blue-600">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
+                    <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-600">Total Paid</span>
+                    <span className="text-lg font-bold text-blue-600">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-              <div
-                className={`h-2.5 rounded-full transition-all ${isOverBudget ? 'bg-red-600' : 'bg-blue-600'}`}
-                style={{ width: `${Math.min(percentageUsed, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 text-right">{percentageUsed.toFixed(1)}% utilized</p>
-          </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                    <div
+                        className={`h-2.5 rounded-full transition-all ${isOverBudget ? 'bg-red-600' : 'bg-blue-600'}`}
+                        style={{ width: `${Math.min(percentageUsed, 100)}%` }}
+                    ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 text-right">{percentageUsed.toFixed(1)}% utilized</p>
+                </div>
 
-          <div className={`p-4 rounded-lg ${isOverBudget ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Remaining Balance</p>
-                <p className={`text-2xl font-bold mt-1 ${isOverBudget ? 'text-red-700' : 'text-green-700'}`}>
-                  ₹{remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              {isOverBudget && <AlertCircle className="w-8 h-8 text-red-600" />}
-            </div>
-          </div>
+                <div className={`p-4 rounded-lg ${isOverBudget ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                    <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Remaining Balance</p>
+                        <p className={`text-2xl font-bold mt-1 ${isOverBudget ? 'text-red-700' : 'text-green-700'}`}>
+                        ₹{remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                    {isOverBudget && <AlertCircle className="w-8 h-8 text-red-600" />}
+                    </div>
+                </div>
+            </>
+          )}
         </div>
       </div>
     );
     
-    // Summary and Filter Section
     const summaryAndFilter = (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4">
@@ -427,12 +570,15 @@ const ExpenseDashboard: React.FC = () => {
                 </div>
 
                 <button
-                    onClick={fetchExpenses}
-                    disabled={loading}
+                    onClick={() => {
+                        fetchExpenses();
+                        fetchInitialBudget(); // Refresh budget data as well
+                    }}
+                    disabled={loading || budgetLoading}
                     className="w-full mt-6 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    {loading ? 'Refreshing...' : 'Refresh Data'}
+                    <RefreshCw className={`w-4 h-4 ${(loading || budgetLoading) ? 'animate-spin' : ''}`} />
+                    {loading || budgetLoading ? 'Refreshing...' : 'Refresh All Data'}
                 </button>
             </div>
         </div>
@@ -450,7 +596,6 @@ const ExpenseDashboard: React.FC = () => {
     <div className="space-y-5">
       {expensesByWeek.map(([wk, wkExpenses]) => {
         const weekTotal = wkExpenses.reduce((sum, e) => {
-          // Only include amount if it's considered in the current view (i.e., not when filtering for unpaid only)
           return sum + getExpenseTotal(e);
         }, 0);
         const unpaidCount = wkExpenses.filter(e => !e.paid).length;
@@ -670,7 +815,6 @@ const ExpenseDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* 2. Add ToastContainer */}
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -681,7 +825,7 @@ const ExpenseDashboard: React.FC = () => {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="colored" // Use colored theme for better visibility
+        theme="colored"
       />
 
       <div className="max-w-[1600px]  mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -703,6 +847,7 @@ const ExpenseDashboard: React.FC = () => {
       </div>
 
       {showExpenseTotalId && renderExpenseDetailsModal()}
+      {renderBudgetEditModal()}
     </div>
   );
 };
