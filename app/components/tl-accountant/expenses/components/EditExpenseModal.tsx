@@ -4,7 +4,7 @@
 import React from "react";
 import { type Expense, type Employee, type Role } from "./types";
 
-// NOTE: Added employeeName to the fields to be edited/sent
+// NOTE: Added employeeName to the fields type
 interface EditExpenseFields {
   shop: string;
   description: string;

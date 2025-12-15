@@ -358,7 +358,10 @@ export async function PATCH(request: Request) {
           payload[key] = String(updates[key] || "").trim();
           break;
         case "employeeName":
-          payload.employeeName = String(updates[key] || "").trim();
+          // Employee name should be set to null if explicitly sent as such (e.g., employee cleared in modal)
+          payload.employeeName = updates.employeeName === null 
+            ? null 
+            : String(updates.employeeName || "").trim();
           break;
         case "paid":
           payload.paid = Boolean(updates.paid);
@@ -411,9 +414,11 @@ export async function PATCH(request: Request) {
       }
     }
 
+    // FIX FOR VERCEL: Explicitly convert ID to ObjectId for reliable lookup
+    const objectId = new mongoose.Types.ObjectId(id);
 
     const updated = (await Expense.findByIdAndUpdate(
-      id,
+      objectId,
       { $set: payload },
       { new: true }
     ).lean()) as unknown as IExpense | null;
