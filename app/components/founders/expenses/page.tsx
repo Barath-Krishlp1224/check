@@ -2,6 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {TrendingDown, Calendar, Filter, RefreshCw, X, Store, AlertCircle, Menu, ChevronDown, ChevronUp } from 'lucide-react';
+// 1. Import ToastContainer and toast
+import { ToastContainer, toast } from 'react-toastify';
+// 1. Import the necessary CSS (requires external setup, conceptually included)
+// import 'react-toastify/dist/ReactToastify.css'; 
 
 interface SubExpense {
   id: string;
@@ -148,11 +152,17 @@ const ExpenseDashboard: React.FC = () => {
       const json = await res.json();
       if (json.success) {
         setExpenses(json.data);
+        // 3. Add success toast notification
+        toast.success(`Expenses refreshed successfully! (${json.data.length} items found)`);
       } else {
+        // 4. Replace console.error with a toast.error
         console.error('Failed to fetch expenses', json);
+        toast.error('Failed to fetch expenses: API error.');
       }
     } catch (err) {
+      // 4. Replace console.error with a toast.error
       console.error('Fetch error', err);
+      toast.error('Network error while fetching data.');
     } finally {
       setLoading(false);
     }
@@ -559,7 +569,7 @@ const ExpenseDashboard: React.FC = () => {
     const total = getExpenseTotal(exp);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setShowExpenseTotalId(null)}>
+        <div className="fixed inset-0 bg-white/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setShowExpenseTotalId(null)}>
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -660,6 +670,20 @@ const ExpenseDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* 2. Add ToastContainer */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored" // Use colored theme for better visibility
+      />
+
       <div className="max-w-[1600px]  mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 mt-[10%]">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">Expense Dashboard</h1>
