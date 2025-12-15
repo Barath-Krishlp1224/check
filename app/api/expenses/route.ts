@@ -307,6 +307,8 @@ export async function PATCH(request: Request) {
     };
     const { id, updates } = body;
 
+    console.log("PATCH Request - ID:", id, "Updates:", updates);
+
     if (!id || !updates || typeof updates !== "object") {
       return NextResponse.json(
         { success: false, error: "Provide id and updates object" },
@@ -323,18 +325,6 @@ export async function PATCH(request: Request) {
     }
 
     await ensureConnected();
-
-    // CRITICAL FIX: First verify the document exists
-    const objectId = new mongoose.Types.ObjectId(id);
-    const existingDoc = await Expense.findById(objectId).lean().exec();
-    
-    if (!existingDoc) {
-      console.error(`PATCH: Expense not found with ID: ${id}`);
-      return NextResponse.json(
-        { success: false, error: "Expense not found" },
-        { status: 404 }
-      );
-    }
 
     const allowed = [
       "description",
@@ -404,15 +394,36 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Role validation check using existing document
+    console.log("PATCH Payload:", payload);
+
+    // CRITICAL FIX: Use findOne with string _id comparison instead of ObjectId
+    // This bypasses Mongoose's ObjectId casting issues on Vercel
+    const existing = await Expense.findOne({ _id: id })
+      .lean()
+      .exec();
+
+    if (!existing) {
+      console.error(`PATCH: Expense not found with ID: ${id}`);
+      return NextResponse.json(
+        { success: false, error: "Expense not found" },
+        { status: 404 }
+      );
+    }
+
+    console.log("PATCH: Found existing document");
+
+    // Role validation check
     if (payload.role === "manager" && !payload.employeeId) {
-      const existing = existingDoc as unknown as IExpense;
+      const existingExpense = existing as unknown as IExpense;
 
       const isUpdatingToManagerWithoutEmployee =
         updates.role === "manager" &&
         (updates.employeeId === null || updates.employeeId === undefined);
 
-      if (isUpdatingToManagerWithoutEmployee && !existing.employeeId) {
+      if (
+        isUpdatingToManagerWithoutEmployee &&
+        !existingExpense.employeeId
+      ) {
         return NextResponse.json(
           {
             success: false,
@@ -424,27 +435,37 @@ export async function PATCH(request: Request) {
       }
     }
 
-    // Perform the update using findOneAndUpdate for atomicity
-    const updated = await Expense.findOneAndUpdate(
-      { _id: objectId },
-      { $set: payload },
-      { 
-        new: true,
-        lean: true,
-        runValidators: true
-      }
+    // CRITICAL FIX: Use updateOne with string _id instead of ObjectId
+    const updateResult = await Expense.updateOne(
+      { _id: id },
+      { $set: payload }
     ).exec();
 
-    if (!updated) {
-      console.error(`PATCH: Failed to update expense with ID: ${id}`);
+    console.log("PATCH Update result:", updateResult);
+
+    if (updateResult.matchedCount === 0) {
+      console.error(`PATCH: No document matched for ID: ${id}`);
       return NextResponse.json(
-        { success: false, error: "Failed to update expense" },
+        { success: false, error: "Expense not found" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch the updated document
+    const updated = await Expense.findOne({ _id: id })
+      .lean()
+      .exec();
+
+    if (!updated) {
+      console.error(`PATCH: Could not retrieve updated document`);
+      return NextResponse.json(
+        { success: false, error: "Failed to retrieve updated expense" },
         { status: 500 }
       );
     }
 
-    console.log(`PATCH: Successfully updated expense ${id}`);
-    
+    console.log("PATCH: Successfully updated and retrieved document");
+
     return NextResponse.json(
       { success: true, data: updated as unknown as IExpense },
       { status: 200 }
@@ -496,10 +517,8 @@ export async function DELETE(request: Request) {
 
     await ensureConnected();
 
-    const objectId = new mongoose.Types.ObjectId(id);
-    
-    // Use findOneAndDelete for atomic operation with return value
-    const deleted = await Expense.findOneAndDelete({ _id: objectId })
+    // CRITICAL FIX: Use string _id instead of ObjectId
+    const deleted = await Expense.findOneAndDelete({ _id: id })
       .lean()
       .exec();
 
