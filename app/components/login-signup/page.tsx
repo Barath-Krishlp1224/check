@@ -125,7 +125,7 @@ export default function App() {
               router.push("/components/tl-accountant");
               break;
             case "Admin & Operations":
-              router.push("/components/admin-operations");
+              router.push("/components/view-task");
               break;
             case "Tech":
               router.push("/components/view-task");

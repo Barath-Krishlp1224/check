@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
@@ -18,16 +18,15 @@ export async function POST(req: NextRequest) {
 
     try {
       body = await req.json();
-    } catch (err) {
-      console.error("Failed to parse JSON body in /api/login:", err);
+    } catch {
       return NextResponse.json(
-        { error: "Invalid request body." },
+        { error: "Invalid JSON body." },
         { status: 400 }
       );
     }
 
-    const empIdOrEmailRaw = body?.empIdOrEmail;
-    const password = body?.password;
+    const empIdOrEmailRaw = body.empIdOrEmail?.trim();
+    const password = body.password;
 
     if (!empIdOrEmailRaw || !password) {
       return NextResponse.json(
@@ -36,7 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const escaped = escapeRegex(empIdOrEmailRaw.trim());
+    const escaped = escapeRegex(empIdOrEmailRaw);
     const regex = new RegExp(`^${escaped}$`, "i");
 
     const employee = await Employee.findOne({
@@ -46,38 +45,45 @@ export async function POST(req: NextRequest) {
       .lean();
 
     if (!employee) {
-      console.warn("Login failed: user not found for:", empIdOrEmailRaw);
       return NextResponse.json(
         { error: "User not found with given Employee ID or Email." },
         { status: 404 }
       );
     }
 
-    if (
-      !employee.password ||
-      (typeof employee.password === "string" &&
-        employee.password.trim() === "")
-    ) {
-      console.error(
-        "Employee found but password missing for empId:",
-        employee.empId
-      );
+    console.log("LOGIN DEBUG:", {
+      empId: employee.empId,
+      hasPassword: Boolean(employee.password),
+      passwordType: typeof employee.password,
+    });
+
+    if (!employee.password) {
       return NextResponse.json(
         {
           error:
-            "User does not have a password set. Contact admin to set/reset password.",
+            "Account exists but password is not set. Contact admin to activate your account.",
         },
         { status: 401 }
       );
     }
 
-    const isMatch = await bcrypt.compare(password, employee.password);
+    let passwordMatches = false;
 
-    if (!isMatch) {
-      console.warn(
-        "Login failed: invalid password for empId:",
-        employee.empId
-      );
+    if (employee.password.startsWith("$2a$") || employee.password.startsWith("$2b$")) {
+      passwordMatches = await bcrypt.compare(password, employee.password);
+    } else {
+      passwordMatches = password === employee.password;
+
+      if (passwordMatches) {
+        const hashed = await bcrypt.hash(password, 10);
+        await Employee.updateOne(
+          { _id: employee._id },
+          { $set: { password: hashed } }
+        );
+      }
+    }
+
+    if (!passwordMatches) {
       return NextResponse.json(
         { error: "Invalid password." },
         { status: 401 }
@@ -97,9 +103,9 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Login error in /api/login:", error);
+    console.error("LOGIN API ERROR:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error." },
       { status: 500 }
     );
   }
