@@ -20,7 +20,7 @@ export interface Expense {
   date: string;
   weekStart: string;
   role: Role;
-  employeeId?: string;
+  employeeId?: string | null;
   employeeName?: string;
   paid: boolean;
   subtasks?: Subtask[];

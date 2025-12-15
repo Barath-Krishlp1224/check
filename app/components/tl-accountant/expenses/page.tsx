@@ -1,4 +1,4 @@
-// page.tsx (or ExpensesContent.tsx if that's your file name)
+// page.tsx (or ExpensesContent.tsx)
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -554,7 +554,7 @@ const ExpensesContent: React.FC = () => {
       weekStart: getWeekStart(date),
       shop: shopName.trim(),
       role,
-      employeeId: selectedEmployeeId || undefined,
+      employeeId: selectedEmployeeId || null,
       employeeName:
         selectedEmployeeId &&
         employees.find((e) => e._id === selectedEmployeeId)?.name,
@@ -783,25 +783,34 @@ const ExpensesContent: React.FC = () => {
       amount: String(exp.amount || 0),
       date: exp.date || new Date().toISOString().slice(0, 10),
       role: exp.role || "founder",
-      employeeId: exp.employeeId || "",
+      employeeId: exp.employeeId || "", // employeeId from expense or ""
     });
   };
 
   const handleSaveEditExpense = async () => {
     if (!editingExpense) return;
+    
+    // CRITICAL CHANGE: Determine employeeId for the payload
+    const finalEmployeeId = editExpenseFields.employeeId === "" 
+      ? null 
+      : editExpenseFields.employeeId;
+
     const updates: any = {
       shop: editExpenseFields.shop,
       description: editExpenseFields.description,
       amount: Number(editExpenseFields.amount),
       date: editExpenseFields.date,
       role: editExpenseFields.role,
-      employeeId: editExpenseFields.employeeId || undefined,
+      employeeId: finalEmployeeId,
       employeeName:
-        editExpenseFields.employeeId &&
-        employees.find((e) => e._id === editExpenseFields.employeeId)?.name,
+        finalEmployeeId &&
+        employees.find((e) => e._id === finalEmployeeId)?.name,
     };
 
     try {
+      // NOTE: Ensure your backend uses the ID from the body (or URL) to find the expense.
+      // If the backend is using the ID from the request body AND expects an ObjectId, 
+      // the issue might be here if the ID is malformed or case-sensitive mismatch on Vercel.
       const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -809,7 +818,9 @@ const ExpensesContent: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
-        toast.error(json.error || "Failed to update expense.");
+        // This is the error path where "expense not found" is likely coming from.
+        // It means the backend failed to find `editingExpense._id`.
+        toast.error(json.error || "Failed to update expense. Expense not found?");
         return;
       }
 
@@ -843,6 +854,10 @@ const ExpensesContent: React.FC = () => {
       return;
     }
 
+    const finalSubEmployeeId = editingSubtask.employeeId === "" 
+      ? undefined 
+      : editingSubtask.employeeId;
+
     const updatedSubtasks = (parent.subtasks || []).map((s) =>
       s.id === editingSubtask.subId
         ? {
@@ -850,10 +865,10 @@ const ExpensesContent: React.FC = () => {
             title: editingSubtask.title,
             amount: Number(editingSubtask.amount),
             date: editingSubtask.date,
-            employeeId: editingSubtask.employeeId || undefined,
+            employeeId: finalSubEmployeeId,
             employeeName:
-              editingSubtask.employeeId &&
-              employees.find((e) => e._id === editingSubtask.employeeId)?.name,
+              finalSubEmployeeId &&
+              employees.find((e) => e._id === finalSubEmployeeId)?.name,
           }
         : s
     );
