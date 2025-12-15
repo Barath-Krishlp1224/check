@@ -1,3 +1,4 @@
+// page.tsx (or ExpensesContent.tsx if that's your file name)
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -6,393 +7,19 @@ import {
   type Employee,
   type Subtask,
   type Expense,
+  type InitialAmountHistoryEntry,
   INITIAL_AMOUNT_CONSTANT,
   getWeekStart,
   isExpensePaid,
-} from "./types";
+  formatDate,
+} from "./components/types";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-interface InitialAmountHistoryEntry {
-  amount: number;
-  date: string;
-}
-
-const formatDate = (dateString: string | undefined) => {
-  if (!dateString) return "-";
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/\s/g, "-");
-  } catch (error) {
-    return dateString;
-  }
-};
-
-interface ExpenseFormProps {
-  shopName: string;
-  setShopName: (v: string) => void;
-  date: string;
-  setDate: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  amount: string;
-  setAmount: (v: string) => void;
-  role: Role;
-  setRole: (r: Role) => void;
-  selectedEmployeeId: string;
-  setSelectedEmployeeId: (id: string) => void;
-  employees: Employee[];
-  onSubmit: (e: React.FormEvent) => void;
-  shops: string[];
-  onCancel: () => void;
-}
-
-const ExpenseForm: React.FC<ExpenseFormProps> = ({
-  shopName,
-  setShopName,
-  date,
-  setDate,
-  description,
-  setDescription,
-  amount,
-  setAmount,
-  role,
-  setRole,
-  selectedEmployeeId,
-  setSelectedEmployeeId,
-  employees,
-  onSubmit,
-  shops,
-  onCancel,
-}) => {
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="bg-white rounded-2xl p-8 shadow-lg border-2 border-gray-100"
-    >
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold text-gray-900">New Expense</h3>
-        <div className="h-1 flex-1 mx-6 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full"></div>
-      </div>
-
-      <div className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Shop / Vendor
-            </label>
-            <input
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-              list="shops-list"
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
-              placeholder="Enter shop name"
-            />
-            <datalist id="shops-list">
-              {shops.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Description
-            </label>
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
-              placeholder="What is this expense for?"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Amount (₹)
-            </label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
-              placeholder="0.00"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Role
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all bg-white cursor-pointer"
-            >
-              <option value="founder">Founder</option>
-              <option value="manager">Manager</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Assign to Employee
-          </label>
-          <select
-            value={selectedEmployeeId}
-            onChange={(e) => setSelectedEmployeeId(e.target.value)}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500 transition-all bg-white cursor-pointer"
-          >
-            <option value="">Select Employee</option>
-            {employees.map((emp) => (
-              <option key={emp._id} value={emp._id}>
-                {emp.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="mt-8 flex justify-end gap-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-6 py-3 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
-        >
-          Add Expense
-        </button>
-      </div>
-    </form>
-  );
-};
-
-interface SubExpensesSectionProps {
-  parent: Expense;
-  employees: Employee[];
-  subTitle: string;
-  setSubTitle: (v: string) => void;
-  subAmount: string;
-  setSubAmount: (v: string) => void;
-  subDate: string;
-  setSubDate: (v: string) => void;
-  subEmployeeId: string;
-  setSubEmployeeId: (v: string) => void;
-  onAddSubtask: (e: React.FormEvent, parent: Expense) => void;
-  onUpdateSubtaskStatus: (
-    parentExp: Expense,
-    subtaskId: string,
-    isDone: boolean
-  ) => void;
-  onDeleteSubtask: (parentExp: Expense, subtaskId: string) => void;
-  onStartEditSubtask: (parent: Expense, sub: Subtask) => void;
-}
-
-const SubExpensesSection: React.FC<SubExpensesSectionProps> = ({
-  parent,
-  employees,
-  subTitle,
-  setSubTitle,
-  subAmount,
-  setSubAmount,
-  subDate,
-  setSubDate,
-  subEmployeeId,
-  setSubEmployeeId,
-  onAddSubtask,
-  onUpdateSubtaskStatus,
-  onDeleteSubtask,
-  onStartEditSubtask,
-}) => {
-  return (
-    <tr className="bg-gradient-to-r from-blue-50 to-teal-50">
-      <td className="p-6" colSpan={10}>
-        <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-lg">
-          <div className="mb-6 pb-4 border-b-2 border-gray-100">
-            <h4 className="text-lg font-bold text-gray-900">
-              Sub Expenses for:{" "}
-              <span className="text-blue-600">
-                {parent.shop || parent.description}
-              </span>
-            </h4>
-          </div>
-
-          <form
-            onSubmit={(ev) => onAddSubtask(ev, parent)}
-            className="mb-6 p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200"
-          >
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-                  Description
-                </label>
-                <input
-                  value={subTitle}
-                  onChange={(e) => setSubTitle(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
-                  placeholder="Sub expense title"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-                  Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  value={subAmount}
-                  onChange={(e) => setSubAmount(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={subDate}
-                  onChange={(e) => setSubDate(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-                  Employee
-                </label>
-                <select
-                  value={subEmployeeId}
-                  onChange={(e) => setSubEmployeeId(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white cursor-pointer"
-                >
-                  <option value="">Select Employee</option>
-                  {employees.map((emp) => (
-                    <option key={emp._id} value={emp._id}>
-                      {emp.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="px-6 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-md transition-all text-sm"
-            >
-              Add Sub Expense
-            </button>
-          </form>
-
-          {(parent.subtasks || []).length > 0 ? (
-            <div className="overflow-x-auto rounded-xl border-2 border-gray-200">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gradient-to-r from-gray-100 to-gray-50">
-                  <tr>
-                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
-                      Description
-                    </th>
-                    <th className="p-4 text-right font-bold text-gray-900 uppercase tracking-wide text-xs">
-                      Amount
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
-                      Date
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
-                      Employee
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
-                      Status
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-900 uppercase tracking-wide text-xs">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {parent.subtasks.map((sub: Subtask) => (
-                    <tr
-                      key={sub.id}
-                      className="hover:bg-blue-50 transition-colors"
-                    >
-                      <td className="p-4 text-gray-900 font-medium">{sub.title}</td>
-                      <td className="p-4 text-right font-bold text-gray-900">
-                        ₹{(sub.amount || 0).toLocaleString()}
-                      </td>
-                      <td className="p-4 text-gray-600">
-                        {formatDate(sub.date)}
-                      </td>
-                      <td className="p-4 text-gray-600">
-                        {sub.employeeName || "-"}
-                      </td>
-                      <td className="p-4">
-                        <select
-                          value={sub.done ? "done" : "pending"}
-                          onChange={(e) => {
-                            const newStatus = e.target.value === "done";
-                            onUpdateSubtaskStatus(parent, sub.id, newStatus);
-                          }}
-                          className="border-2 border-gray-200 rounded-lg px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-500 bg-white cursor-pointer text-gray-900"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="done">Done</option>
-                        </select>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => onStartEditSubtask(parent, sub)}
-                            className="px-4 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 transition-all"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDeleteSubtask(parent, sub.id)}
-                            className="px-4 py-1.5 rounded-lg text-xs font-semibold text-red-700 bg-red-100 hover:bg-red-200 transition-all"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-              <p className="text-sm font-medium">No sub expenses added yet</p>
-            </div>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
-};
+import ExpenseForm from "./components/ExpenseForm";
+import SubExpensesSection from "./components/SubExpensesSection";
+import EditExpenseModal from "./components/EditExpenseModal";
+import EditSubtaskModal from "./components/EditSubtaskModal";
 
 const ROWS_PER_PAGE = 10;
 const INITIAL_ROWS = 5;
@@ -437,7 +64,7 @@ const convertToCSV = (data: Expense[], employees: Employee[]) => {
     const mainRow = [
       formatDate(exp.date),
       (exp.shop || "-").replace(/,/g, ""),
-      (exp.description).replace(/,/g, ""),
+      exp.description.replace(/,/g, ""),
       exp.role,
       employeeName.replace(/,/g, ""),
       exp.amount.toFixed(2),
@@ -450,7 +77,7 @@ const convertToCSV = (data: Expense[], employees: Employee[]) => {
       const subEmployeeName = sub.employeeId
         ? employeeMap.get(sub.employeeId) || sub.employeeName || "-"
         : "-";
-      
+
       const subAmountValue = sub.amount ?? 0;
 
       return [
@@ -480,14 +107,17 @@ const convertToCSV = (data: Expense[], employees: Employee[]) => {
     grandTotalExpense.toFixed(2),
     "",
   ];
-  
+
   const csvContent =
     "data:text/csv;charset=utf-8," +
-    [headers.join(","), ...detailRows.map((e) => e.join(",")), totalRow.join(",")].join("\n");
+    [
+      headers.join(","),
+      ...detailRows.map((e) => e.join(",")),
+      totalRow.join(","),
+    ].join("\n");
 
   return encodeURI(csvContent);
 };
-
 
 const ExpensesContent: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -501,13 +131,15 @@ const ExpensesContent: React.FC = () => {
     InitialAmountHistoryEntry[]
   >([]);
 
-  const initialAmount = initialAmountHistory[0]?.amount || INITIAL_AMOUNT_CONSTANT;
+  const initialAmount =
+    initialAmountHistory[0]?.amount || INITIAL_AMOUNT_CONSTANT;
 
   const [isEditingInitialAmount, setIsEditingInitialAmount] = useState(false);
   const [initialAmountInput, setInitialAmountInput] = useState(
     initialAmount.toString()
   );
 
+  // Form State for Adding Expense
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -517,6 +149,7 @@ const ExpensesContent: React.FC = () => {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Form State for Adding Subtask
   const [subTitle, setSubTitle] = useState("");
   const [subAmount, setSubAmount] = useState("");
   const [subDate, setSubDate] = useState(
@@ -524,6 +157,7 @@ const ExpensesContent: React.FC = () => {
   );
   const [subEmployeeId, setSubEmployeeId] = useState("");
 
+  // Filter States
   const [filterRole, setFilterRole] = useState<"all" | Role>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "unpaid">(
     "all"
@@ -534,9 +168,15 @@ const ExpensesContent: React.FC = () => {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
+  // History/Pagination States
   const [showHistory, setShowHistory] = useState(false);
   const [historyEmployeeId, setHistoryEmployeeId] = useState<string>("");
+  const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
+  // Edit Expense Modal State
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editExpenseFields, setEditExpenseFields] = useState({
     shop: "",
@@ -547,6 +187,7 @@ const ExpensesContent: React.FC = () => {
     employeeId: "",
   });
 
+  // Edit Subtask Modal State
   const [editingSubtask, setEditingSubtask] = useState<{
     parentId: string;
     subId: string;
@@ -556,13 +197,8 @@ const ExpensesContent: React.FC = () => {
     employeeId?: string;
   } | null>(null);
 
-  const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const tableRef = useRef<HTMLDivElement>(null);
+  // --- Data Fetching Effects ---
 
-  const [showAddForm, setShowAddForm] = useState(false);
-
-  // --- NEW useEffect to fetch initial amount from DB ---
   useEffect(() => {
     const fetchInitialAmount = async () => {
       try {
@@ -571,18 +207,26 @@ const ExpensesContent: React.FC = () => {
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           setInitialAmountHistory(json.data);
         } else {
-            // Initialize with constant if DB is empty and local storage isn't used
-            setInitialAmountHistory([{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }]);
+          setInitialAmountHistory([
+            {
+              amount: INITIAL_AMOUNT_CONSTANT,
+              date: new Date().toISOString(),
+            },
+          ]);
         }
       } catch (err: any) {
         toast.error("Failed to load initial budget from server.");
-        setInitialAmountHistory([{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }]);
+        setInitialAmountHistory([
+          {
+            amount: INITIAL_AMOUNT_CONSTANT,
+            date: new Date().toISOString(),
+          },
+        ]);
       }
     };
 
     fetchInitialAmount();
   }, []);
-  // --- END NEW useEffect ---
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -640,41 +284,7 @@ const ExpensesContent: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  const handleUpdateInitialAmount = async () => {
-    const newAmount = Number(initialAmountInput);
-    if (!Number.isNaN(newAmount) && newAmount >= 0) {
-      const newEntry: InitialAmountHistoryEntry = {
-        amount: newAmount,
-        date: new Date().toISOString(),
-      };
-
-      if (newAmount !== initialAmountHistory[0]?.amount) {
-        try {
-            // --- UPDATED: POST new initial amount to DB API ---
-            const res = await fetch("/api/initial-amount", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newEntry),
-            });
-            const json = await res.json();
-            if (!json.success) {
-                toast.error(json.error || "Failed to save initial amount to database.");
-                return;
-            }
-            // --- END UPDATED ---
-
-          const newHistory = [newEntry, ...initialAmountHistory];
-          setInitialAmountHistory(newHistory);
-          toast.success("Initial amount updated successfully!");
-        } catch(err: any) {
-            toast.error(err.message || "Failed to update initial amount.");
-        }
-      }
-      setIsEditingInitialAmount(false);
-    } else {
-      toast.error("Please enter a valid amount.");
-    }
-  };
+  // --- Memoized Values ---
 
   const walletStats = useMemo(() => {
     let spent = 0;
@@ -721,7 +331,8 @@ const ExpensesContent: React.FC = () => {
         e.employeeId !== filterEmployee
       )
         return false;
-      if (filterShop !== "all" && filterShop && e.shop !== filterShop) return false;
+      if (filterShop !== "all" && filterShop && e.shop !== filterShop)
+        return false;
 
       if (filterFrom && e.date < filterFrom) return false;
       if (filterTo && e.date > filterTo) return false;
@@ -756,6 +367,76 @@ const ExpensesContent: React.FC = () => {
     filterSearch,
   ]);
 
+  const visibleExpenses = useMemo(() => {
+    return filteredExpenses.slice(0, visibleRowCount);
+  }, [filteredExpenses, visibleRowCount]);
+
+  const hasMoreExpenses = visibleRowCount < filteredExpenses.length;
+
+  const historyExpenses = useMemo(
+    () =>
+      expenses
+        .filter((e) => isExpensePaid(e))
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [expenses]
+  );
+
+  const employeeHistory = useMemo(() => {
+    if (!historyEmployeeId) return [];
+    return historyExpenses.filter((e) => e.employeeId === historyEmployeeId);
+  }, [historyEmployeeId, historyExpenses]);
+
+  const employeeHistoryTotal = useMemo(
+    () =>
+      employeeHistory.reduce((sum, e) => {
+        const base = e.amount;
+        const subs = (e.subtasks || []).reduce(
+          (s, sub) => s + (sub.amount || 0),
+          0
+        );
+        return sum + base + subs;
+      }, 0),
+    [employeeHistory]
+  );
+
+  // --- Handlers & Helpers ---
+
+  const handleUpdateInitialAmount = async () => {
+    const newAmount = Number(initialAmountInput);
+    if (!Number.isNaN(newAmount) && newAmount >= 0) {
+      const newEntry: InitialAmountHistoryEntry = {
+        amount: newAmount,
+        date: new Date().toISOString(),
+      };
+
+      if (newAmount !== initialAmountHistory[0]?.amount) {
+        try {
+          const res = await fetch("/api/initial-amount", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newEntry),
+          });
+          const json = await res.json();
+          if (!json.success) {
+            toast.error(
+              json.error || "Failed to save initial amount to database."
+            );
+            return;
+          }
+
+          const newHistory = [newEntry, ...initialAmountHistory];
+          setInitialAmountHistory(newHistory);
+          toast.success("Initial amount updated successfully!");
+        } catch (err: any) {
+          toast.error(err.message || "Failed to update initial amount.");
+        }
+      }
+      setIsEditingInitialAmount(false);
+    } else {
+      toast.error("Please enter a valid amount.");
+    }
+  };
+
   const loadMoreRows = () => {
     setIsLoadingMore(true);
     setTimeout(() => {
@@ -777,12 +458,6 @@ const ExpensesContent: React.FC = () => {
     filterTo,
     filterSearch,
   ]);
-
-  const visibleExpenses = useMemo(() => {
-    return filteredExpenses.slice(0, visibleRowCount);
-  }, [filteredExpenses, visibleRowCount]);
-
-  const hasMoreExpenses = visibleRowCount < filteredExpenses.length;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -810,16 +485,55 @@ const ExpensesContent: React.FC = () => {
     };
   }, [visibleRowCount, filteredExpenses.length, isLoadingMore]);
 
-  const filterEmployeeTotal = useMemo(() => {
-    if (filterEmployee === "all" || !filterEmployee) return 0;
+  const handleUpdatePaidStatus = async (
+    exp: Expense,
+    isPaid: boolean,
+    updateSubtasks = true
+  ) => {
+    const action = isPaid ? "Done" : "Pending";
+    const confirmMessage = `Are you sure you want to mark the expense "${exp.description}" as ${action}?`;
 
-    return expenses.reduce((sum, e) => {
-      if (e.employeeId !== filterEmployee || !isExpensePaid(e)) return sum;
-      const base = e.amount;
-      const subs = (e.subtasks || []).reduce((s, sub) => s + (sub.amount || 0), 0);
-      return sum + base + subs;
-    }, 0);
-  }, [filterEmployee, expenses]);
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    let updatedSubtasks = exp.subtasks || [];
+
+    if (updateSubtasks) {
+      updatedSubtasks = (exp.subtasks || []).map((sub) => ({
+        ...sub,
+        done: isPaid ? true : sub.done,
+      }));
+    }
+
+    const updates = { paid: isPaid, subtasks: updatedSubtasks };
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: exp._id, updates }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        toast.error(json.error || "Failed to update status.");
+        return;
+      }
+
+      const updatedExpense: Expense = {
+        ...exp,
+        paid: isPaid,
+        subtasks: updatedSubtasks,
+      };
+
+      setExpenses((prev) =>
+        prev.map((e) => (e._id === exp._id ? updatedExpense : e))
+      );
+      toast.success(`Expense marked as ${isPaid ? "Done" : "Pending"}!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status.");
+    }
+  };
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1036,56 +750,6 @@ const ExpensesContent: React.FC = () => {
     }
   };
 
-  const handleUpdatePaidStatus = async (
-    exp: Expense,
-    isPaid: boolean,
-    updateSubtasks = true
-  ) => {
-    const action = isPaid ? "Done" : "Pending";
-    const confirmMessage = `Are you sure you want to mark the expense "${exp.description}" as ${action}?`;
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    let updatedSubtasks = exp.subtasks || [];
-
-    if (updateSubtasks) {
-      updatedSubtasks = (exp.subtasks || []).map((sub) => ({
-        ...sub,
-        done: isPaid ? true : sub.done,
-      }));
-    }
-
-    const updates = { paid: isPaid, subtasks: updatedSubtasks };
-
-    try {
-      const res = await fetch("/api/expenses", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: exp._id, updates }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        toast.error(json.error || "Failed to update status.");
-        return;
-      }
-
-      const updatedExpense: Expense = {
-        ...exp,
-        paid: isPaid,
-        subtasks: updatedSubtasks,
-      };
-
-      setExpenses((prev) =>
-        prev.map((e) => (e._id === exp._id ? updatedExpense : e))
-      );
-      toast.success(`Expense marked as ${isPaid ? "Done" : "Pending"}!`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update status.");
-    }
-  };
-
   const handleDeleteExpense = async (exp: Expense) => {
     const confirmMessage = `Are you sure you want to delete the expense "${exp.description}"? This cannot be undone.`;
     if (!window.confirm(confirmMessage)) {
@@ -1110,32 +774,6 @@ const ExpensesContent: React.FC = () => {
       toast.error(err.message || "Failed to delete expense.");
     }
   };
-
-  const historyExpenses = useMemo(
-    () =>
-      expenses
-        .filter((e) => isExpensePaid(e))
-        .sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [expenses]
-  );
-
-  const employeeHistory = useMemo(() => {
-    if (!historyEmployeeId) return [];
-    return historyExpenses.filter((e) => e.employeeId === historyEmployeeId);
-  }, [historyEmployeeId, historyExpenses]);
-
-  const employeeHistoryTotal = useMemo(
-    () =>
-      employeeHistory.reduce((sum, e) => {
-        const base = e.amount;
-        const subs = (e.subtasks || []).reduce(
-          (s, sub) => s + (sub.amount || 0),
-          0
-        );
-        return sum + base + subs;
-      }, 0),
-    [employeeHistory]
-  );
 
   const onStartEditExpense = (exp: Expense) => {
     setEditingExpense(exp);
@@ -1236,7 +874,9 @@ const ExpensesContent: React.FC = () => {
       }
 
       setExpenses((prev) =>
-        prev.map((e) => (e._id === parent._id ? { ...e, subtasks: updatedSubtasks } : e))
+        prev.map((e) =>
+          e._id === parent._id ? { ...e, subtasks: updatedSubtasks } : e
+        )
       );
       setEditingSubtask(null);
       toast.success("Sub expense updated successfully!");
@@ -1258,7 +898,10 @@ const ExpensesContent: React.FC = () => {
     const csvUri = convertToCSV(filteredExpenses, employees);
     const link = document.createElement("a");
     link.setAttribute("href", csvUri);
-    link.setAttribute("download", `expenses_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `expenses_report_${new Date().toISOString().slice(0, 10)}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1274,7 +917,9 @@ const ExpensesContent: React.FC = () => {
           <h1 className="text-5xl font-black text-gray-900 mb-3 tracking-tight">
             Expense Tracker
           </h1>
-          <p className="text-lg text-gray-600">Manage your business finances with ease</p>
+          <p className="text-lg text-gray-600">
+            Manage your business finances with ease
+          </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -1491,14 +1136,27 @@ const ExpensesContent: React.FC = () => {
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
                   />
                 </div>
-                
+
                 <div className="pt-4">
                   <button
                     type="button"
                     onClick={handleDownloadCSV}
                     className="w-full px-6 py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg transition-all flex items-center justify-center text-sm"
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      ></path>
+                    </svg>
                     Download Filtered ({filteredExpenses.length})
                   </button>
                 </div>
@@ -1511,7 +1169,9 @@ const ExpensesContent: React.FC = () => {
               {loading ? (
                 <div className="p-16 text-center">
                   <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-                  <p className="mt-4 text-gray-600 font-medium">Loading expenses...</p>
+                  <p className="mt-4 text-gray-600 font-medium">
+                    Loading expenses...
+                  </p>
                 </div>
               ) : error ? (
                 <div className="p-16 text-center">
@@ -1570,7 +1230,9 @@ const ExpensesContent: React.FC = () => {
                             colSpan={10}
                           >
                             <div className="text-6xl mb-4">📊</div>
-                            <p className="font-bold text-lg">No expenses found</p>
+                            <p className="font-bold text-lg">
+                              No expenses found
+                            </p>
                             <p className="text-sm">Try adjusting your filters</p>
                           </td>
                         </tr>
@@ -1812,7 +1474,9 @@ const ExpensesContent: React.FC = () => {
                             <td className="p-4 text-gray-900 font-bold">
                               {exp.description}
                             </td>
-                            <td className="p-4 text-gray-900">{exp.shop || "-"}</td>
+                            <td className="p-4 text-gray-900">
+                              {exp.shop || "-"}
+                            </td>
                             <td className="p-4 text-right text-gray-600 font-bold">
                               ₹{exp.amount.toLocaleString()}
                             </td>
@@ -1845,217 +1509,24 @@ const ExpensesContent: React.FC = () => {
       )}
 
       {editingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8">
-            <h2 className="text-2xl font-black text-gray-900 mb-6">Edit Expense</h2>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Shop</label>
-                  <input
-                    value={editExpenseFields.shop}
-                    onChange={(e) =>
-                      setEditExpenseFields((p) => ({ ...p, shop: e.target.value }))
-                    }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <input
-                    value={editExpenseFields.description}
-                    onChange={(e) =>
-                      setEditExpenseFields((p) => ({
-                        ...p,
-                        description: e.target.value,
-                      }))
-                    }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    value={editExpenseFields.amount}
-                    onChange={(e) =>
-                      setEditExpenseFields((p) => ({
-                        ...p,
-                        amount: e.target.value,
-                      }))
-                    }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={editExpenseFields.date}
-                    onChange={(e) =>
-                      setEditExpenseFields((p) => ({
-                        ...p,
-                        date: e.target.value,
-                      }))
-                    }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Role</label>
-                  <select
-                    value={editExpenseFields.role}
-                    onChange={(e) =>
-                      setEditExpenseFields((p) => ({
-                        ...p,
-                        role: e.target.value as Role,
-                      }))
-                    }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
-                  >
-                    <option value="founder">Founder</option>
-                    <option value="manager">Manager</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Employee
-                  </label>
-                  <select
-                    value={editExpenseFields.employeeId}
-                    onChange={(e) =>
-                      setEditExpenseFields((p) => ({
-                        ...p,
-                        employeeId: e.target.value,
-                      }))
-                    }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
-                  >
-                    <option value="">None</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-8">
-              <button
-                className="px-6 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
-                onClick={cancelEditExpense}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
-                onClick={handleSaveEditExpense}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditExpenseModal
+          editingExpense={editingExpense}
+          editExpenseFields={editExpenseFields}
+          setEditExpenseFields={setEditExpenseFields}
+          employees={employees}
+          onSave={handleSaveEditExpense}
+          onCancel={cancelEditExpense}
+        />
       )}
 
       {editingSubtask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-            <h2 className="text-2xl font-black text-gray-900 mb-6">
-              Edit Sub Expense
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Title</label>
-                <input
-                  value={editingSubtask.title}
-                  onChange={(e) =>
-                    setEditingSubtask((p) =>
-                      p ? { ...p, title: e.target.value } : p
-                    )
-                  }
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Amount</label>
-                <input
-                  type="number"
-                  value={editingSubtask.amount}
-                  onChange={(e) =>
-                    setEditingSubtask((p) =>
-                      p ? { ...p, amount: e.target.value } : p
-                    )
-                  }
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  value={editingSubtask.date}
-                  onChange={(e) =>
-                    setEditingSubtask((p) =>
-                      p ? { ...p, date: e.target.value } : p
-                    )
-                  }
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Employee
-                </label>
-                <select
-                  value={editingSubtask.employeeId}
-                  onChange={(e) =>
-                    setEditingSubtask((p) =>
-                      p ? { ...p, employeeId: e.target.value } : p
-                    )
-                  }
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
-                >
-                  <option value="">None</option>
-                  {employees.map((emp) => (
-                    <option key={emp._id} value={emp._id}>
-                      {emp.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-8">
-              <button
-                className="px-6 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all"
-                onClick={cancelEditSubtask}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
-                onClick={handleSaveEditSubtask}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditSubtaskModal
+          editingSubtask={editingSubtask}
+          setEditingSubtask={setEditingSubtask}
+          employees={employees}
+          onSave={handleSaveEditSubtask}
+          onCancel={cancelEditSubtask}
+        />
       )}
     </div>
   );

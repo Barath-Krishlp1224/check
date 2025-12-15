@@ -319,9 +319,32 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
           <label className="block text-sm font-medium text-slate-700 mb-1">
             {label}
           </label>
-          <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
-            {totalTimeSpent} hrs
-          </p>
+          {isEditing ? (
+            <input
+              type="number"
+              name="taskTimeSpent"
+              value={
+                typeof current.taskTimeSpent === "number"
+                  ? current.taskTimeSpent
+                  : typeof current.taskTimeSpent === "string"
+                  ? parseFloat(current.taskTimeSpent) || 0
+                  : 0
+              }
+              onChange={handleDraftChange}
+              className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+              min={0}
+              step={0.5}
+            />
+          ) : (
+            <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
+              {typeof task.taskTimeSpent === "number"
+                ? task.taskTimeSpent
+                : typeof task.taskTimeSpent === "string"
+                ? parseFloat(task.taskTimeSpent) || 0
+                : 0}{" "}
+              hrs
+            </p>
+          )}
         </div>
       );
     }

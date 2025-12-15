@@ -48,11 +48,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
       ? "bg-slate-100 text-slate-800"
       : "bg-slate-50 text-slate-700 border border-slate-200";
     icon = <AlertCircle className="w-3 h-3" />;
-  } else if (
-    status === "On Hold" ||
-    status === "Paused" ||
-    status === "Pending"
-  ) {
+  } else if (status === "On Hold" || status === "Paused" || status === "Pending") {
     colorClasses = isSubtask
       ? "bg-amber-100 text-amber-800"
       : "bg-amber-50 text-amber-700 border border-amber-200";
@@ -193,6 +189,49 @@ const SubtaskViewer: React.FC<{
   );
 };
 
+const sumAllSubtasksTime = (
+  subtasks: Subtask[] | undefined | null
+): number => {
+  if (!subtasks || subtasks.length === 0) return 0;
+
+  return subtasks.reduce((total, sub) => {
+    const raw: unknown = (sub as any).timeSpent;
+    let current = 0;
+
+    if (typeof raw === "number") {
+      current = raw;
+    } else if (typeof raw === "string") {
+      const parsed = parseFloat(raw);
+      current = isNaN(parsed) ? 0 : parsed;
+    }
+
+    const nested = sub.subtasks ? sumAllSubtasksTime(sub.subtasks) : 0;
+    return total + current + nested;
+  }, 0);
+};
+
+const sumAllSubtasksStoryPoints = (
+  subtasks: Subtask[] | undefined | null
+): number => {
+  if (!subtasks || subtasks.length === 0) return 0;
+
+  return subtasks.reduce((total, sub) => {
+    const raw: unknown = (sub as any).storyPoints;
+    let current = 0;
+
+    if (typeof raw === "number") {
+      current = raw;
+    } else if (typeof raw === "string") {
+      const parsed = parseFloat(raw);
+      current = isNaN(parsed) ? 0 : parsed;
+    }
+
+    const nested = sub.subtasks ? sumAllSubtasksStoryPoints(sub.subtasks) : 0;
+    return total + current + nested;
+  }, 0);
+};
+
+
 const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
     task,
@@ -254,8 +293,13 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   if (!isOpen) return null;
 
   const current = isEditing ? draftTask : task;
-  const subtasksToDisplay = isEditing ? subtasks : task.subtasks || [];
+  const subtasksToDisplay: Subtask[] = isEditing
+    ? subtasks
+    : task.subtasks || [];
   const hasSubtasks = subtasksToDisplay.length > 0;
+
+  const totalTimeSpent = sumAllSubtasksTime(subtasksToDisplay);
+  const totalStoryPoints = sumAllSubtasksStoryPoints(subtasksToDisplay);
 
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
 
@@ -265,7 +309,62 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     type: "text" | "date" | "select" | "number",
     options?: string[]
   ) => {
-    if (name === "subtasks") return null;
+    if (name === "subtasks") {
+      return null;
+    }
+
+    if (name === "taskTimeSpent") {
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          {isEditing ? (
+            <input
+              type="number"
+              name="taskTimeSpent"
+              value={
+                typeof current.taskTimeSpent === "number"
+                  ? current.taskTimeSpent
+                  : typeof current.taskTimeSpent === "string"
+                  ? parseFloat(current.taskTimeSpent) || 0
+                  : 0
+              }
+              onChange={handleDraftChange}
+              className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+              min={0}
+              step={0.5}
+            />
+          ) : (
+            <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
+              {typeof task.taskTimeSpent === "number"
+                ? task.taskTimeSpent
+                : typeof task.taskTimeSpent === "string"
+                ? parseFloat(task.taskTimeSpent) || 0
+                : 0}{" "}
+              hrs
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (name === "taskStoryPoints" && !isEditing) {
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
+            {totalStoryPoints}
+          </p>
+        </div>
+      );
+    }
+    
+    if (name === "taskStoryPoints" && isEditing) {
+    }
+
 
     const displayValue = task[name];
     const displayString =
@@ -279,54 +378,46 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <span className="text-gray-500">
               N/A
             </span>
-          ) as any);
+          ) as React.ReactNode);
 
+    const isSelect = type === "select" || (name === "status" && !isEditing);
     const finalOptions = name === "status" ? allTaskStatuses : options;
 
     const renderInput = () => {
-      // 🔥 Multi-select checkbox list for assigneeNames
-      if (name === "assigneeNames") {
-        const selectedAssignees = (current.assigneeNames || []) as string[];
+      const inputWidthClass = "w-full max-w-sm";
 
+      if (name === "assigneeNames") {
         return (
-          <div className="p-3 border border-slate-300 rounded-lg bg-white max-h-44 overflow-y-auto shadow-sm">
-            {employees.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No employees available.
-              </p>
-            ) : (
-              employees.map((employee) => (
-                <label
-                  key={employee._id}
-                  htmlFor={`assignee-${employee._id}`}
-                  className="flex items-center gap-2 py-1 cursor-pointer text-sm text-slate-700"
-                >
-                  <input
-                    type="checkbox"
-                    id={`assignee-${employee._id}`}
-                    name="assigneeNames"
-                    value={employee.name}
-                    checked={selectedAssignees.includes(employee.name)}
-                    onChange={handleDraftChange}
-                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                  />
-                  <span>{employee.name}</span>
-                </label>
-              ))
-            )}
-          </div>
+          <select
+            name={name}
+            value={
+              current.assigneeNames && current.assigneeNames.length > 0
+                ? current.assigneeNames[0]
+                : ""
+            }
+            onChange={handleDraftChange}
+            className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900`}
+          >
+            <option value="">Select Assignee</option>
+            {employees.map((employee) => (
+              <option key={employee._id} value={employee.name}>
+                {employee.name}
+              </option>
+            ))}
+          </select>
         );
       } else if (name === "status") {
         const onChangeHandler = isEditing
           ? handleDraftChange
           : handleMainTaskStatusChange;
         const currentValue = isEditing ? current.status : task.status;
+
         return (
           <select
             name="status"
             value={currentValue || ""}
             onChange={onChangeHandler}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white"
+            className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black bg-white`}
           >
             {finalOptions?.map((opt) => (
               <option key={opt} value={opt}>
@@ -342,9 +433,20 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             name={name}
             value={(current[name] as number) || 0}
             onChange={handleDraftChange}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+            className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
             min={0}
             max={name === "completion" ? 100 : undefined}
+          />
+        );
+      } else if (name === "remarks") {
+        return (
+          <input
+            type="text"
+            name={name}
+            value={(current[name] as string) || ""}
+            onChange={handleDraftChange}
+            className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
+            placeholder="Add remarks"
           />
         );
       } else {
@@ -360,7 +462,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             name={name}
             value={(current[name] as string | number) || ""}
             onChange={handleDraftChange}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+            className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
             min={type === "number" ? 0 : undefined}
             max={type === "number" ? 100 : undefined}
           />
@@ -368,13 +470,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       }
     };
 
-    const isAggregatedField =
-      name === "taskTimeSpent" || name === "taskStoryPoints";
-    const displayValueForAggregated =
-      isAggregatedField && !isEditing
-        ? (task[name] as string | number) ||
-          (name === "taskStoryPoints" ? 0 : "N/A")
-        : displayString;
+    const remarksReadonlyClasses =
+      "px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium max-h-12 overflow-y-auto";
 
     return (
       <div className="mb-4">
@@ -384,8 +481,14 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         {isEditing || (name === "status" && !isEditing) ? (
           renderInput()
         ) : (
-          <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
-            {displayValueForAggregated || (
+          <p
+            className={
+              name === "remarks"
+                ? remarksReadonlyClasses
+                : "px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium"
+            }
+          >
+            {displayString || (
               <span className="text-gray-500">N/A</span>
             )}
           </p>
@@ -396,14 +499,19 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-white/50 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-50 mt-17 overflow-y-auto flex items-center justify-center p-4 sm:p-6"
+      style={{
+        backgroundColor: "rgba(255, 255, 255, 0.3)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+      }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-4xl mt-30 shadow-2xl w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
+        className="bg-white rounded-4xl shadow-[0_0_30px_rgba(0,0,0,0.25)] ring-1 ring-black/10 w-full max-w-8xl my-12 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
-        <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
+        <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0  bg-white z-10">
           <h2 className="text-2xl font-bold text-gray-900">
             {isEditing
               ? `Edit Task: ${task.projectId}`
@@ -422,45 +530,23 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">
               Task Information
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {renderField("Task Name", "project", "text")}
-              {renderField("Assignee(s)", "assigneeNames", "select")}
+              {renderField("Assignee", "assigneeNames", "select")}
               {renderField("Start Date", "startDate", "date")}
               {renderField("Due Date", "dueDate", "date")}
               {renderField("End Date", "endDate", "date")}
               {renderField("Progress (%)", "completion", "number")}
               {renderField("Story Points", "taskStoryPoints", "number")}
               {renderField("Time Spent", "taskTimeSpent", "text")}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {renderField("Status", "status", "select", allTaskStatuses)}
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Remarks
-                </label>
-                {isEditing ? (
-                  <input
-                    name="remarks"
-                    value={current.remarks || ""}
-                    onChange={handleDraftChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
-                    placeholder="Add remarks"
-                  />
-                ) : (
-                  <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 max-h-24 overflow-y-auto">
-                    {task.remarks || (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </p>
-                )}
-              </div>
+              {renderField("Remarks", "remarks", "text")}
             </div>
           </div>
 
           <h3 className="text-xl font-semibold text-indigo-700 mb-4">
             Subtasks
           </h3>
-
           {isEditing ? (
             <TaskSubtaskEditor
               subtasks={subtasks}
@@ -472,12 +558,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               onToggleEdit={onToggleEdit}
               onToggleExpansion={onToggleExpansion}
               onViewSubtask={handleViewSubtask}
-              allTaskStatuses={[
-                "Pending",
-                "In Progress",
-                "Completed",
-                "Paused",
-              ]}
+              allTaskStatuses={["Pending", "In Progress", "Completed", "Paused"]}
             />
           ) : hasSubtasks ? (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
@@ -495,7 +576,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white z-10">
+        <div className="p-6 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0  bg-white z-10">
           {task.status === "Backlog" && !isEditing && (
             <button
               onClick={() => handleStartSprint(task._id)}
@@ -505,7 +586,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               Start Sprint
             </button>
           )}
-
           {isEditing ? (
             <>
               <button
