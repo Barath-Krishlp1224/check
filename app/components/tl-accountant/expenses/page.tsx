@@ -797,7 +797,7 @@ const ExpensesContent: React.FC = () => {
       date: exp.date || new Date().toISOString().slice(0, 10),
       role: exp.role || "founder",
       employeeId: exp.employeeId || "", // employeeId from expense or ""
-      employeeName: exp.employeeName || "", // employeeName from expense or ""
+      employeeName: exp.employeeName || "", // initialize employeeName
     });
   };
 
