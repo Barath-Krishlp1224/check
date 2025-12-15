@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongoose";
-// Assuming Expense, IExpense, Role, SubExpense are correctly imported from models/Expense
 import Expense, { IExpense, Role, SubExpense } from "@/models/Expense";
 
 type RawSubExpense = {
@@ -314,11 +313,11 @@ export async function PATCH(request: Request) {
     }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-        console.error(`PATCH Invalid ID format: ${id}`);
-        return NextResponse.json(
-            { success: false, error: "Invalid Expense ID format" },
-            { status: 400 }
-        );
+      console.error(`PATCH Invalid ID format: ${id}`);
+      return NextResponse.json(
+        { success: false, error: "Invalid Expense ID format" },
+        { status: 400 }
+      );
     }
 
     await ensureConnected();
@@ -358,10 +357,10 @@ export async function PATCH(request: Request) {
           payload[key] = String(updates[key] || "").trim();
           break;
         case "employeeName":
-          // Employee name should be set to null if explicitly sent as such (e.g., employee cleared in modal)
-          payload.employeeName = updates.employeeName === null 
-            ? null 
-            : String(updates.employeeName || "").trim();
+          payload.employeeName =
+            updates.employeeName === null
+              ? null
+              : String(updates.employeeName || "").trim();
           break;
         case "paid":
           payload.paid = Boolean(updates.paid);
@@ -373,10 +372,9 @@ export async function PATCH(request: Request) {
             : "other";
           break;
         case "employeeId":
-          // Explicitly set null to clear employeeId field in MongoDB
           payload.employeeId =
             updates.employeeId === "" || updates.employeeId === null
-              ? null 
+              ? null
               : String(updates.employeeId);
           break;
         default:
@@ -392,17 +390,18 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Role validation check (needs existing data for comparison)
+    // Role validation check
     if (payload.role === "manager" && !payload.employeeId) {
-      const existing = (await Expense.findById(id).lean()) as
-        | IExpense
-        | null;
-      
-      const isUpdatingToManagerWithoutEmployee = 
-        updates.role === "manager" && 
+      const existing = (await Expense.findById(id).lean()) as IExpense | null;
+
+      const isUpdatingToManagerWithoutEmployee =
+        updates.role === "manager" &&
         (updates.employeeId === null || updates.employeeId === undefined);
-      
-      if (isUpdatingToManagerWithoutEmployee && (!existing || !existing.employeeId)) {
+
+      if (
+        isUpdatingToManagerWithoutEmployee &&
+        (!existing || !existing.employeeId)
+      ) {
         return NextResponse.json(
           {
             success: false,
@@ -414,23 +413,33 @@ export async function PATCH(request: Request) {
       }
     }
 
-    // FIX FOR VERCEL: Explicitly convert ID to ObjectId for reliable lookup
-    const objectId = new mongoose.Types.ObjectId(id);
+    // FIX 1: Use updateOne instead of findByIdAndUpdate for better Vercel compatibility
+    const result = await Expense.updateOne(
+      { _id: new mongoose.Types.ObjectId(id) },
+      { $set: payload }
+    );
 
-    const updated = (await Expense.findByIdAndUpdate(
-      objectId,
-      { $set: payload },
-      { new: true }
-    ).lean()) as unknown as IExpense | null;
-
-    if (!updated) {
+    if (result.matchedCount === 0) {
       return NextResponse.json(
         { success: false, error: "Expense not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: updated }, { status: 200 });
+    // FIX 2: Fetch the updated document separately with explicit session handling
+    const updated = await Expense.findById(id).lean().exec();
+
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: "Expense not found after update" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: true, data: updated as unknown as IExpense },
+      { status: 200 }
+    );
   } catch (err: any) {
     console.error("PATCH Expense Error:", err);
     return NextResponse.json(
@@ -469,15 +478,31 @@ export async function DELETE(request: Request) {
       );
     }
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid Expense ID format" },
+        { status: 400 }
+      );
+    }
+
     await ensureConnected();
-    const deleted = await Expense.findByIdAndDelete(id).lean();
-    if (!deleted) {
+
+    // Use deleteOne for better Vercel compatibility
+    const result = await Expense.deleteOne({
+      _id: new mongoose.Types.ObjectId(id),
+    });
+
+    if (result.deletedCount === 0) {
       return NextResponse.json(
         { success: false, error: "Expense not found" },
         { status: 404 }
       );
     }
-    return NextResponse.json({ success: true, data: deleted }, { status: 200 });
+
+    return NextResponse.json(
+      { success: true, data: { _id: id } },
+      { status: 200 }
+    );
   } catch (err: any) {
     console.error("DELETE Expense Error:", err);
     return NextResponse.json(
