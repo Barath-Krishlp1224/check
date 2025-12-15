@@ -5,14 +5,14 @@ import React from "react";
 import { type Expense, type Employee, type Role } from "./types";
 
 interface EditExpenseModalProps {
-  editingExpense: Expense;
+  editingExpense: Expense; // The original expense object
   editExpenseFields: {
     shop: string;
     description: string;
-    amount: string;
+    amount: string; // String for input field
     date: string;
     role: Role;
-    employeeId: string;
+    employeeId: string; // ID of the selected employee
   };
   setEditExpenseFields: React.Dispatch<
     React.SetStateAction<{
@@ -25,7 +25,7 @@ interface EditExpenseModalProps {
     }>
   >;
   employees: Employee[];
-  onSave: () => void;
+  onSave: (expenseId: string) => Promise<void>; // Modified: Pass the ID to save function
   onCancel: () => void;
 }
 
@@ -41,8 +41,13 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
     setEditExpenseFields((p) => ({ ...p, [key]: value }));
   };
 
+  const handleSave = () => {
+    // Pass the expense ID to the parent's save handler
+    onSave(editingExpense._id); 
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-white/90 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8">
         <h2 className="text-2xl font-black text-gray-900 mb-6">
           Edit Expense
@@ -140,7 +145,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
           </button>
           <button
             className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg transition-all"
-            onClick={onSave}
+            onClick={handleSave}
           >
             Save Changes
           </button>
