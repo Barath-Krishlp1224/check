@@ -4,25 +4,22 @@
 import React from "react";
 import { type Expense, type Employee, type Role } from "./types";
 
+// NOTE: Added employeeName to the fields to be edited/sent
+interface EditExpenseFields {
+  shop: string;
+  description: string;
+  amount: string; // String for input field
+  date: string;
+  role: Role;
+  employeeId: string; // ID of the selected employee
+  employeeName: string; // Name of the selected employee
+}
+
 interface EditExpenseModalProps {
   editingExpense: Expense; // The original expense object
-  editExpenseFields: {
-    shop: string;
-    description: string;
-    amount: string; // String for input field
-    date: string;
-    role: Role;
-    employeeId: string; // ID of the selected employee
-  };
+  editExpenseFields: EditExpenseFields;
   setEditExpenseFields: React.Dispatch<
-    React.SetStateAction<{
-      shop: string;
-      description: string;
-      amount: string;
-      date: string;
-      role: Role;
-      employeeId: string;
-    }>
+    React.SetStateAction<EditExpenseFields>
   >;
   employees: Employee[];
   onSave: (expenseId: string) => Promise<void>; // Modified: Pass the ID to save function
@@ -37,13 +34,30 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
   onSave,
   onCancel,
 }) => {
-  const setField = (key: keyof typeof editExpenseFields, value: string) => {
+  const setField = (
+    key: keyof EditExpenseFields,
+    value: string
+  ) => {
     setEditExpenseFields((p) => ({ ...p, [key]: value }));
+  };
+
+  const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newEmployeeId = e.target.value;
+    const selectedEmployee = employees.find(
+      (emp) => emp._id === newEmployeeId
+    );
+
+    setEditExpenseFields((p) => ({
+      ...p,
+      employeeId: newEmployeeId,
+      // Update employeeName when employeeId changes
+      employeeName: selectedEmployee ? selectedEmployee.name : "",
+    }));
   };
 
   const handleSave = () => {
     // Pass the expense ID to the parent's save handler
-    onSave(editingExpense._id); 
+    onSave(editingExpense._id);
   };
 
   return (
@@ -122,7 +136,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
               </label>
               <select
                 value={editExpenseFields.employeeId}
-                onChange={(e) => setField("employeeId", e.target.value)}
+                onChange={handleEmployeeChange} // Use the new handler
                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-gray-900 outline-none focus:border-blue-500 bg-white"
               >
                 <option value="">None</option>

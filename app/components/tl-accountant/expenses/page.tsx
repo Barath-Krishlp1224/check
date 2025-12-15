@@ -119,6 +119,18 @@ const convertToCSV = (data: Expense[], employees: Employee[]) => {
   return encodeURI(csvContent);
 };
 
+// NOTE: Merged the EditExpenseFields interface from the modal file here 
+// for completeness and local consistency.
+interface EditExpenseFields {
+  shop: string;
+  description: string;
+  amount: string; // String for input field
+  date: string;
+  role: Role;
+  employeeId: string; // ID of the selected employee
+  employeeName: string; // Name of the selected employee
+}
+
 const ExpensesContent: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
@@ -178,13 +190,14 @@ const ExpensesContent: React.FC = () => {
 
   // Edit Expense Modal State
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [editExpenseFields, setEditExpenseFields] = useState({
+  const [editExpenseFields, setEditExpenseFields] = useState<EditExpenseFields>({
     shop: "",
     description: "",
     amount: "",
     date: "",
     role: "founder" as Role,
     employeeId: "",
+    employeeName: "", // Initialize employeeName
   });
 
   // Edit Subtask Modal State
@@ -784,16 +797,25 @@ const ExpensesContent: React.FC = () => {
       date: exp.date || new Date().toISOString().slice(0, 10),
       role: exp.role || "founder",
       employeeId: exp.employeeId || "", // employeeId from expense or ""
+      employeeName: exp.employeeName || "", // employeeName from expense or ""
     });
   };
 
   const handleSaveEditExpense = async () => {
     if (!editingExpense) return;
     
-    // CRITICAL CHANGE: Determine employeeId for the payload
-    const finalEmployeeId = editExpenseFields.employeeId === "" 
+    // CRITICAL CHANGE: Determine employeeId and Name for the payload based on the modal state
+    const employeeIdFromModal = editExpenseFields.employeeId;
+    
+    // Use null for employeeId if empty string, which tells the backend to clear the field.
+    const finalEmployeeId = employeeIdFromModal === "" 
       ? null 
-      : editExpenseFields.employeeId;
+      : employeeIdFromModal;
+
+    // Look up the name based on the employeeId currently in the modal state
+    const newEmployeeName = finalEmployeeId 
+      ? employees.find((e) => e._id === finalEmployeeId)?.name
+      : null; // Use null if no employee selected
 
     const updates: any = {
       shop: editExpenseFields.shop,
@@ -801,16 +823,18 @@ const ExpensesContent: React.FC = () => {
       amount: Number(editExpenseFields.amount),
       date: editExpenseFields.date,
       role: editExpenseFields.role,
-      employeeId: finalEmployeeId,
-      employeeName:
-        finalEmployeeId &&
-        employees.find((e) => e._id === finalEmployeeId)?.name,
+      employeeId: finalEmployeeId, // Send null if employee cleared
+      employeeName: newEmployeeName, // Send the looked-up name (or null)
     };
+    
+    // Role validation check before sending to server
+    if (updates.role === "manager" && !updates.employeeId) {
+        toast.warn("Employee ID is required for Manager role.");
+        return;
+    }
+
 
     try {
-      // NOTE: Ensure your backend uses the ID from the body (or URL) to find the expense.
-      // If the backend is using the ID from the request body AND expects an ObjectId, 
-      // the issue might be here if the ID is malformed or case-sensitive mismatch on Vercel.
       const res = await fetch("/api/expenses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -818,8 +842,6 @@ const ExpensesContent: React.FC = () => {
       });
       const json = await res.json();
       if (!json.success) {
-        // This is the error path where "expense not found" is likely coming from.
-        // It means the backend failed to find `editingExpense._id`.
         toast.error(json.error || "Failed to update expense. Expense not found?");
         return;
       }
@@ -854,9 +876,14 @@ const ExpensesContent: React.FC = () => {
       return;
     }
 
-    const finalSubEmployeeId = editingSubtask.employeeId === "" 
-      ? undefined 
-      : editingSubtask.employeeId;
+    const subEmployeeIdFromModal = editingSubtask.employeeId;
+    const finalSubEmployeeId = subEmployeeIdFromModal === "" 
+        ? undefined // Undefined or null to clear the field in the subtask array
+        : subEmployeeIdFromModal;
+
+    const newSubEmployeeName = finalSubEmployeeId 
+        ? employees.find((e) => e._id === finalSubEmployeeId)?.name
+        : undefined;
 
     const updatedSubtasks = (parent.subtasks || []).map((s) =>
       s.id === editingSubtask.subId
@@ -865,10 +892,8 @@ const ExpensesContent: React.FC = () => {
             title: editingSubtask.title,
             amount: Number(editingSubtask.amount),
             date: editingSubtask.date,
-            employeeId: finalSubEmployeeId,
-            employeeName:
-              finalSubEmployeeId &&
-              employees.find((e) => e._id === finalSubEmployeeId)?.name,
+            employeeId: finalSubEmployeeId, // Send undefined to clear or new ID
+            employeeName: newSubEmployeeName, // Send undefined to clear or new name
           }
         : s
     );
