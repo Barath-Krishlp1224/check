@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongoose";
+// Assuming Expense, IExpense, Role, SubExpense are correctly imported from models/Expense
 import Expense, { IExpense, Role, SubExpense } from "@/models/Expense";
 
 type RawSubExpense = {
@@ -312,6 +313,15 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // 🔴 IMPORTANT CHECK FOR VERCEL ISSUE
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        console.error(`PATCH Invalid ID format: ${id}`);
+        return NextResponse.json(
+            { success: false, error: "Invalid Expense ID format" },
+            { status: 400 }
+        );
+    }
+
     await ensureConnected();
 
     const allowed = [
@@ -361,9 +371,12 @@ export async function PATCH(request: Request) {
             : "other";
           break;
         case "employeeId":
+          // Ensure that employeeId is set to null if intended to be cleared, 
+          // as Mongoose will automatically remove it if set to undefined, but 
+          // explicitly setting null is safer for clearing fields.
           payload.employeeId =
-            updates.employeeId === undefined || updates.employeeId === null
-              ? undefined
+            updates.employeeId === "" || updates.employeeId === null
+              ? null // Explicitly set null to clear employeeId field in MongoDB
               : String(updates.employeeId);
           break;
         default:
@@ -379,29 +392,31 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (
-      payload.role === "manager" &&
-      !payload.employeeId &&
-      !payload.employeeName
-    ) {
+    // Role validation check (needs existing data for comparison)
+    if (payload.role === "manager" && !payload.employeeId) {
       const existing = (await Expense.findById(id).lean()) as
         | IExpense
         | null;
-      if (
-        existing &&
-        existing.role !== "manager" &&
-        (!existing.employeeId || !existing.employeeName)
-      ) {
+      
+      // If the update payload sets role to manager but employeeId is null/missing
+      // check if the existing document also lacks employeeId (or if we are updating from a non-manager role).
+      // Note: This logic assumes you must provide employee details when changing to manager.
+      const isUpdatingToManagerWithoutEmployee = 
+        updates.role === "manager" && 
+        (updates.employeeId === null || updates.employeeId === undefined);
+      
+      if (isUpdatingToManagerWithoutEmployee && (!existing || !existing.employeeId)) {
         return NextResponse.json(
           {
             success: false,
             error:
-              "Employee details are required when setting role to manager.",
+              "Employee ID is required for Manager role update if not previously set.",
           },
           { status: 400 }
         );
       }
     }
+
 
     const updated = (await Expense.findByIdAndUpdate(
       id,
@@ -410,6 +425,8 @@ export async function PATCH(request: Request) {
     ).lean()) as unknown as IExpense | null;
 
     if (!updated) {
+      // 🔴 THIS IS THE LINE THAT IS RETURNING "Expense not found"
+      // If this fires on Vercel but not locally, the ID (id) is the problem.
       return NextResponse.json(
         { success: false, error: "Expense not found" },
         { status: 404 }
