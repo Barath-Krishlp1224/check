@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 
@@ -10,9 +11,21 @@ function escapeRegex(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+async function ensureConnected() {
+  await connectDB();
+  let tries = 0;
+  while (Number(mongoose.connection.readyState) !== 1 && tries < 20) {
+    await new Promise((r) => setTimeout(r, 100));
+    tries++;
+  }
+  if (Number(mongoose.connection.readyState) !== 1) {
+    throw new Error("Failed to connect to MongoDB");
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
+    await ensureConnected();
 
     let body: { empIdOrEmail?: string; password?: string };
 
@@ -38,11 +51,13 @@ export async function POST(req: NextRequest) {
     const escaped = escapeRegex(empIdOrEmailRaw);
     const regex = new RegExp(`^${escaped}$`, "i");
 
+    // FIX 1: Use .exec() for better Vercel compatibility
     const employee = await Employee.findOne({
       $or: [{ mailId: regex }, { empId: regex }],
     })
       .select("+password")
-      .lean();
+      .lean()
+      .exec();
 
     if (!employee) {
       return NextResponse.json(
@@ -69,17 +84,24 @@ export async function POST(req: NextRequest) {
 
     let passwordMatches = false;
 
-    if (employee.password.startsWith("$2a$") || employee.password.startsWith("$2b$")) {
+    if (
+      employee.password.startsWith("$2a$") ||
+      employee.password.startsWith("$2b$")
+    ) {
       passwordMatches = await bcrypt.compare(password, employee.password);
     } else {
       passwordMatches = password === employee.password;
 
       if (passwordMatches) {
         const hashed = await bcrypt.hash(password, 10);
+        
+        // FIX 2: Use updateOne with explicit ObjectId for better Vercel compatibility
         await Employee.updateOne(
-          { _id: employee._id },
+          { _id: new mongoose.Types.ObjectId(employee._id) },
           { $set: { password: hashed } }
-        );
+        ).exec();
+        
+        console.log("Password hashed and updated for employee:", employee.empId);
       }
     }
 
