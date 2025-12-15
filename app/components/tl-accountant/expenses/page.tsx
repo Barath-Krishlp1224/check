@@ -499,22 +499,9 @@ const ExpensesContent: React.FC = () => {
 
   const [initialAmountHistory, setInitialAmountHistory] = useState<
     InitialAmountHistoryEntry[]
-  >(() => {
-    if (typeof window !== "undefined") {
-      const storedData = localStorage.getItem("initialWalletAmountHistory");
-      if (storedData) {
-        try {
-          const history = JSON.parse(storedData) as InitialAmountHistoryEntry[];
-          if (Array.isArray(history) && history.length > 0) {
-            return history;
-          }
-        } catch (e) {}
-      }
-    }
-    return [{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }];
-  });
+  >([]);
 
-  const initialAmount = initialAmountHistory[0]?.amount || 0;
+  const initialAmount = initialAmountHistory[0]?.amount || INITIAL_AMOUNT_CONSTANT;
 
   const [isEditingInitialAmount, setIsEditingInitialAmount] = useState(false);
   const [initialAmountInput, setInitialAmountInput] = useState(
@@ -575,6 +562,28 @@ const ExpensesContent: React.FC = () => {
 
   const [showAddForm, setShowAddForm] = useState(false);
 
+  // --- NEW useEffect to fetch initial amount from DB ---
+  useEffect(() => {
+    const fetchInitialAmount = async () => {
+      try {
+        const res = await fetch("/api/initial-amount");
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setInitialAmountHistory(json.data);
+        } else {
+            // Initialize with constant if DB is empty and local storage isn't used
+            setInitialAmountHistory([{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }]);
+        }
+      } catch (err: any) {
+        toast.error("Failed to load initial budget from server.");
+        setInitialAmountHistory([{ amount: INITIAL_AMOUNT_CONSTANT, date: new Date().toISOString() }]);
+      }
+    };
+
+    fetchInitialAmount();
+  }, []);
+  // --- END NEW useEffect ---
+
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
@@ -631,7 +640,7 @@ const ExpensesContent: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  const handleUpdateInitialAmount = () => {
+  const handleUpdateInitialAmount = async () => {
     const newAmount = Number(initialAmountInput);
     if (!Number.isNaN(newAmount) && newAmount >= 0) {
       const newEntry: InitialAmountHistoryEntry = {
@@ -640,16 +649,26 @@ const ExpensesContent: React.FC = () => {
       };
 
       if (newAmount !== initialAmountHistory[0]?.amount) {
-        const newHistory = [newEntry, ...initialAmountHistory];
-        setInitialAmountHistory(newHistory);
+        try {
+            // --- UPDATED: POST new initial amount to DB API ---
+            const res = await fetch("/api/initial-amount", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newEntry),
+            });
+            const json = await res.json();
+            if (!json.success) {
+                toast.error(json.error || "Failed to save initial amount to database.");
+                return;
+            }
+            // --- END UPDATED ---
 
-        if (typeof window !== "undefined") {
-          localStorage.setItem(
-            "initialWalletAmountHistory",
-            JSON.stringify(newHistory)
-          );
+          const newHistory = [newEntry, ...initialAmountHistory];
+          setInitialAmountHistory(newHistory);
+          toast.success("Initial amount updated successfully!");
+        } catch(err: any) {
+            toast.error(err.message || "Failed to update initial amount.");
         }
-        toast.success("Initial amount updated successfully!");
       }
       setIsEditingInitialAmount(false);
     } else {

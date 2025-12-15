@@ -28,6 +28,26 @@ interface AttendanceRecord {
   mode?: AttendanceMode;
 }
 
+// Replicating Task/Subtask structure needed for scoring
+interface Subtask {
+  assigneeName?: string;
+  status: string; // e.g., "Completed", "QA Sign Off"
+  storyPoints: number;
+  subtasks?: Subtask[];
+}
+
+interface Task {
+  _id: string;
+  assigneeNames?: string[]; // Main task assignees
+  status: string;
+  startDate: string;
+  dueDate: string;
+  endDate?: string;
+  taskStoryPoints: number;
+  subtasks?: Subtask[];
+}
+
+
 interface Employee {
   employeeId: string;
   employeeName?: string;
@@ -36,7 +56,7 @@ interface Employee {
   team?: string | null;
   category?: string | null;
   baseSalary?: number;
-  performanceScore?: number;
+  performanceScore?: number; // This will now be overridden
   certifications?: number;
   behaviorRating?: number;
 }
@@ -59,8 +79,145 @@ const MAX_BEHAVIOR_POINTS = 15;
 const MAX_GROWTH_POINTS = 15;
 const LATE_THRESHOLD_MINUTES = 5;
 const TARDINESS_POINT_LOSS_PER_MINUTE = 0.5;
-const ABSENCE_POINT_LOSS = 10;
+const ABSENCE_POINT_LOSS = 5;
 const BASE_HIKE_PERCENT = 0.00;
+const COMPLETED_STATUSES = ["QA Sign Off", "Deployment Stage", "Completed"]; // Statuses from TasksPage considered "done"
+
+// Utility function to flatten and score subtasks recursively
+const scoreSubtasks = (subs: Subtask[], employeeName: string, range: Map<string, boolean>) => {
+  let completedPoints = 0;
+  let totalPoints = 0;
+
+  for (const sub of subs) {
+    if (sub.subtasks) {
+      const nestedScore = scoreSubtasks(sub.subtasks, employeeName, range);
+      completedPoints += nestedScore.completedPoints;
+      totalPoints += nestedScore.totalPoints;
+    }
+
+    // Only count if assigned to the current employee (case-insensitive)
+    const isAssignedToEmployee = sub.assigneeName && sub.assigneeName.toLowerCase() === employeeName.toLowerCase();
+
+    if (isAssignedToEmployee) {
+      totalPoints += sub.storyPoints;
+      if (COMPLETED_STATUSES.includes(sub.status)) {
+        completedPoints += sub.storyPoints;
+      }
+    }
+  }
+
+  return { completedPoints, totalPoints };
+};
+
+// Custom hook/function placeholder to represent fetching task data
+// In a real app, this data would be fetched from the API and passed down or stored in a central state/context
+const useTasksData = (employeeList: Employee[]): Task[] => {
+    // This is a placeholder. In a real application, you would fetch this from your backend
+    // E.g., const [tasks, setTasks] = useState<Task[]>([]); useEffect(() => { fetchTasks()... }, []); return tasks;
+
+    // Fictional Task data based on the employees list for demonstration:
+    const techEmployees = employeeList.filter(e => e.team && (e.team.toLowerCase() === 'tech' || e.team.toLowerCase() === 'it admin'));
+
+    return techEmployees.flatMap(emp => [
+        { 
+            _id: `T-${emp.employeeId}-1`, 
+            assigneeNames: [emp.employeeName!], 
+            status: "Completed", 
+            startDate: "2024-01-01", 
+            dueDate: "2024-03-31", 
+            taskStoryPoints: 10,
+            subtasks: [{ assigneeName: emp.employeeName, status: "Completed", storyPoints: 5 }] as Subtask[]
+        },
+        { 
+            _id: `T-${emp.employeeId}-2`, 
+            assigneeNames: [emp.employeeName!], 
+            status: "In Progress", 
+            startDate: "2024-04-01", 
+            dueDate: "2024-06-30", 
+            taskStoryPoints: 5,
+            subtasks: [{ assigneeName: emp.employeeName, status: "In Progress", storyPoints: 5 }] as Subtask[]
+        },
+    ] as Task[]);
+};
+
+
+const calculatePerformanceScore = (employees: Employee[], tasks: Task[], fromDate: string, toDate: string): Map<string, number> => {
+    const scoreMap = new Map<string, { completed: number, total: number }>();
+    
+    // 1. Initialize map and collect all assigned story points
+    employees.forEach(emp => {
+        scoreMap.set(emp.employeeId, { completed: 0, total: 0 });
+    });
+
+    const startTimestamp = new Date(fromDate).getTime();
+    const endTimestamp = new Date(toDate).getTime();
+
+    // 2. Iterate over tasks within the date range
+    tasks.forEach(task => {
+        const taskDate = task.endDate ? new Date(task.endDate).getTime() : new Date(task.dueDate).getTime();
+
+        // Filter by date range (Completed/Due date within range)
+        if (taskDate < startTimestamp || taskDate > endTimestamp) {
+            return;
+        }
+
+        // Recursive function to process tasks and subtasks
+        const processAssignments = (assignment: { assigneeNames?: string[]; status: string; taskStoryPoints?: number; subtasks?: Subtask[]; assigneeName?: string; storyPoints?: number }) => {
+            
+            // Handle main task assignment
+            if (assignment.assigneeNames && assignment.taskStoryPoints !== undefined) {
+                const isCompleted = COMPLETED_STATUSES.includes(assignment.status);
+                
+                assignment.assigneeNames.forEach(assigneeName => {
+                    const employee = employees.find(e => e.employeeName?.toLowerCase() === assigneeName.toLowerCase());
+                    if (employee) {
+                        const current = scoreMap.get(employee.employeeId)!;
+                        current.total += assignment.taskStoryPoints!;
+                        if (isCompleted) {
+                            current.completed += assignment.taskStoryPoints!;
+                        }
+                    }
+                });
+            }
+
+            // Handle subtask assignment (nested)
+            if (assignment.subtasks) {
+                assignment.subtasks.forEach(sub => {
+                    if (sub.assigneeName && sub.storyPoints !== undefined) {
+                        const employee = employees.find(e => e.employeeName?.toLowerCase() === sub.assigneeName!.toLowerCase());
+                        if (employee) {
+                            const isCompleted = COMPLETED_STATUSES.includes(sub.status);
+                            const current = scoreMap.get(employee.employeeId)!;
+                            current.total += sub.storyPoints;
+                            if (isCompleted) {
+                                current.completed += sub.storyPoints;
+                            }
+                            // Recursively check nested subtasks
+                            processAssignments(sub as any);
+                        }
+                    }
+                });
+            }
+        };
+
+        processAssignments(task as any);
+    });
+
+    // 3. Calculate final Raw Performance Score (out of 100)
+    const finalScores = new Map<string, number>();
+    scoreMap.forEach((metrics, employeeId) => {
+        let rawScore = 50; // Default score if no tasks found
+
+        if (metrics.total > 0) {
+            rawScore = (metrics.completed / metrics.total) * 100;
+        }
+
+        finalScores.set(employeeId, Number(rawScore.toFixed(0)));
+    });
+
+    return finalScores;
+};
+
 
 const getStatusLabel = (record: AttendanceRecord): { isLate: boolean; isAbsent: boolean; lateMinutes: number } => {
   const { punchInTime, punchOutTime, date } = record;
@@ -117,7 +274,12 @@ const HikeCalculator: React.FC<HikeCalculatorProps> = ({
   fromDate,
   toDate,
 }) => {
+    const allTasks = useTasksData(employees);
+
   const hikeData = useMemo(() => {
+    
+    const performanceScores = calculatePerformanceScore(employees, allTasks, fromDate, toDate);
+    
     const nonFounderEmployees = employees.filter((emp) => !isFounder(emp) && emp.baseSalary);
     const metricsMap = new Map<string, { totalLateMinutes: number; totalAbsentDays: number; totalWorkingDays: number }>();
     
@@ -159,20 +321,21 @@ const HikeCalculator: React.FC<HikeCalculatorProps> = ({
       const actualWorkingDays = metrics.totalWorkingDays;
       const totalAbsences = totalExpectedDays - actualWorkingDays;
       
-      let strictPoints = MAX_STRICT_POINTS;
-      strictPoints -= totalAbsences * ABSENCE_POINT_LOSS;
-      strictPoints -= metrics.totalLateMinutes * TARDINESS_POINT_LOSS_PER_MINUTE;
-      strictPoints = Math.max(0, strictPoints);
+      // *** Use the calculated score here ***
+      const rawPerformanceScore = performanceScores.get(emp.employeeId) || 50; 
+      let performancePoints = (rawPerformanceScore / 100) * MAX_STRICT_POINTS;
+      performancePoints = Number(performancePoints.toFixed(0));
       
-      const attendancePenaltyFactor = (strictPoints / MAX_STRICT_POINTS);
-      let generalPoints = MAX_GENERAL_POINTS * attendancePenaltyFactor;
-      generalPoints = Math.max(0, generalPoints);
-
+      let attendancePoints = MAX_GENERAL_POINTS;
+      attendancePoints -= totalAbsences * ABSENCE_POINT_LOSS;
+      attendancePoints -= metrics.totalLateMinutes * TARDINESS_POINT_LOSS_PER_MINUTE;
+      attendancePoints = Math.max(0, attendancePoints);
+      
       const normalizedBehaviorScore = (behaviorRating / 5) * MAX_BEHAVIOR_POINTS;
       
       const growthPoints = Math.min(certifications * 5, MAX_GROWTH_POINTS);
 
-      const finalScore = strictPoints + generalPoints + normalizedBehaviorScore + growthPoints;
+      const finalScore = performancePoints + attendancePoints + normalizedBehaviorScore + growthPoints;
       
       const finalHikeRate = getHikePercentage(finalScore);
       const finalHikeAmount = currentSalary * finalHikeRate;
@@ -183,8 +346,8 @@ const HikeCalculator: React.FC<HikeCalculatorProps> = ({
         employeeName: emp.employeeName || emp.employeeId,
         currentSalary: Number(currentSalary.toFixed(0)),
         finalScore: Number(finalScore.toFixed(0)),
-        strictPoints: Number(strictPoints.toFixed(0)),
-        generalPoints: Number(generalPoints.toFixed(0)),
+        performancePoints: Number(performancePoints.toFixed(0)),
+        attendancePoints: Number(attendancePoints.toFixed(0)),
         behaviorPoints: Number(normalizedBehaviorScore.toFixed(0)),
         growthPoints: Number(growthPoints.toFixed(0)),
         totalAbsences,
@@ -210,7 +373,7 @@ const HikeCalculator: React.FC<HikeCalculatorProps> = ({
         totalNewSalary: Number(totalNewSalary.toFixed(0)),
       },
     };
-  }, [employees, attendanceRecords, fromDate, toDate]);
+  }, [employees, attendanceRecords, fromDate, toDate, allTasks]);
 
   if (hikeData.results.length === 0) {
     return (
@@ -276,11 +439,11 @@ const HikeCalculator: React.FC<HikeCalculatorProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="p-3 bg-red-100 rounded-lg">
                 <CheckCircle2 className="w-5 h-5 text-red-600 mx-auto mb-1" />
-                <p className="text-xs font-semibold text-red-800">A1: Attendance Strict (50)</p>
+                <p className="text-xs font-semibold text-red-800">A1: Task/Performance (50)</p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-lg">
                 <CheckCircle2 className="w-5 h-5 text-yellow-600 mx-auto mb-1" />
-                <p className="text-xs font-semibold text-yellow-800">A2: Attendance General (20)</p>
+                <p className="text-xs font-semibold text-yellow-800">A2: Attendance (20)</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
                 <MessageSquare className="w-5 h-5 text-blue-600 mx-auto mb-1" />
@@ -298,7 +461,11 @@ const HikeCalculator: React.FC<HikeCalculatorProps> = ({
 };
 
 const HikeTable: React.FC<HikeCalculatorProps> = ({ employees, attendanceRecords, fromDate, toDate }) => {
+    const allTasks = useTasksData(employees);
+
     const hikeData = useMemo(() => {
+        const performanceScores = calculatePerformanceScore(employees, allTasks, fromDate, toDate);
+
       const nonFounderEmployees = employees.filter((emp) => !isFounder(emp) && emp.baseSalary);
       const metricsMap = new Map<string, { totalLateMinutes: number; totalAbsentDays: number; totalWorkingDays: number }>();
       
@@ -340,20 +507,21 @@ const HikeTable: React.FC<HikeCalculatorProps> = ({ employees, attendanceRecords
         const actualWorkingDays = metrics.totalWorkingDays;
         const totalAbsences = totalExpectedDays - actualWorkingDays;
         
-        let strictPoints = MAX_STRICT_POINTS;
-        strictPoints -= totalAbsences * ABSENCE_POINT_LOSS;
-        strictPoints -= metrics.totalLateMinutes * TARDINESS_POINT_LOSS_PER_MINUTE;
-        strictPoints = Math.max(0, strictPoints);
+        // *** Use the calculated score here ***
+        const rawPerformanceScore = performanceScores.get(emp.employeeId) || 50; 
+        let performancePoints = (rawPerformanceScore / 100) * MAX_STRICT_POINTS;
+        performancePoints = Number(performancePoints.toFixed(0));
         
-        const attendancePenaltyFactor = (strictPoints / MAX_STRICT_POINTS);
-        let generalPoints = MAX_GENERAL_POINTS * attendancePenaltyFactor;
-        generalPoints = Math.max(0, generalPoints);
+        let attendancePoints = MAX_GENERAL_POINTS;
+        attendancePoints -= totalAbsences * ABSENCE_POINT_LOSS;
+        attendancePoints -= metrics.totalLateMinutes * TARDINESS_POINT_LOSS_PER_MINUTE;
+        attendancePoints = Math.max(0, attendancePoints);
   
         const normalizedBehaviorScore = (behaviorRating / 5) * MAX_BEHAVIOR_POINTS;
         
         const growthPoints = Math.min(certifications * 5, MAX_GROWTH_POINTS);
   
-        const finalScore = strictPoints + generalPoints + normalizedBehaviorScore + growthPoints;
+        const finalScore = performancePoints + attendancePoints + normalizedBehaviorScore + growthPoints;
         
         const finalHikeRate = getHikePercentage(finalScore);
         const finalHikeAmount = currentSalary * finalHikeRate;
@@ -364,8 +532,8 @@ const HikeTable: React.FC<HikeCalculatorProps> = ({ employees, attendanceRecords
           employeeName: emp.employeeName || emp.employeeId,
           currentSalary: Number(currentSalary.toFixed(0)),
           finalScore: Number(finalScore.toFixed(0)),
-          strictPoints: Number(strictPoints.toFixed(0)),
-          generalPoints: Number(generalPoints.toFixed(0)),
+          performancePoints: Number(performancePoints.toFixed(0)),
+          attendancePoints: Number(attendancePoints.toFixed(0)),
           behaviorPoints: Number(normalizedBehaviorScore.toFixed(0)),
           growthPoints: Number(growthPoints.toFixed(0)),
           totalAbsences,
@@ -377,7 +545,7 @@ const HikeTable: React.FC<HikeCalculatorProps> = ({ employees, attendanceRecords
       }).sort((a, b) => b.finalScore - a.finalScore);
   
       return results;
-    }, [employees, attendanceRecords, fromDate, toDate]);
+    }, [employees, attendanceRecords, fromDate, toDate, allTasks]);
 
     if (hikeData.length === 0) {
         return (
@@ -408,10 +576,10 @@ const HikeTable: React.FC<HikeCalculatorProps> = ({ employees, attendanceRecords
                                     Final Score (100)
                                 </th>
                                 <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                    A1 (50)
+                                    A1 (Task)
                                 </th>
                                 <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                    A2 (20)
+                                    A2 (Attnd)
                                 </th>
                                 <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                                     B (15)
@@ -440,10 +608,10 @@ const HikeTable: React.FC<HikeCalculatorProps> = ({ employees, attendanceRecords
                                         {m.finalScore}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium text-red-600">
-                                        {m.strictPoints}
+                                        {m.performancePoints}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium text-yellow-600">
-                                        {m.generalPoints}
+                                        {m.attendancePoints}
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium text-blue-600">
                                         {m.behaviorPoints}
@@ -636,7 +804,6 @@ const App: React.FC = () => {
     });
   }, [attendance, selectedEmployeeId, selectedMode, fromDate, toDate]);
 
-  // FIX: Filter the employee list based on the selection to correctly update the table and summary data
   const filteredEmployees = useMemo(() => {
     if (selectedEmployeeId === "ALL") {
         return employees;

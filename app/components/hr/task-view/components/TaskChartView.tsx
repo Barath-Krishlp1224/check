@@ -9,14 +9,8 @@ import {
   Legend,
   ResponsiveContainer,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
 } from "recharts";
 
-// Types
 interface Subtask {
   assigneeName?: string;
   timeSpent?: string;
@@ -24,6 +18,7 @@ interface Subtask {
 }
 
 interface Task {
+  name?: string;
   status?: string;
   completion?: number;
   assigneeNames?: string[];
@@ -37,7 +32,6 @@ interface TaskChartViewProps {
   tasks: Task[];
 }
 
-// ---------- UTIL: FLATTEN SUBTASKS (handles nested subtasks) ----------
 const flattenSubtasks = (subs: Subtask[] = []): Subtask[] => {
   const result: Subtask[] = [];
   const stack = [...subs];
@@ -53,14 +47,12 @@ const flattenSubtasks = (subs: Subtask[] = []): Subtask[] => {
   return result;
 };
 
-// ---------- UTIL: PARSE "timeSpent" STRINGS INTO HOURS ----------
 const parseTimeToHours = (raw?: string | null): number => {
   if (!raw) return 0;
 
   const value = raw.trim().toLowerCase();
   if (!value) return 0;
 
-  // "2:30" -> 2.5h
   if (value.includes(":")) {
     const [hStr, mStr] = value.split(":");
     const h = Number(hStr) || 0;
@@ -68,7 +60,6 @@ const parseTimeToHours = (raw?: string | null): number => {
     return h + m / 60;
   }
 
-  // "2h 30m", "1.5h", "45m", "2 h", etc.
   const hourMatch = value.match(/(\d+(\.\d+)?)\s*h/);
   const minuteMatch = value.match(/(\d+(\.\d+)?)\s*m/);
 
@@ -81,7 +72,6 @@ const parseTimeToHours = (raw?: string | null): number => {
     hours += parseFloat(minuteMatch[1]) / 60;
   }
 
-  // if no "h" or "m" found but it's a number, treat as hours
   if (!hourMatch && !minuteMatch) {
     const asNumber = Number(value);
     if (!Number.isNaN(asNumber)) {
@@ -92,29 +82,11 @@ const parseTimeToHours = (raw?: string | null): number => {
   return hours;
 };
 
-const COLORS = {
-  primary: '#3b82f6',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  purple: '#8b5cf6',
-  cyan: '#06b6d4',
-  pink: '#ec4899',
-};
-
-const STATUS_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
-
 const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
-  // ---------- BASIC METRICS ----------
   const totalTasks = tasks.length;
 
   const completedCount = useMemo(
     () => tasks.filter((t) => t.status === "Completed").length,
-    [tasks]
-  );
-
-  const inProgressCount = useMemo(
-    () => tasks.filter((t) => t.status === "In Progress").length,
     [tasks]
   );
 
@@ -129,13 +101,20 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
     return Math.round(sum / tasks.length);
   }, [tasks]);
 
-  // ---------- FLATTENED SUBTASKS ----------
+  const overallPercentage = useMemo(() => {
+    const weightedCompletionScore = avgCompletion * 0.5;
+    const attendanceScore = 20;
+    const totalRawScore = weightedCompletionScore + attendanceScore;
+    const normalizedPercentage = (totalRawScore / 70) * 100;
+
+    return Math.round(normalizedPercentage);
+  }, [avgCompletion]);
+
   const allSubtasks = useMemo(
     () => tasks.flatMap((t) => flattenSubtasks(t.subtasks || [])),
     [tasks]
   );
 
-  // ---------- TOTAL HOURS (tasks + subtasks) ----------
   const totalHours = useMemo(() => {
     const perTaskHours = tasks.map((task) => {
       const explicit = parseTimeToHours(task.taskTimeSpent);
@@ -153,7 +132,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
     return Number(total.toFixed(2));
   }, [tasks]);
 
-  // ---------- STATUS DATA ----------
   const statusData = useMemo(() => {
     const map = new Map<
       string,
@@ -179,7 +157,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
     }));
   }, [tasks]);
 
-  // ---------- ASSIGNEE DATA (TASK COUNT) ----------
   const assigneeData = useMemo(() => {
     const map = new Map<
       string,
@@ -211,7 +188,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
     }));
   }, [tasks]);
 
-  // ---------- HOURS BY ASSIGNEE (FROM SUBTASKS) ----------
   const hoursByAssigneeData = useMemo(() => {
     const map = new Map<string, number>();
 
@@ -228,7 +204,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
     }));
   }, [allSubtasks]);
 
-  // ---------- HOURS BY TASK ----------
   const hoursByTaskData = useMemo(() => {
     const result = tasks.map((task) => {
       const explicit = parseTimeToHours(task.taskTimeSpent);
@@ -241,7 +216,7 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
 
       const hours = explicit > 0 ? explicit : subHours;
       return {
-        task: task.projectId || task.project || "Untitled Task",
+        task: task.projectId || task.project || task.name || "Untitled Task",
         hours: Number(hours.toFixed(2)),
       };
     });
@@ -249,7 +224,30 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
     return result.filter((d) => d.hours > 0);
   }, [tasks]);
 
-  // ---------- EMPTY STATE ----------
+  const tasksTableData = useMemo(() => {
+    return tasks.map((task, idx) => {
+      const explicit = parseTimeToHours(task.taskTimeSpent);
+      const subs = flattenSubtasks(task.subtasks || []);
+      const subHours = subs.reduce((acc, s) => acc + parseTimeToHours(s.timeSpent), 0);
+      const hours = explicit > 0 ? explicit : subHours;
+
+      const name = task.name || task.project || task.projectId || `Task ${idx + 1}`;
+      const completion = typeof task.completion === "number" ? task.completion : 0;
+      const calculated50 = Number((completion * 0.5).toFixed(1));
+      const assignees = task.assigneeNames && task.assigneeNames.length > 0 ? task.assigneeNames.join(", ") : "Unassigned";
+
+      return {
+        id: `${idx}-${name}`,
+        name,
+        status: task.status || "Unknown",
+        completion,
+        calculated50,
+        hours: Number(hours.toFixed(2)),
+        assignees,
+      };
+    });
+  }, [tasks]);
+
   if (tasks.length === 0) {
     return (
       <div className="min-h-96 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl shadow-inner border border-slate-200 p-12 mt-6">
@@ -257,7 +255,7 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-6">
             <AlertCircle className="w-10 h-10 text-slate-400" />
           </div>
-          <h3 className="text-2xl font-bold text-slate-800 mb-3">
+          <h3 className="2xl font-bold text-slate-800 mb-3">
             No Data Available
           </h3>
           <p className="text-slate-600 leading-relaxed">
@@ -278,9 +276,7 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
 
   return (
     <div className="mt-6 space-y-6">
-      {/* ---------- HERO METRICS CARDS ---------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Tasks */}
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white transform transition-all hover:scale-105 hover:shadow-xl">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -296,7 +292,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
           </div>
         </div>
 
-        {/* Completed */}
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white transform transition-all hover:scale-105 hover:shadow-xl">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -312,23 +307,23 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
           </div>
         </div>
 
-        {/* In Progress */}
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6 text-white transform transition-all hover:scale-105 hover:shadow-xl">
+        <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-lg p-6 text-white transform transition-all hover:scale-105 hover:shadow-xl">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-              <Play className="w-6 h-6" />
+              <TrendingUp className="w-6 h-6" />
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold mb-1">{inProgressCount}</p>
-              <p className="text-amber-100 text-sm font-medium">In Progress</p>
+              <p className="text-3xl font-bold mb-1">{overallPercentage}%</p>
+              <p className="text-indigo-100 text-sm font-medium">Overall Percentage</p>
             </div>
           </div>
           <div className="pt-3 border-t border-white/20">
-            <p className="text-xs text-amber-100">Active tasks</p>
+            <p className="text-xs text-indigo-100">
+              {avgCompletion}% Avg Task (50%) + 20% Attendance
+            </p>
           </div>
         </div>
 
-        {/* Hours & Backlog */}
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white transform transition-all hover:scale-105 hover:shadow-xl">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -349,9 +344,7 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
         </div>
       </div>
 
-      {/* ---------- STATUS & ASSIGNEE OVERVIEW ---------- */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Status Distribution */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
           <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b border-slate-200">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -406,7 +399,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
           </div>
         </div>
 
-        {/* Assignee Distribution */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
           <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b border-slate-200">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -462,7 +454,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
         </div>
       </div>
 
-      {/* ---------- WORKING HOURS ANALYTICS ---------- */}
       <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-5 border-b border-slate-200">
           <div className="flex items-center gap-3">
@@ -494,7 +485,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Hours by Assignee */}
               <div>
                 <div className="mb-4">
                   <h4 className="text-base font-semibold text-slate-800 mb-1">
@@ -541,7 +531,6 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
                 </div>
               </div>
 
-              {/* Hours by Task */}
               <div>
                 <div className="mb-4">
                   <h4 className="text-base font-semibold text-slate-800 mb-1">
@@ -592,6 +581,40 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-200">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+            Task Score Contribution
+          </h3>
+          <p className="text-sm text-slate-600 mt-1">
+            Score contribution based on Task Completion ($\times 0.5$). Maximum is 50 points.
+          </p>
+        </div>
+
+        <div className="p-4 overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">#</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Task</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Calculated Score (Out of 50)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Assignees</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-100">
+              {tasksTableData.map((row, i) => (
+                <tr key={row.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{i + 1}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-800">{row.name}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-slate-800">{row.calculated50}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{row.assignees}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

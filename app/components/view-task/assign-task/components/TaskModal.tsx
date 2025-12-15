@@ -27,7 +27,6 @@ import {
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
 
-// --- Status Badge Helper ---
 const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   const baseClasses =
     "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
@@ -102,7 +101,6 @@ interface TaskModalProps {
   ) => void;
 }
 
-// --- Recursive Subtask Viewer ---
 const SubtaskViewer: React.FC<{
   subtasks: Subtask[];
   level: number;
@@ -191,7 +189,6 @@ const SubtaskViewer: React.FC<{
   );
 };
 
-// --- Helper: Sum ALL subtasks' timeSpent (including nested) ---
 const sumAllSubtasksTime = (
   subtasks: Subtask[] | undefined | null
 ): number => {
@@ -212,6 +209,28 @@ const sumAllSubtasksTime = (
     return total + current + nested;
   }, 0);
 };
+
+const sumAllSubtasksStoryPoints = (
+  subtasks: Subtask[] | undefined | null
+): number => {
+  if (!subtasks || subtasks.length === 0) return 0;
+
+  return subtasks.reduce((total, sub) => {
+    const raw: unknown = (sub as any).storyPoints;
+    let current = 0;
+
+    if (typeof raw === "number") {
+      current = raw;
+    } else if (typeof raw === "string") {
+      const parsed = parseFloat(raw);
+      current = isNaN(parsed) ? 0 : parsed;
+    }
+
+    const nested = sub.subtasks ? sumAllSubtasksStoryPoints(sub.subtasks) : 0;
+    return total + current + nested;
+  }, 0);
+};
+
 
 const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
@@ -280,6 +299,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   const hasSubtasks = subtasksToDisplay.length > 0;
 
   const totalTimeSpent = sumAllSubtasksTime(subtasksToDisplay);
+  const totalStoryPoints = sumAllSubtasksStoryPoints(subtasksToDisplay);
 
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
 
@@ -293,7 +313,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       return null;
     }
 
-    // --- Special: Time Spent – show total subtasks' time ---
     if (name === "taskTimeSpent") {
       return (
         <div className="mb-4">
@@ -306,6 +325,23 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         </div>
       );
     }
+
+    if (name === "taskStoryPoints" && !isEditing) {
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
+            {totalStoryPoints}
+          </p>
+        </div>
+      );
+    }
+    
+    if (name === "taskStoryPoints" && isEditing) {
+    }
+
 
     const displayValue = task[name];
     const displayString =
@@ -411,13 +447,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       }
     };
 
-    const isAggregatedField = name === "taskStoryPoints";
-    const displayValueForAggregated =
-      isAggregatedField && !isEditing
-        ? (task[name] as string | number) ||
-          (name === "taskStoryPoints" ? 0 : "N/A")
-        : displayString;
-
     const remarksReadonlyClasses =
       "px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium max-h-12 overflow-y-auto";
 
@@ -436,7 +465,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                 : "px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium"
             }
           >
-            {displayValueForAggregated || (
+            {displayString || (
               <span className="text-gray-500">N/A</span>
             )}
           </p>

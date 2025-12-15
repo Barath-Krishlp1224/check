@@ -18,12 +18,11 @@ import {
   Task,
   Subtask,
   Employee,
-  SubtaskChangeHandler,
+  SubtaskChangeHandler, 
   SubtaskPathHandler,
 } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
-// 🚀 React-Toastify Imports
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -47,7 +46,6 @@ const TasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  // ⭐ NEW STATE: Tracks if the minimum 2-second display time has passed
   const [minLoadTimePassed, setMinLoadTimePassed] = useState(false);
   const [error, setError] = useState("");
   const [viewType, setViewType] = useState<ViewType>("card");
@@ -151,7 +149,6 @@ const TasksPage: React.FC = () => {
       const data = await res.json();
       if (res.ok && data.success) setEmployees(data.employees);
     } catch (err) {
-      // silently ignore for now
     }
   };
 
@@ -198,7 +195,6 @@ const TasksPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // 🔹 Only Tech & IT Admin employees (for assignee dropdowns / lists)
   const techEmployees = useMemo(
     () =>
       employees.filter((e) => {
@@ -208,7 +204,6 @@ const TasksPage: React.FC = () => {
     [employees]
   );
 
-  // 🔹 Only Tech & IT Admin tasks — NO LOGIN FILTERING
   const visibleTasks = useMemo(() => {
     return tasks.filter((task) => {
       const dept = (task.department || "").toLowerCase();
@@ -290,7 +285,6 @@ const TasksPage: React.FC = () => {
     toast.info("Edit cancelled.");
   };
 
-  // 🔥 UPDATED: handleDraftChange now supports checkbox multi-select for assigneeNames
   const handleDraftChange = (
     e: ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -298,7 +292,6 @@ const TasksPage: React.FC = () => {
   ) => {
     const { name, value, type } = e.target;
 
-    // Multi-select via checkbox list in TaskModal
     if (name === "assigneeNames" && type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
 
@@ -322,7 +315,6 @@ const TasksPage: React.FC = () => {
       return;
     }
 
-    // Normal fields
     let finalValue: string | number = value;
 
     if (name === "completion" || name === "taskStoryPoints") {
@@ -609,7 +601,6 @@ const TasksPage: React.FC = () => {
       />
 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
-        {/* NAVBAR WITH VIEW SELECTOR */}
         <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
           <button
             onClick={() => setViewType("card")}
