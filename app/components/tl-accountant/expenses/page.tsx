@@ -1,4 +1,3 @@
-// page.tsx (or ExpensesContent.tsx)
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -20,9 +19,17 @@ import ExpenseForm from "./components/ExpenseForm";
 import SubExpensesSection from "./components/SubExpensesSection";
 import EditExpenseModal from "./components/EditExpenseModal";
 import EditSubtaskModal from "./components/EditSubtaskModal";
+import InitialAmountHistoryModal from "./components/InitialAmountHistoryModal";
 
 const ROWS_PER_PAGE = 10;
 const INITIAL_ROWS = 5;
+
+const getMonthStart = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+};
 
 const convertToCSV = (data: Expense[], employees: Employee[]) => {
   const employeeMap = employees.reduce((map, emp) => {
@@ -119,16 +126,14 @@ const convertToCSV = (data: Expense[], employees: Employee[]) => {
   return encodeURI(csvContent);
 };
 
-// NOTE: Merged the EditExpenseFields interface from the modal file here 
-// for completeness and local consistency.
 interface EditExpenseFields {
   shop: string;
   description: string;
-  amount: string; // String for input field
+  amount: string;
   date: string;
   role: Role;
-  employeeId: string; // ID of the selected employee
-  employeeName: string; // Name of the selected employee
+  employeeId: string;
+  employeeName: string;
 }
 
 const ExpensesContent: React.FC = () => {
@@ -150,8 +155,14 @@ const ExpensesContent: React.FC = () => {
   const [initialAmountInput, setInitialAmountInput] = useState(
     initialAmount.toString()
   );
+  
+  const [showInitialAmountHistory, setShowInitialAmountHistory] = useState(false);
 
-  // Form State for Adding Expense
+  const [budgetPeriodStart, setBudgetPeriodStart] = useState(() => {
+    const now = new Date().toISOString().slice(0, 10);
+    return getMonthStart(now);
+  });
+
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -161,7 +172,6 @@ const ExpensesContent: React.FC = () => {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Form State for Adding Subtask
   const [subTitle, setSubTitle] = useState("");
   const [subAmount, setSubAmount] = useState("");
   const [subDate, setSubDate] = useState(
@@ -169,7 +179,6 @@ const ExpensesContent: React.FC = () => {
   );
   const [subEmployeeId, setSubEmployeeId] = useState("");
 
-  // Filter States
   const [filterRole, setFilterRole] = useState<"all" | Role>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "unpaid">(
     "all"
@@ -180,7 +189,6 @@ const ExpensesContent: React.FC = () => {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
-  // History/Pagination States
   const [showHistory, setShowHistory] = useState(false);
   const [historyEmployeeId, setHistoryEmployeeId] = useState<string>("");
   const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_ROWS);
@@ -188,7 +196,6 @@ const ExpensesContent: React.FC = () => {
   const tableRef = useRef<HTMLDivElement>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Edit Expense Modal State
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editExpenseFields, setEditExpenseFields] = useState<EditExpenseFields>({
     shop: "",
@@ -197,10 +204,9 @@ const ExpensesContent: React.FC = () => {
     date: "",
     role: "founder" as Role,
     employeeId: "",
-    employeeName: "", // Initialize employeeName
+    employeeName: "",
   });
 
-  // Edit Subtask Modal State
   const [editingSubtask, setEditingSubtask] = useState<{
     parentId: string;
     subId: string;
@@ -209,8 +215,6 @@ const ExpensesContent: React.FC = () => {
     date: string;
     employeeId?: string;
   } | null>(null);
-
-  // --- Data Fetching Effects ---
 
   useEffect(() => {
     const fetchInitialAmount = async () => {
@@ -297,13 +301,15 @@ const ExpensesContent: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  // --- Memoized Values ---
-
   const walletStats = useMemo(() => {
     let spent = 0;
     let pending = 0;
 
-    expenses.forEach((e) => {
+    const periodExpenses = expenses.filter(
+      (e) => e.date >= budgetPeriodStart
+    );
+
+    periodExpenses.forEach((e) => {
       const base = e.amount;
       const subsTotal = (e.subtasks || []).reduce(
         (sum, s) => sum + (s.amount || 0),
@@ -322,7 +328,7 @@ const ExpensesContent: React.FC = () => {
 
     const remaining = initialAmount - spent;
     return { spent, pending, remaining };
-  }, [expenses, initialAmount]);
+  }, [expenses, initialAmount, budgetPeriodStart]);
 
   const shopSuggestions = useMemo(() => {
     const arr = expenses
@@ -412,8 +418,6 @@ const ExpensesContent: React.FC = () => {
     [employeeHistory]
   );
 
-  // --- Handlers & Helpers ---
-
   const handleUpdateInitialAmount = async () => {
     const newAmount = Number(initialAmountInput);
     if (!Number.isNaN(newAmount) && newAmount >= 0) {
@@ -470,6 +474,7 @@ const ExpensesContent: React.FC = () => {
     filterFrom,
     filterTo,
     filterSearch,
+    budgetPeriodStart
   ]);
 
   useEffect(() => {
@@ -796,26 +801,23 @@ const ExpensesContent: React.FC = () => {
       amount: String(exp.amount || 0),
       date: exp.date || new Date().toISOString().slice(0, 10),
       role: exp.role || "founder",
-      employeeId: exp.employeeId || "", // employeeId from expense or ""
-      employeeName: exp.employeeName || "", // initialize employeeName
+      employeeId: exp.employeeId || "",
+      employeeName: exp.employeeName || "",
     });
   };
 
   const handleSaveEditExpense = async () => {
     if (!editingExpense) return;
     
-    // CRITICAL CHANGE: Determine employeeId and Name for the payload based on the modal state
     const employeeIdFromModal = editExpenseFields.employeeId;
     
-    // Use null for employeeId if empty string, which tells the backend to clear the field.
     const finalEmployeeId = employeeIdFromModal === "" 
       ? null 
       : employeeIdFromModal;
 
-    // Look up the name based on the employeeId currently in the modal state
     const newEmployeeName = finalEmployeeId 
       ? employees.find((e) => e._id === finalEmployeeId)?.name
-      : null; // Use null if no employee selected
+      : null;
 
     const updates: any = {
       shop: editExpenseFields.shop,
@@ -823,11 +825,10 @@ const ExpensesContent: React.FC = () => {
       amount: Number(editExpenseFields.amount),
       date: editExpenseFields.date,
       role: editExpenseFields.role,
-      employeeId: finalEmployeeId, // Send null if employee cleared
-      employeeName: newEmployeeName, // Send the looked-up name (or null)
+      employeeId: finalEmployeeId,
+      employeeName: newEmployeeName,
     };
     
-    // Role validation check before sending to server
     if (updates.role === "manager" && !updates.employeeId) {
         toast.warn("Employee ID is required for Manager role.");
         return;
@@ -878,7 +879,7 @@ const ExpensesContent: React.FC = () => {
 
     const subEmployeeIdFromModal = editingSubtask.employeeId;
     const finalSubEmployeeId = subEmployeeIdFromModal === "" 
-        ? undefined // Undefined or null to clear the field in the subtask array
+        ? undefined
         : subEmployeeIdFromModal;
 
     const newSubEmployeeName = finalSubEmployeeId 
@@ -892,8 +893,8 @@ const ExpensesContent: React.FC = () => {
             title: editingSubtask.title,
             amount: Number(editingSubtask.amount),
             date: editingSubtask.date,
-            employeeId: finalSubEmployeeId, // Send undefined to clear or new ID
-            employeeName: newSubEmployeeName, // Send undefined to clear or new name
+            employeeId: finalSubEmployeeId,
+            employeeName: newSubEmployeeName,
           }
         : s
     );
@@ -948,6 +949,81 @@ const ExpensesContent: React.FC = () => {
     toast.success(`${filteredExpenses.length} expenses downloaded!`);
   };
 
+  const InitialAmountHistoryView: React.FC<{
+    history: InitialAmountHistoryEntry[];
+    onClose: () => void;
+  }> = ({ history, onClose }) => {
+    return (
+      <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-6 border-b pb-3">
+            <h3 className="text-2xl font-black text-gray-900">
+              Initial Budget History
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            This log shows all changes made to the initial budget amount.
+          </p>
+          <div className="space-y-3">
+            {history.map((entry, index) => (
+              <div
+                key={index}
+                className={`flex justify-between p-4 rounded-xl ${
+                  index === 0
+                    ? "bg-blue-50 border-2 border-blue-300 shadow-md"
+                    : "bg-gray-50 border border-gray-200"
+                }`}
+              >
+                <div>
+                  <div
+                    className={`font-bold ${
+                      index === 0 ? "text-blue-700 text-lg" : "text-gray-900"
+                    }`}
+                  >
+                    ₹{entry.amount.toLocaleString()}
+                    {index === 0 && (
+                      <span className="ml-2 text-xs font-normal text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                        Current
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500 font-medium">
+                    {new Date(entry.date).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {history.length === 0 && (
+            <p className="text-center text-gray-500 pt-4">No history found.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 p-8">
       <ToastContainer position="bottom-right" autoClose={3000} />
@@ -960,6 +1036,35 @@ const ExpensesContent: React.FC = () => {
           <p className="text-lg text-gray-600">
             Manage your business finances with ease
           </p>
+        </div>
+        
+        <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-gray-100">
+            <h3 className="text-xl font-black text-gray-900 mb-4">
+                Current Budget Period
+            </h3>
+            <div className="flex flex-col md:flex-row items-end gap-4">
+                <div className="flex-1 w-full">
+                    <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                        Period Start Date (Resets Wallet Stats)
+                    </label>
+                    <input
+                        type="date"
+                        value={budgetPeriodStart}
+                        onChange={(e) => setBudgetPeriodStart(e.target.value)}
+                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 transition-all bg-white"
+                    />
+                </div>
+                <button 
+                    onClick={() => {
+                        const now = new Date().toISOString().slice(0, 10);
+                        setBudgetPeriodStart(getMonthStart(now));
+                        toast.info("Budget period reset to the start of the current month.");
+                    }}
+                    className="w-full md:w-auto px-6 py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-all flex items-center justify-center text-sm"
+                >
+                    Reset to Current Month
+                </button>
+            </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -975,17 +1080,25 @@ const ExpensesContent: React.FC = () => {
                   </div>
                 )}
               </div>
-              {!isEditingInitialAmount && (
+              <div className="flex gap-2">
+                {!isEditingInitialAmount && (
+                  <button
+                    onClick={() => {
+                      setIsEditingInitialAmount(true);
+                      setInitialAmountInput(initialAmount.toString());
+                    }}
+                    className="px-3 py-1 rounded-lg text-xs font-bold text-blue-600 bg-blue-100 hover:bg-blue-200 transition-all"
+                  >
+                    Edit
+                  </button>
+                )}
                 <button
-                  onClick={() => {
-                    setIsEditingInitialAmount(true);
-                    setInitialAmountInput(initialAmount.toString());
-                  }}
-                  className="px-3 py-1 rounded-lg text-xs font-bold text-blue-600 bg-blue-100 hover:bg-blue-200 transition-all"
+                  onClick={() => setShowInitialAmountHistory(true)}
+                  className="px-3 py-1 rounded-lg text-xs font-bold text-teal-600 bg-teal-100 hover:bg-teal-200 transition-all"
                 >
-                  Edit
+                  History
                 </button>
-              )}
+              </div>
             </div>
             {isEditingInitialAmount && (
               <div className="space-y-3">
@@ -1019,7 +1132,7 @@ const ExpensesContent: React.FC = () => {
 
           <div className="bg-gradient-to-br from-white to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
             <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Total Spent
+              Total Spent (Current Period)
             </div>
             <div className="text-3xl font-black text-black">
               ₹{walletStats.spent.toLocaleString()}
@@ -1028,7 +1141,7 @@ const ExpensesContent: React.FC = () => {
 
           <div className="bg-gradient-to-br from-white to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
             <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Pending
+              Pending (Current Period)
             </div>
             <div className="text-3xl font-black text-black">
               ₹{walletStats.pending.toLocaleString()}
@@ -1037,7 +1150,7 @@ const ExpensesContent: React.FC = () => {
 
           <div className="bg-gradient-to-br from-white to-white rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
             <div className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Remaining
+              Remaining (Current Period)
             </div>
             <div className="text-3xl font-black text-black">
               ₹{walletStats.remaining.toLocaleString()}
@@ -1566,6 +1679,13 @@ const ExpensesContent: React.FC = () => {
           employees={employees}
           onSave={handleSaveEditSubtask}
           onCancel={cancelEditSubtask}
+        />
+      )}
+
+      {showInitialAmountHistory && (
+        <InitialAmountHistoryView
+          history={initialAmountHistory}
+          onClose={() => setShowInitialAmountHistory(false)}
         />
       )}
     </div>
