@@ -1,5 +1,3 @@
-// ./api/employees (GET function)
-
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
@@ -7,17 +5,18 @@ import Employee from "@/models/Employee";
 export async function GET(request: Request) {
   try {
     await connectDB();
+
     const url = new URL(request.url);
-    const name = url.searchParams.get("name");   // exact match (old flow)
-    const search = url.searchParams.get("search"); // partial match (new flow)
+    const name = url.searchParams.get("name");
+    const search = url.searchParams.get("search");
 
-    // Fields required by frontend
     const selectFields =
-      "name department role empId team category departmentName department_name";
+      "empId name displayName department role team category isOnline lastSeen";
 
-    // ✅ 1) Partial search (for suggestions / filtering)
+    // 1️⃣ Partial search
     if (search) {
       const regex = new RegExp(search, "i");
+
       const employees = await Employee.find(
         {
           $or: [{ name: regex }, { empId: regex }],
@@ -30,7 +29,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, employees });
     }
 
-    // ✅ 2) Single employee by exact name (existing behaviour)
+    // 2️⃣ Exact name match
     if (name) {
       const employee = await Employee.findOne(
         { name: { $regex: `^${name}$`, $options: "i" } },
@@ -43,10 +42,11 @@ export async function GET(request: Request) {
           { status: 404 }
         );
       }
+
       return NextResponse.json({ success: true, employee });
     }
 
-    // ✅ 3) Default: return all employees (for dropdown list)
+    // 3️⃣ All employees (dropdown)
     const employees = await Employee.find({}, selectFields)
       .sort({ name: 1 })
       .lean();

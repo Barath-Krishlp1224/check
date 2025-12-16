@@ -5,9 +5,12 @@ export type Role = "Admin" | "Manager" | "TeamLead" | "Employee";
 export interface IEmployee extends Document {
   empId: string;
   name: string;
+  displayName?: string;
+
   fatherName: string;
   dateOfBirth: string;
   joiningDate: string;
+
   team:
     | "Founders"
     | "Manager"
@@ -19,17 +22,23 @@ export interface IEmployee extends Document {
     | "Admin & Operations"
     | "Housekeeping"
     | "TL Accountant";
+
   category?: string;
   subCategory?: string;
   department: string;
+
   photo?: string;
   phoneNumber: string;
   mailId: string;
+
   accountNumber: string;
   ifscCode: string;
-  password: string;
+
+  // 🔑 MUST be optional in TS (deleted in toJSON)
+  password?: string;
 
   employmentType: "Fresher" | "Experienced";
+
   aadharDoc?: string;
   panDoc?: string;
   tenthMarksheet?: string;
@@ -38,18 +47,25 @@ export interface IEmployee extends Document {
   experienceCertificate?: string;
 
   role: Role;
-  createdAt?: Date;
-  updatedAt?: Date;
 
-  // 🔐 New fields for password reset
   resetToken?: string | null;
   resetTokenExpiry?: Date | null;
+
+  // 💬 Chat presence
+  isOnline?: boolean;
+  lastSeen?: Date;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const EmployeeSchema = new Schema<IEmployee>(
   {
     empId: { type: String, required: true, unique: true, trim: true },
+
     name: { type: String, required: true, trim: true },
+    displayName: { type: String, trim: true },
+
     fatherName: { type: String, required: true, trim: true },
     dateOfBirth: { type: String, required: true, trim: true },
     joiningDate: { type: String, required: true, trim: true },
@@ -106,7 +122,8 @@ const EmployeeSchema = new Schema<IEmployee>(
     accountNumber: { type: String, required: true, trim: true },
     ifscCode: { type: String, required: true, trim: true },
 
-    password: { type: String, required: true },
+    // 🔒 NEVER exposed
+    password: { type: String, required: true, select: false },
 
     employmentType: {
       type: String,
@@ -128,19 +145,25 @@ const EmployeeSchema = new Schema<IEmployee>(
       required: true,
     },
 
-    // 🔐 Password reset fields
-    resetToken: {
-      type: String,
-      default: null,
-    },
-    resetTokenExpiry: {
-      type: Date,
-      default: null,
-    },
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null },
+
+    // 💬 Chat fields
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: null },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform(_, ret) {
+        delete ret.password; // ✅ TS-safe now
+        return ret;
+      },
+    },
+  }
 );
 
+// ✅ Prevent Next.js model overwrite
 delete (mongoose.models as any).Employee;
 
 const Employee: Model<IEmployee> =
