@@ -14,7 +14,6 @@ import {
   RotateCcw,
 } from "lucide-react";
 
-// --- Type Definitions ---
 type PunchType = "IN" | "OUT";
 type AttendanceMode =
   | "IN_OFFICE"
@@ -25,14 +24,15 @@ type AttendanceMode =
 interface AttendanceRecord {
   punchInTime?: string;
   punchOutTime?: string;
+  punchInMode?: AttendanceMode;
+  punchOutMode?: AttendanceMode;
+  mode?: AttendanceMode; 
 }
 
-// --- Component ---
 const Page = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // User/State Data
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [record, setRecord] = useState<AttendanceRecord | null>(null);
@@ -40,22 +40,17 @@ const Page = () => {
   const [punchType, setPunchType] = useState<PunchType | null>(null);
   const [mode, setMode] = useState<AttendanceMode>("IN_OFFICE");
 
-  // Camera & Location Status
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,
   });
 
-  // Submission/Confirmation State
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [submitStatus, setSubmitStatus] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   
-  // NEW STATE: Tracks if we are in the confirmation step
   const [isConfirming, setIsConfirming] = useState(false); 
-
-  // --- Utility Functions ---
 
   const formatTime = (val?: string) => {
     if (!val) return "—";
@@ -145,8 +140,6 @@ const Page = () => {
   };
 
 
-  // --- Data Fetching Logic (Memoized for loadTodayAttendance) ---
-
   const loadTodayAttendance = useCallback(async (empId: string, currentMode: AttendanceMode) => {
     setLoadingRecord(true);
     try {
@@ -157,17 +150,14 @@ const Page = () => {
       });
 
       const json = await res.json();
-      setRecord(json.record || null);
+      setRecord(json.record || json.data || json || null);
     } catch (e) {
-      console.error(e);
+      console.error("Error loading attendance:", e);
     } finally {
       setLoadingRecord(false);
     }
   }, []);
 
-  // --- Effects (Side Effects) ---
-
-  // Load stored user info
   useEffect(() => {
     const id = localStorage.getItem("userEmpId");
     const storedName = localStorage.getItem("userName");
@@ -176,7 +166,6 @@ const Page = () => {
     setName(storedName);
   }, []);
 
-  // Start camera
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -208,7 +197,6 @@ const Page = () => {
     };
   }, []);
 
-  // Get location
   useEffect(() => {
     if (!("geolocation" in navigator)) {
       setSubmitStatus("Geolocation is not supported in this browser.");
@@ -229,18 +217,11 @@ const Page = () => {
     );
   }, []);
 
-  // Fetch today's attendance for this mode
   useEffect(() => {
     if (!employeeId) return;
     loadTodayAttendance(employeeId, mode);
   }, [employeeId, mode, loadTodayAttendance]);
 
-  // --- Handler Functions ---
-
-  /**
-   * Captures the image and moves to the confirmation step.
-   * It does NOT submit to the database yet.
-   */
   const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) {
       setSubmitStatus("Camera is not ready.");
@@ -262,7 +243,6 @@ const Page = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    // Set canvas dimensions based on video stream to avoid stretching
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
 
@@ -273,22 +253,16 @@ const Page = () => {
       return;
     }
 
-    // Draw the current video frame onto the canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert canvas image to a Data URL
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     
     setPreviewImage(dataUrl);
     setSubmitLoading(false);
-    setIsConfirming(true); // Move to confirmation step
+    setIsConfirming(true);
   };
 
 
-  /**
-   * Submits the captured image and data to the API.
-   * Only called from the confirmation step.
-   */
   const handleConfirmSubmit = async () => {
     if (!previewImage || !employeeId || !punchType) {
       setSubmitStatus("Missing data for submission. Please try capturing again.");
@@ -321,7 +295,6 @@ const Page = () => {
         setSubmitStatus(
           `Attendance ${punchType === "IN" ? "Punch In" : "Punch Out"} recorded successfully! ✅`
         );
-        // Reload today's record to update the display
         await loadTodayAttendance(employeeId, mode);
       }
     } catch (error) {
@@ -329,15 +302,12 @@ const Page = () => {
       setSubmitStatus("Something went wrong while submitting attendance.");
     } finally {
       setSubmitLoading(false);
-      setIsConfirming(false); // Exit confirmation view
-      setPreviewImage(null); // Clear the preview image
+      setIsConfirming(false);
+      setPreviewImage(null);
     }
   };
 
 
-  /**
-   * Discards the captured image and returns to the camera view.
-   */
   const handleCancelCapture = () => {
     setPreviewImage(null);
     setIsConfirming(false);
@@ -351,8 +321,6 @@ const Page = () => {
     day: 'numeric' 
   });
 
-  // --- Confirmation Modal/View ---
-
   const ConfirmationView = () => (
     <div className="absolute inset-0 bg-white bg-opacity-95 backdrop-blur-sm p-4 sm:p-6 rounded-lg flex flex-col justify-center items-center z-10">
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 text-center flex items-center">
@@ -363,7 +331,6 @@ const Page = () => {
         Please verify the image and details before confirming the **{punchType === "IN" ? "PUNCH IN" : "PUNCH OUT"}** for **{getModeLabel(mode)}**.
       </p>
 
-      {/* Confirmation Details */}
       <div className="w-full max-w-sm bg-gray-50 border border-gray-200 p-3 rounded-lg mb-4 text-sm">
         <div className="flex justify-between py-1">
           <span className="font-medium text-gray-700">Type:</span>
@@ -381,7 +348,6 @@ const Page = () => {
         </div>
       </div>
       
-      {/* Captured Image Preview */}
       {previewImage && (
         <img
           src={previewImage}
@@ -391,7 +357,6 @@ const Page = () => {
         />
       )}
 
-      {/* Action Buttons */}
       <div className="w-full max-w-sm space-y-3">
         <button
           onClick={handleConfirmSubmit}
@@ -427,11 +392,9 @@ const Page = () => {
     </div>
   );
 
-  // --- Main Render ---
   return (
     <div className="min-h-screen bg-white p-2 sm:p-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="text-center mt-40 mb-3 sm:mb-4">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Attendance System</h1>
           <p className="text-xs sm:text-sm text-gray-600 mt-1">{currentDate}</p>
@@ -447,9 +410,7 @@ const Page = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-3">
-          {/* Left Side - Small Info Boxes */}
           <div className="lg:col-span-1 space-y-2 sm:space-y-3">
-            {/* User Info Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -462,7 +423,6 @@ const Page = () => {
               </div>
             </div>
 
-            {/* Mode Selection Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <div className="flex items-center mb-2">
                 <Calendar className="w-4 h-4 text-gray-600 mr-2" />
@@ -481,7 +441,6 @@ const Page = () => {
               </select>
             </div>
 
-            {/* Punch Type Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <div className="flex items-center mb-2">
                 <Clock className="w-4 h-4 text-gray-600 mr-2" />
@@ -520,27 +479,113 @@ const Page = () => {
               </div>
             </div>
 
-            {/* Today's Status Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
-              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">Today's Status</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Punch In:</span>
-                  <span className="text-xs font-semibold text-gray-900">{formatTime(record?.punchInTime)}</span>
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Clock className="w-4 h-4 mr-1.5" />
+                Today's History
+              </h3>
+              
+              {loadingRecord ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-xs text-gray-600">Loading...</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Punch Out:</span>
-                  <span className="text-xs font-semibold text-gray-900">{formatTime(record?.punchOutTime)}</span>
+              ) : !record || (!record.punchInTime && !record.punchOutTime) ? (
+                <div className="text-center py-4">
+                  <AlertTriangle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500 font-medium">No punch records yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Please punch in to start</p>
                 </div>
-                <div className="pt-2 border-t border-gray-100">
-                  <p className={`text-xs font-semibold ${getStatusColor(record)}`}>
-                    {getStatusLabel(record)}
-                  </p>
+              ) : (
+                <div className="space-y-3">
+                  {record.punchInTime && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
+                      <div className="flex items-start justify-between mb-1.5">
+                        <div className="flex items-center">
+                          <CheckCircle className="w-4 h-4 text-green-600 mr-1.5 flex-shrink-0" />
+                          <span className="text-xs font-bold text-green-700">PUNCH IN</span>
+                        </div>
+                        <span className="text-xs font-semibold text-green-900">
+                          {formatTime(record.punchInTime)}
+                        </span>
+                      </div>
+                      <div className="ml-5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-green-600">Mode:</span>
+                          <span className="text-xs font-medium text-green-900">
+                            {getModeLabel((record.punchInMode || record.mode || mode) as AttendanceMode)}
+                          </span>
+                        </div>
+                        {(() => {
+                          const d = new Date(record.punchInTime!);
+                          const h = d.getHours();
+                          const m = d.getMinutes();
+                          const after935 = h > 9 || (h === 9 && m > 35);
+                          const after930 = h > 9 || (h === 9 && m >= 30);
+                          
+                          return (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-green-600">Status:</span>
+                              <span className={`text-xs font-semibold ${
+                                after935 ? 'text-red-600' : after930 ? 'text-amber-600' : 'text-green-600'
+                              }`}>
+                                {after935 ? '⚠️ Late' : after930 ? '⏰ Grace' : '✅ On Time'}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {record.punchOutTime && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                      <div className="flex items-start justify-between mb-1.5">
+                        <div className="flex items-center">
+                          <XCircle className="w-4 h-4 text-blue-600 mr-1.5 flex-shrink-0" />
+                          <span className="text-xs font-bold text-blue-700">PUNCH OUT</span>
+                        </div>
+                        <span className="text-xs font-semibold text-blue-900">
+                          {formatTime(record.punchOutTime)}
+                        </span>
+                      </div>
+                      <div className="ml-5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-blue-600">Mode:</span>
+                          <span className="text-xs font-medium text-blue-900">
+                            {getModeLabel((record.punchOutMode || record.mode || mode) as AttendanceMode)}
+                          </span>
+                        </div>
+                        {(() => {
+                          const d = new Date(record.punchOutTime!);
+                          const h = d.getHours();
+                          const m = d.getMinutes();
+                          const before630 = h < 18 || (h === 18 && m < 30);
+                          
+                          return (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-blue-600">Status:</span>
+                              <span className={`text-xs font-semibold ${
+                                before630 ? 'text-amber-600' : 'text-green-600'
+                              }`}>
+                                {before630 ? '⚠️ Early' : '✅ On Time'}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className={`text-xs font-semibold text-center ${getStatusColor(record)}`}>
+                      {getStatusLabel(record)}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Location Box */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <div className="flex items-start">
                 <MapPin className="w-4 h-4 text-gray-600 mr-2 mt-0.5 flex-shrink-0" />
@@ -556,7 +601,6 @@ const Page = () => {
             </div>
           </div>
 
-          {/* Right Side - Large Camera View */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 relative min-h-[400px]">
               
@@ -574,7 +618,6 @@ const Page = () => {
                 </div>
               </div>
 
-              {/* Large Camera View */}
               <div className="relative mb-3">
                 <video
                   ref={videoRef}
@@ -585,12 +628,11 @@ const Page = () => {
                 />
               </div>
 
-              {/* Capture Button */}
               <button
                 onClick={handleCapture}
-                disabled={submitLoading || isConfirming}
+                disabled={submitLoading || isConfirming || !employeeId || !punchType || !isCameraReady}
                 className={`w-full py-3 rounded-lg font-bold text-white text-sm sm:text-base shadow-md transition-all ${
-                  submitLoading || isConfirming
+                  submitLoading || isConfirming || !employeeId || !punchType || !isCameraReady
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 active:scale-95"
                 }`}
@@ -608,7 +650,6 @@ const Page = () => {
                 )}
               </button>
 
-              {/* Status Message */}
               {submitStatus && (
                 <div className={`mt-3 p-3 rounded-lg ${
                   submitStatus.includes("✅") 

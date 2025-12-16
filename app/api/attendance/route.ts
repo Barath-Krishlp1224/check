@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Attendance, { AttendanceMode } from "@/models/Attendance";
-
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 export const runtime = "nodejs";
@@ -10,16 +9,14 @@ export const dynamic = "force-dynamic";
 
 type PunchType = "IN" | "OUT";
 
-// 👉 MAIN OFFICE LOCATION (your coordinates)
+// Main Office Location and Distance Limit
 const OFFICE_LOCATION = {
   lat: 11.93899,
   lng: 79.81667,
 };
+const MAX_OFFICE_DISTANCE_METERS = 200;
 
-// 👉 Max allowed distance for IN_OFFICE punches (in meters)
-const MAX_OFFICE_DISTANCE_METERS = 200; // adjust as you like
-
-// ✅ Env setup
+// Environment Setup
 const S3_REGION = process.env.S3_REGION || process.env.AWS_REGION;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const ACCESS_KEY_ID =
@@ -27,7 +24,6 @@ const ACCESS_KEY_ID =
 const SECRET_ACCESS_KEY =
   process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 
-// 🔹 Quick sanity check – fail early if misconfigured
 function ensureS3Env() {
   if (!S3_REGION) throw new Error("S3 region is not configured.");
   if (!S3_BUCKET_NAME) throw new Error("S3 bucket name is not configured.");
@@ -52,23 +48,18 @@ function getS3Client() {
   return s3;
 }
 
-/**
- * 🔹 Get today's date in IST as "YYYY-MM-DD"
- * This matches Hikvision's dateKey: log.time.slice(0, 10)
- */
 function getTodayISTDateString(): string {
   const now = new Date();
-  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   const istNow = new Date(now.getTime() + IST_OFFSET_MS);
 
   const year = istNow.getUTCFullYear();
   const month = (istNow.getUTCMonth() + 1).toString().padStart(2, "0");
   const day = istNow.getUTCDate().toString().padStart(2, "0");
 
-  return `${year}-${month}-${day}`; // "YYYY-MM-DD"
+  return `${year}-${month}-${day}`;
 }
 
-// 🔹 Distance helpers (Haversine formula)
 function toRad(deg: number) {
   return (deg * Math.PI) / 180;
 }
@@ -79,7 +70,7 @@ function haversineDistanceMeters(
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371000; // Earth radius in meters
+  const R = 6371000;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
 
@@ -94,7 +85,6 @@ function haversineDistanceMeters(
   return R * c;
 }
 
-// 🔹 Utility: upload base64 Data URL to S3 and return URL
 async function uploadImageDataUrlToS3(
   dataUrl: string,
   keyPrefix: string,
@@ -158,7 +148,6 @@ export async function POST(req: Request) {
       longitude,
       punchType,
       mode,
-      // optional extras (currently unused, but kept for future)
       role,
       team,
       name,
@@ -174,7 +163,6 @@ export async function POST(req: Request) {
       name?: string;
     };
 
-    // Basic validation
     if (!employeeId || !imageData || !punchType) {
       return NextResponse.json(
         { error: "employeeId, imageData and punchType are required." },
@@ -191,10 +179,8 @@ export async function POST(req: Request) {
 
     const attendanceMode: AttendanceMode = mode || "IN_OFFICE";
 
-    // 🔹 This is the same date style used in Hikvision aggregation: "YYYY-MM-DD"
     const todayDateStr = getTodayISTDateString();
 
-    // 👉 LOCATION VALIDATION for IN_OFFICE
     let distanceFromOfficeMeters: number | null = null;
 
     if (attendanceMode === "IN_OFFICE") {
@@ -227,7 +213,6 @@ export async function POST(req: Request) {
         );
       }
     } else {
-      // For other modes, we just compute distance if we have location (for info)
       if (latitude != null && longitude != null) {
         distanceFromOfficeMeters = haversineDistanceMeters(
           latitude,
@@ -241,7 +226,6 @@ export async function POST(req: Request) {
     const modeFolder = attendanceMode.toLowerCase();
     const keyPrefix = `attendance/${todayDateStr}/${employeeId}/${modeFolder}`;
 
-    // 🔹 Upload image to S3
     let imageUrl: string;
     try {
       imageUrl = await uploadImageDataUrlToS3(
@@ -260,7 +244,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔹 Find or create attendance doc for this employee + date + mode
+    // CRITICAL: Query using the date STRING
     let attendance = await Attendance.findOne({
       employeeId,
       date: todayDateStr,
@@ -270,7 +254,7 @@ export async function POST(req: Request) {
     if (!attendance) {
       attendance = new Attendance({
         employeeId,
-        date: todayDateStr,
+        date: todayDateStr, // Use date STRING here
         mode: attendanceMode,
       });
     }
@@ -324,7 +308,7 @@ export async function POST(req: Request) {
         attendanceId: attendance._id,
         data: {
           employeeId: attendance.employeeId,
-          date: attendance.date, // "YYYY-MM-DD" string, consistent with Hikvision data
+          date: attendance.date,
           mode: attendance.mode,
           punchInTime: attendance.punchInTime,
           punchOutTime: attendance.punchOutTime,
@@ -332,7 +316,7 @@ export async function POST(req: Request) {
           punchOutImage: attendance.punchOutImage,
           punchInLatitude: attendance.punchInLatitude ?? null,
           punchInLongitude: attendance.punchInLongitude ?? null,
-          punchOutLatitude: attendance.punchOutLatitude ?? null,
+          punchOutLatitude: attendance.punchOutLongitude ?? null,
           punchOutLongitude: attendance.punchOutLongitude ?? null,
           distanceFromOfficeMeters:
             distanceFromOfficeMeters != null

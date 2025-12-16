@@ -1,267 +1,65 @@
-// app/api/attendance/route.ts
+// app/api/attendance/today/route.ts
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import Attendance, { AttendanceMode } from "@/models/Attendance";
-
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import Attendance from "@/models/Attendance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type PunchType = "IN" | "OUT";
-
-// ✅ Env setup
-const S3_REGION = process.env.S3_REGION || process.env.AWS_REGION;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
-const ACCESS_KEY_ID =
-  process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
-const SECRET_ACCESS_KEY =
-  process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
-
-// 🔹 Quick sanity check – fail early if misconfigured
-function ensureS3Env() {
-  if (!S3_REGION) throw new Error("S3 region is not configured.");
-  if (!S3_BUCKET_NAME) throw new Error("S3 bucket name is not configured.");
-  if (!ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
-    throw new Error("S3/AWS access key or secret is not configured.");
-  }
-}
-
-let s3: S3Client | null = null;
-
-function getS3Client() {
-  if (!s3) {
-    ensureS3Env();
-    s3 = new S3Client({
-      region: S3_REGION!,
-      credentials: {
-        accessKeyId: ACCESS_KEY_ID!,
-        secretAccessKey: SECRET_ACCESS_KEY!,
-      },
-    });
-  }
-  return s3;
-}
-
-// 🔹 Utility: get only the date (00:00:00)
-function getTodayDateOnly() {
+/**
+ * 🔹 Get today's date in IST as "YYYY-MM-DD"
+ * Must match the date format used in /api/attendance/route.ts
+ */
+function getTodayISTDateString(): string {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(now.getTime() + IST_OFFSET_MS);
+
+  const year = istNow.getUTCFullYear();
+  const month = (istNow.getUTCMonth() + 1).toString().padStart(2, "0");
+  const day = istNow.getUTCDate().toString().padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
-// 🔹 Utility: upload base64 Data URL to S3 and return URL
-async function uploadImageDataUrlToS3(
-  dataUrl: string,
-  keyPrefix: string,
-  punchType: PunchType
-): Promise<string> {
-  const [meta, base64Data] = dataUrl.split(",");
-  if (!base64Data) {
-    throw new Error("Invalid image data URL: missing base64 part.");
-  }
-
-  const mimeMatch = meta.match(/data:(.*);base64/);
-  const contentType = mimeMatch?.[1] || "image/jpeg";
-
-  const buffer = Buffer.from(base64Data, "base64");
-
-  const fileExtension =
-    contentType === "image/png"
-      ? "png"
-      : contentType === "image/webp"
-      ? "webp"
-      : "jpg";
-
-  // file names:
-  // punchin-<timestamp>.ext  or  punchout-<timestamp>.ext
-  const fileName =
-    punchType === "IN"
-      ? `punchin-${Date.now()}.${fileExtension}`
-      : `punchout-${Date.now()}.${fileExtension}`;
-
-  const key = `${keyPrefix}/${fileName}`;
-
-  const client = getS3Client();
-
-  const command = new PutObjectCommand({
-    Bucket: S3_BUCKET_NAME,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType,
-  });
-
-  try {
-    await client.send(command);
-  } catch (err: any) {
-    console.error("S3 PutObject error:", err);
-    throw new Error(
-      `S3 upload failed: ${err?.message || "Unknown S3 error"}`
-    );
-  }
-
-  const url = `https://${S3_BUCKET_NAME}.s3.${S3_REGION}.amazonaws.com/${key}`;
-  return url;
-}
-
+/**
+ * API to fetch the attendance record for a specific employee and mode for today.
+ */
 export async function POST(req: Request) {
   try {
     await connectDB();
 
     const body = await req.json();
-    const {
-      employeeId,
-      imageData,
-      latitude,
-      longitude,
-      punchType,
-      mode, // new
-      // optional extras
-      role,
-      team,
-      name,
-    } = body as {
-      employeeId?: string;
-      imageData?: string;
-      latitude?: number | null;
-      longitude?: number | null;
-      punchType?: PunchType;
-      mode?: AttendanceMode;
-      role?: string;
-      team?: string;
-      name?: string;
-    };
+    const { employeeId, mode } = body;
 
-    // Basic validation
-    if (!employeeId || !imageData || !punchType) {
+    if (!employeeId || !mode) {
       return NextResponse.json(
-        { error: "employeeId, imageData and punchType are required." },
+        { error: "employeeId and mode are required." },
         { status: 400 }
       );
     }
 
-    if (punchType !== "IN" && punchType !== "OUT") {
-      return NextResponse.json(
-        { error: "Invalid punchType. Use 'IN' or 'OUT'." },
-        { status: 400 }
-      );
-    }
+    const todayDateStr = getTodayISTDateString();
 
-    const attendanceMode: AttendanceMode = mode || "IN_OFFICE";
-
-    const today = getTodayDateOnly();
-    const dateStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
-
-    // Folder structure:
-    // attendance/YYYY-MM-DD/EMPID/in_office/...
-    const modeFolder = attendanceMode.toLowerCase(); // in_office, work_from_home, etc.
-    const keyPrefix = `attendance/${dateStr}/${employeeId}/${modeFolder}`;
-
-    // 🔹 Upload image to S3
-    let imageUrl: string;
-    try {
-      imageUrl = await uploadImageDataUrlToS3(
-        imageData,
-        keyPrefix,
-        punchType
-      );
-    } catch (uploadErr: any) {
-      console.error("S3 upload error (wrapped):", uploadErr);
-      return NextResponse.json(
-        {
-          error: "Failed to upload image to storage.",
-          details: uploadErr?.message || "Unknown error",
-        },
-        { status: 500 }
-      );
-    }
-
-    // 🔹 Find or create attendance doc for this employee + date + mode
-    let attendance = await Attendance.findOne({
+    // CRITICAL FIX: Query using the date STRING which is consistent with the submission route
+    const record = await Attendance.findOne({
       employeeId,
-      date: today,
-      mode: attendanceMode,
+      date: todayDateStr,
+      mode: mode,
+    }).select(
+      "employeeId date mode punchInTime punchOutTime punchInMode punchOutMode punchInLatitude punchInLongitude punchOutLatitude punchOutLongitude"
+    );
+
+    return NextResponse.json({
+      record: record ? record.toJSON() : null,
     });
 
-    if (!attendance) {
-      attendance = new Attendance({
-        employeeId,
-        date: today,
-        mode: attendanceMode,
-      });
-    }
-
-    const now = new Date();
-
-    if (punchType === "IN") {
-      if (attendance.punchInTime) {
-        return NextResponse.json(
-          { error: "Already punched in for today for this mode." },
-          { status: 400 }
-        );
-      }
-
-      attendance.punchInTime = now;
-      attendance.punchInImage = imageUrl;
-      attendance.punchInLatitude = latitude ?? undefined;
-      attendance.punchInLongitude = longitude ?? undefined;
-    } else if (punchType === "OUT") {
-      if (!attendance.punchInTime) {
-        return NextResponse.json(
-          {
-            error:
-              "No punch in record found for today for this mode. Please punch in first.",
-          },
-          { status: 400 }
-        );
-      }
-
-      if (attendance.punchOutTime) {
-        return NextResponse.json(
-          { error: "Already punched out for today for this mode." },
-          { status: 400 }
-        );
-      }
-
-      attendance.punchOutTime = now;
-      attendance.punchOutImage = imageUrl;
-      attendance.punchOutLatitude = latitude ?? undefined;
-      attendance.punchOutLongitude = longitude ?? undefined;
-    }
-
-    await attendance.save();
-
-    return NextResponse.json(
-      {
-        message:
-          punchType === "IN"
-            ? "Punch In recorded successfully."
-            : "Punch Out recorded successfully.",
-        attendanceId: attendance._id,
-        data: {
-          employeeId: attendance.employeeId,
-          date: attendance.date,
-          mode: attendance.mode,
-          punchInTime: attendance.punchInTime,
-          punchOutTime: attendance.punchOutTime,
-          punchInImage: attendance.punchInImage,
-          punchOutImage: attendance.punchOutImage,
-        },
-      },
-      { status: 201 }
-    );
   } catch (err: any) {
-    console.error("Error saving attendance:", err);
-
-    if (err.code === 11000) {
-      return NextResponse.json(
-        { error: "Attendance record already exists for today for this mode." },
-        { status: 409 }
-      );
-    }
+    console.error("Error fetching today's attendance:", err);
 
     return NextResponse.json(
       {
-        error: "Internal Server Error",
+        error: "Internal Server Error during fetch.",
         details: err?.message || "Unknown error",
       },
       { status: 500 }
