@@ -106,7 +106,7 @@ const Bills: React.FC = () => {
   const overdueBills = filteredBills.filter(b => isOverdue(b.dueDate, b.paid));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+    <div className="min-h-screen bg-white py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       <div className="max-w-7xl w-full">
         <div className="mb-8">
           <div className="flex flex-col gap-4 mb-4">
