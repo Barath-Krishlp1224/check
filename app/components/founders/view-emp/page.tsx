@@ -345,7 +345,7 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
   const allCards: StatCard[] = [
     // This card is non-clickable and now shows the calculated total
     { 
-      label: "Total Staff (Excl. Founders)", 
+      label: "Total Staff", 
       value: totalStaffExclFounders, 
       icon: "/1.png", 
       sortKey: "A",
@@ -374,8 +374,8 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
     <div className={`mt-8 mb-12 transition-all duration-700 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
       {/* Changed accent color from indigo-600 to gray-800 */}
       <h2 className="text-4xl font-bold text-gray-800 text-center mb-10 flex items-center justify-center gap-2">
-        <TrendingUp className="w-8 h-8 text-gray-800" /> 
-        Organization Staff Count & Directory Access
+        
+        Overall Staff Count
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
         {statsCards.map((card, index) => {
@@ -419,7 +419,7 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
               {isClickable && (
                 // Changed text-indigo-500 to text-gray-600
                 <p className="mt-2 text-xs font-semibold text-gray-600">
-                  Click to view staff list
+                  Click to view 
                 </p>
               )}
             </motion.div>
@@ -674,11 +674,11 @@ export default function ViewEmpPage() {
         </div>
         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           {/* Changed indigo accent to gray-800 */}
-          <button type="button" onClick={() => setIsEditing(true)} className="flex-1 sm:flex-none group px-4 py-2 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
+          <button type="button" onClick={() => setIsEditing(true)} className="flex-1 mt-[20%] sm:flex-none group px-4 py-2 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
             <Edit2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
             Edit
           </button>
-          <button type="button" onClick={handleDelete} className="flex-1 sm:flex-none group px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
+          <button type="button" onClick={handleDelete} className="flex-1 sm:flex-none mt-[20%] group px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
             <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
             Delete
           </button>
@@ -1004,7 +1004,7 @@ export default function ViewEmpPage() {
         <AnimatePresence>
           {selectedEmployee && (
             <motion.div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} tabIndex={-1}>
-              <motion.div className="bg-white text-gray-900 rounded-2xl max-w-4xl w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <motion.div className="bg-white text-gray-900 rounded-2xl max-w-4xl w-full p-6 sm:p-8 relative max-h-[70vh] overflow-y-auto" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
                 <button type="button" onClick={handleCloseDetail} className="absolute top-3 right-3 text-gray-600 hover:text-red-500 text-lg p-2 rounded-full hover:bg-gray-100 transition" disabled={loading}>
                   <X className="w-6 h-6" />
                 </button>

@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
-// ✅ FIX: Import Task from the shared types file, not the parent page.
-import { Task } from './types'; 
+import { Task } from './types';
 import {
     DragDropContext,
     Droppable,
@@ -34,7 +33,9 @@ const getProgressBarColor = (completion: number) => {
     return 'bg-red-500';
 };
 
-const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task) => void }> = ({ task, index, openTaskModal }) => (
+const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task) => void }> = ({ task, index, openTaskModal }) => {
+    const displayAssignee = task.assigneeNames && task.assigneeNames.length > 0 ? task.assigneeNames.join(', ') : 'Unassigned';
+    return (
     <Draggable draggableId={task._id} index={index}>
         {(provided, snapshot) => (
             <div
@@ -45,18 +46,15 @@ const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task
                     ${snapshot.isDragging ? 'scale-[1.03] shadow-md' : 'hover:shadow-md hover:scale-[1.02]'}`}
                 onClick={() => openTaskModal(task)}
             >
-                {/* Use optional chaining (?) for project/projectId since they might be optional now */}
                 <div className="flex items-start justify-between mb-2">
                     <p className="text-sm font-semibold text-slate-900">{task.project}</p>
                 </div>
 
-                <p className="text-xs text-slate-500 mb-2">{task.projectId}</p> 
+                <p className="text-xs text-slate-500 mb-2">{task.projectId}</p>
 
                 <div className="flex items-center justify-between mt-3">
                     <p className="text-xs text-slate-700">
-                        <span className="text-slate-500">Assignee:</span> 
-                        {/* FIX: Use assigneeNames with optional chaining and fallback */}
-                        {task.assigneeNames?.join(', ') || 'Unassigned'}
+                        <span className="text-slate-500">Assignee:</span> {displayAssignee}
                     </p>
                     <div className="bg-gray-100 text-slate-900 text-xs px-3 py-1 rounded-full font-medium">
                         {task.completion}%
@@ -72,14 +70,13 @@ const TaskCard: React.FC<{ task: Task, index: number, openTaskModal: (task: Task
             </div>
         )}
     </Draggable>
-);
+)};
 
 const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onTaskStatusChange }) => {
 
     const tasksByStatus = useMemo(() => {
         return tasks.reduce((acc, task) => {
-            // Use optional chaining for status, defaulting to 'Backlog'
-            const status = task.status || 'Backlog'; 
+            const status = task.status || 'Backlog';
             if (!acc[status]) acc[status] = [];
             acc[status].push(task);
             return acc;
@@ -106,7 +103,6 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
                                 className="flex-shrink-0 w-80"
                             >
 
-                                {/* Column Header (1px grey outline) */}
                                 <div className="bg-white text-slate-900 p-4 rounded-t-xl border border-gray-300 shadow-sm">
                                     <div className="flex items-center justify-between">
                                         <h3 className="font-semibold text-base">{column.title}</h3>
@@ -116,7 +112,6 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ tasks, openTaskModal, onT
                                     </div>
                                 </div>
 
-                                {/* Column body (1px grey outline) */}
                                 <div 
                                     className={`space-y-3 p-4 min-h-[500px] rounded-b-xl border border-gray-300 transition-all duration-200
                                         ${snapshot.isDraggingOver ? 'bg-white shadow-md' : 'bg-white'}`}

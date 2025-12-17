@@ -12,7 +12,9 @@ import HolidaysModal from "./components/HolidaysModal";
 import SubtaskModal from "./components/SubtaskModal";
 import EmpLeave from "../../emp-leave/page";
 import AttendancePage from "../../attendance/emp/page";
-import ChatComponent from "../../chat/page";
+// import ChatComponent from "../../chat/page"; // <-- Remove this import if you replace it
+// Assume IframeComponent is in the same directory for this example
+import IframeComponent from "./components/IframeComponent"; // <-- New Import
 import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
@@ -622,7 +624,8 @@ const TasksPage: React.FC = () => {
           ) : currentScreen === "attendance" ? (
             <AttendancePage />
           ) : (
-            <ChatComponent />
+            // Swapping the original ChatComponent with the IframeComponent
+            <IframeComponent url="https://check-seven-steel.vercel.app/" />
           )}
         </div>
       </div>

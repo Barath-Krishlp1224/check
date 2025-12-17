@@ -195,20 +195,13 @@ const TasksPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const accountsEmployees = useMemo(
-    () =>
-      employees.filter((e) => {
-        const team = (e as any).team?.toLowerCase?.();
-        return team === "accounts";
-      }),
+  const techEmployees = useMemo(
+    () => employees,
     [employees]
   );
 
   const visibleTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      const dept = (task.department || "").toLowerCase();
-      return dept.includes("accounts");
-    });
+    return tasks;
   }, [tasks]);
 
   const uniqueProjects = useMemo(() => {
@@ -643,7 +636,7 @@ const TasksPage: React.FC = () => {
           <>
             <TaskTableHeader
               uniqueProjects={uniqueProjects}
-              employees={accountsEmployees}
+              employees={techEmployees}
               downloadFilterType={downloadFilterType}
               setDownloadFilterType={setDownloadFilterType}
               downloadFilterValue={downloadFilterValue}
@@ -659,11 +652,10 @@ const TasksPage: React.FC = () => {
                     <AlertCircle className="w-8 h-8 text-slate-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                    No Accounts tasks found
+                    No tasks found
                   </h3>
                   <p className="text-slate-500">
-                    Try adjusting filters or check if those departments are
-                    set correctly on tasks.
+                    Try adjusting filters or search criteria.
                   </p>
                 </div>
               </div>
@@ -703,7 +695,7 @@ const TasksPage: React.FC = () => {
                 isEditing={isEditing}
                 draftTask={draftTask}
                 subtasks={subtasks}
-                employees={accountsEmployees}
+                employees={techEmployees}
                 currentProjectPrefix={currentProjectPrefix}
                 allTaskStatuses={allTaskStatuses}
                 handleEdit={handleEdit}

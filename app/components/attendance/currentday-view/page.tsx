@@ -42,10 +42,9 @@ function getDistanceMeters(
 const getTodayDateKey = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
 const extractDateKey = (value?: string | null) => {
-    if (!value) return "";
-    return value.slice(0, 10); // Extracts YYYY-MM-DD
+  if (!value) return "";
+  return value.slice(0, 10); // Extracts YYYY-MM-DD
 };
-
 
 interface AttendanceRecord {
   _id: string;
@@ -63,7 +62,7 @@ interface AttendanceRecord {
 
 const AttendanceRecords: React.FC = () => {
   const todayDateKey = getTodayDateKey();
-  
+
   const [allAttendance, setAllAttendance] = useState<AttendanceRecord[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
@@ -87,7 +86,8 @@ const AttendanceRecords: React.FC = () => {
         // Sort by date descending (latest first)
         records.sort(
           (a: AttendanceRecord, b: AttendanceRecord) =>
-            new Date(extractDateKey(b.date)).getTime() - new Date(extractDateKey(a.date)).getTime()
+            new Date(extractDateKey(b.date)).getTime() -
+            new Date(extractDateKey(a.date)).getTime()
         );
 
         setAllAttendance(records);
@@ -105,16 +105,17 @@ const AttendanceRecords: React.FC = () => {
 
   // --- Filter Records to show only Today's Data ---
   const todayAttendance = useMemo(() => {
-    return allAttendance.filter(record => extractDateKey(record.date) === todayDateKey);
+    return allAttendance.filter(
+      (record) => extractDateKey(record.date) === todayDateKey
+    );
   }, [allAttendance, todayDateKey]);
-
 
   // --- Formatters and Status Helpers ---
 
   const formatDate = (value?: string) => {
     const key = extractDateKey(value);
     if (!key) return "-";
-    
+
     // Format YYYY-MM-DD to DD-MM-YYYY
     const parts = key.split("-");
     if (parts.length === 3) {
@@ -129,7 +130,11 @@ const AttendanceRecords: React.FC = () => {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
     // 12-hour format with AM/PM
-    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+    return d.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const getDuration = (record: AttendanceRecord) => {
@@ -163,50 +168,35 @@ const AttendanceRecords: React.FC = () => {
     let isGrace = false;
     let isEarlyLogout = false;
 
-    // Use the date key to create consistent comparison points in local timezone
     const refDate = new Date(`${recordDateKey}T00:00:00`);
-
-    // Target Times (9:30 AM, 9:35 AM, 6:30 PM)
     const loginTime_930 = new Date(refDate);
     loginTime_930.setHours(9, 30, 0, 0);
-
     const loginTime_935 = new Date(refDate);
     loginTime_935.setHours(9, 35, 0, 0);
-
     const logoutTime_1830 = new Date(refDate);
     logoutTime_1830.setHours(18, 30, 0, 0);
 
     if (punchInTime) {
       const punchIn = new Date(punchInTime);
-
-      if (punchIn.getTime() > loginTime_935.getTime()) {
-        isLate = true;
-      } else if (punchIn.getTime() >= loginTime_930.getTime()) {
-        isGrace = true;
-      }
+      if (punchIn.getTime() > loginTime_935.getTime()) isLate = true;
+      else if (punchIn.getTime() >= loginTime_930.getTime()) isGrace = true;
     }
 
     if (punchOutTime) {
       const punchOut = new Date(punchOutTime);
-
-      if (punchOut.getTime() < logoutTime_1830.getTime()) {
-        isEarlyLogout = true;
-      }
+      if (punchOut.getTime() < logoutTime_1830.getTime()) isEarlyLogout = true;
     }
 
     const parts: string[] = [];
-
-    if (!punchInTime && punchOutTime) {
-      parts.push("No Login");
-    } else if (punchInTime) {
+    if (!punchInTime && punchOutTime) parts.push("No Login");
+    else if (punchInTime) {
       if (isLate) parts.push("Late Login");
       else if (isGrace) parts.push("Grace Login");
       else parts.push("On Time Login");
     }
 
-    if (!punchOutTime && punchInTime) {
-      parts.push("No Logout");
-    } else if (punchOutTime) {
+    if (!punchOutTime && punchInTime) parts.push("No Logout");
+    else if (punchOutTime) {
       if (isEarlyLogout) parts.push("Early Logout");
       else parts.push("On Time Logout");
     }
@@ -215,86 +205,48 @@ const AttendanceRecords: React.FC = () => {
   };
 
   const getStatusBadgeClass = (label: string) => {
-    if (label.includes("Absent") || label.includes("No Login")) {
-      return "bg-red-100 text-red-800";
-    }
-    if (label.includes("Late") || label.includes("Early")) {
-      return "bg-yellow-100 text-yellow-800";
-    }
-    if (label.includes("Grace")) {
-      return "bg-blue-100 text-blue-800";
-    }
-    if (label.includes("On Time")) {
-      return "bg-green-100 text-green-800";
-    }
+    if (label.includes("Absent") || label.includes("No Login")) return "bg-red-100 text-red-800";
+    if (label.includes("Late") || label.includes("Early")) return "bg-yellow-100 text-yellow-800";
+    if (label.includes("Grace")) return "bg-blue-100 text-blue-800";
+    if (label.includes("On Time")) return "bg-green-100 text-green-800";
     return "bg-gray-100 text-gray-800";
   };
 
   const getModeAbbreviation = (mode?: AttendanceMode) => {
     if (!mode) return "-";
     switch (mode) {
-      case "IN_OFFICE":
-        return "IO";
-      case "WORK_FROM_HOME":
-        return "WFH";
-      case "ON_DUTY":
-        return "OD";
-      case "REGULARIZATION":
-        return "REG";
-      default:
-        return mode;
+      case "IN_OFFICE": return "IO";
+      case "WORK_FROM_HOME": return "WFH";
+      case "ON_DUTY": return "OD";
+      case "REGULARIZATION": return "REG";
+      default: return mode;
     }
   };
 
   const getModeBadgeClass = (mode?: AttendanceMode) => {
     switch (mode) {
-      case "IN_OFFICE":
-        return "bg-indigo-100 text-indigo-800";
-      case "WORK_FROM_HOME":
-        return "bg-emerald-100 text-emerald-800";
-      case "ON_DUTY":
-        return "bg-orange-100 text-orange-800";
-      case "REGULARIZATION":
-        return "bg-slate-100 text-slate-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "IN_OFFICE": return "bg-indigo-100 text-indigo-800";
+      case "WORK_FROM_HOME": return "bg-emerald-100 text-emerald-800";
+      case "ON_DUTY": return "bg-orange-100 text-orange-800";
+      case "REGULARIZATION": return "bg-slate-100 text-slate-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPunchInDistanceLabel = (record: AttendanceRecord) => {
-    if (record.punchInLatitude == null || record.punchInLongitude == null || record.mode !== "IN_OFFICE") {
-      return "-";
-    }
-    const d = getDistanceMeters(
-      OFFICE_LAT,
-      OFFICE_LON,
-      record.punchInLatitude,
-      record.punchInLongitude
-    );
+    if (record.punchInLatitude == null || record.punchInLongitude == null || record.mode !== "IN_OFFICE") return "-";
+    const d = getDistanceMeters(OFFICE_LAT, OFFICE_LON, record.punchInLatitude, record.punchInLongitude);
     return `${d} m`;
   };
 
   const getPunchInDistanceClass = (record: AttendanceRecord) => {
-    if (record.punchInLatitude == null || record.punchInLongitude == null || record.mode !== "IN_OFFICE") {
-      return "text-gray-500";
-    }
-    const d = getDistanceMeters(
-      OFFICE_LAT,
-      OFFICE_LON,
-      record.punchInLatitude,
-      record.punchInLongitude
-    );
+    if (record.punchInLatitude == null || record.punchInLongitude == null || record.mode !== "IN_OFFICE") return "text-gray-500";
+    const d = getDistanceMeters(OFFICE_LAT, OFFICE_LON, record.punchInLatitude, record.punchInLongitude);
     return d <= OFFICE_ALLOWED_RADIUS_METERS ? "text-green-700 font-bold" : "text-red-700 font-bold";
   };
 
-  // --- Render Component ---
-
   return (
-    <div
-      className={`transition-all duration-700 delay-500 ${
-        loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-      }`}
-    >
+    <div className={`transition-all duration-700 delay-500 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
       <div className="mb-6 flex items-center gap-4 group">
         <div className="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-300">
           <Calendar className="w-5 h-5 text-red-600" />
@@ -324,78 +276,45 @@ const AttendanceRecords: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-2 border-b pb-1">
               Today&apos;s Attendance Summary
             </h3>
-            <div className="overflow-x-auto overflow-y-auto h-96 border rounded-lg">
+            
+            {/* Scroll logic: max-h-[290px] accommodates roughly 5 rows + header. 
+                Anything more triggers the scrollbar. */}
+            <div className="overflow-x-auto overflow-y-auto max-h-[290px] border rounded-lg scrollbar-thin scrollbar-thumb-gray-300">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
+                <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mode
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      In
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Out
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      In Distance
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">Name</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">Mode</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">Date</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">In</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">Out</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">Duration</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">In Distance</th>
+                    <th className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {todayAttendance.map((record) => {
                     const statusLabel = getStatusLabel(record);
                     return (
-                      <tr key={record._id} className="hover:bg-gray-50">
-                        <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <tr key={record._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                           {record.employeeName || record.employeeId || "-"}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getModeBadgeClass(
-                              record.mode
-                            )}`}
-                          >
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 inline-flex text-xs font-bold rounded-full ${getModeBadgeClass(record.mode)}`}>
                             {getModeAbbreviation(record.mode)}
                           </span>
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
-                          {formatDate(record.date)}
-                        </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                          {formatTime(record.punchInTime)}
-                        </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                          {formatTime(record.punchOutTime)}
-                        </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-700">
-                          {getDuration(record)}
-                        </td>
-                        <td
-                          className={`px-2 py-2 whitespace-nowrap text-xs ${getPunchInDistanceClass(
-                            record
-                          )}`}
-                        >
+                        <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">{formatDate(record.date)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{formatTime(record.punchInTime)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{formatTime(record.punchOutTime)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{getDuration(record)}</td>
+                        <td className={`px-3 py-3 whitespace-nowrap text-xs ${getPunchInDistanceClass(record)}`}>
                           {getPunchInDistanceLabel(record)}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
-                              statusLabel
-                            )}`}
-                          >
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${getStatusBadgeClass(statusLabel)}`}>
                             {statusLabel}
                           </span>
                         </td>
@@ -405,6 +324,7 @@ const AttendanceRecords: React.FC = () => {
                 </tbody>
               </table>
             </div>
+         
           </div>
         )}
 

@@ -19,7 +19,7 @@ import {
 // Types
 interface Subtask {
   assigneeName?: string;
-  timeSpent?: string | number;
+  timeSpent?: string;
   subtasks?: Subtask[];
 }
 
@@ -28,7 +28,7 @@ interface Task {
   completion?: number;
   assigneeNames?: string[];
   subtasks?: Subtask[];
-  taskTimeSpent?: string | number;
+  taskTimeSpent?: string;
   projectId?: string;
   project?: string;
 }
@@ -53,14 +53,9 @@ const flattenSubtasks = (subs: Subtask[] = []): Subtask[] => {
   return result;
 };
 
-// ---------- UTIL: PARSE "timeSpent" STRINGS/NUMBERS INTO HOURS ----------
-const parseTimeToHours = (raw?: string | number | null): number => {
+// ---------- UTIL: PARSE "timeSpent" STRINGS INTO HOURS ----------
+const parseTimeToHours = (raw?: string | null): number => {
   if (!raw) return 0;
-
-  // If it's already a number, return it
-  if (typeof raw === 'number') {
-    return raw;
-  }
 
   const value = raw.trim().toLowerCase();
   if (!value) return 0;

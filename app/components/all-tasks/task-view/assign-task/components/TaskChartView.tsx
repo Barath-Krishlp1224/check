@@ -591,6 +591,7 @@ const TaskChartView: React.FC<TaskChartViewProps> = ({ tasks }) => {
           )}
         </div>
       </div>
+
     </div>
   );
 };

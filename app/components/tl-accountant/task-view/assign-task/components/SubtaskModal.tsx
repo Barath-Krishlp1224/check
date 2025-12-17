@@ -39,7 +39,7 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-5xl my-8 transform transition-all duration-300 overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8 transform transition-all duration-300 overflow-hidden"
         onClick={stopPropagation}
       >
         <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-indigo-50">
