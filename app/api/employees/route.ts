@@ -10,10 +10,11 @@ export async function GET(request: Request) {
     const name = url.searchParams.get("name");
     const search = url.searchParams.get("search");
 
+    // ✅ Added salary safely
     const selectFields =
-      "empId name displayName department role team category isOnline lastSeen";
+      "_id empId name displayName department role team category salary";
 
-    // 1️⃣ Partial search
+    // 1️⃣ Partial search (name / empId)
     if (search) {
       const regex = new RegExp(search, "i");
 
@@ -26,10 +27,13 @@ export async function GET(request: Request) {
         .sort({ name: 1 })
         .lean();
 
-      return NextResponse.json({ success: true, employees });
+      return NextResponse.json({
+        success: true,
+        employees,
+      });
     }
 
-    // 2️⃣ Exact name match
+    // 2️⃣ Exact name match (case-insensitive)
     if (name) {
       const employee = await Employee.findOne(
         { name: { $regex: `^${name}$`, $options: "i" } },
@@ -43,15 +47,21 @@ export async function GET(request: Request) {
         );
       }
 
-      return NextResponse.json({ success: true, employee });
+      return NextResponse.json({
+        success: true,
+        employee,
+      });
     }
 
-    // 3️⃣ All employees (dropdown)
+    // 3️⃣ All employees (default / hike / payroll pages)
     const employees = await Employee.find({}, selectFields)
       .sort({ name: 1 })
       .lean();
 
-    return NextResponse.json({ success: true, employees });
+    return NextResponse.json({
+      success: true,
+      employees,
+    });
   } catch (error) {
     console.error("Error fetching employees:", error);
     return NextResponse.json(

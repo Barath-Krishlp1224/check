@@ -34,7 +34,6 @@ export interface IEmployee extends Document {
   accountNumber: string;
   ifscCode: string;
 
-  // 🔑 MUST be optional in TS (deleted in toJSON)
   password?: string;
 
   employmentType: "Fresher" | "Experienced";
@@ -51,9 +50,11 @@ export interface IEmployee extends Document {
   resetToken?: string | null;
   resetTokenExpiry?: Date | null;
 
-  // 💬 Chat presence
   isOnline?: boolean;
   lastSeen?: Date;
+
+  // 💰 Payroll
+  salary: number;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -122,7 +123,6 @@ const EmployeeSchema = new Schema<IEmployee>(
     accountNumber: { type: String, required: true, trim: true },
     ifscCode: { type: String, required: true, trim: true },
 
-    // 🔒 NEVER exposed
     password: { type: String, required: true, select: false },
 
     employmentType: {
@@ -148,22 +148,24 @@ const EmployeeSchema = new Schema<IEmployee>(
     resetToken: { type: String, default: null },
     resetTokenExpiry: { type: Date, default: null },
 
-    // 💬 Chat fields
     isOnline: { type: Boolean, default: false },
     lastSeen: { type: Date, default: null },
+
+    // 💰 Salary field
+    salary: { type: Number, default: 0 },
   },
   {
     timestamps: true,
     toJSON: {
       transform(_, ret) {
-        delete ret.password; // ✅ TS-safe now
+        delete ret.password;
         return ret;
       },
     },
   }
 );
 
-// ✅ Prevent Next.js model overwrite
+// ✅ Prevent model overwrite in Next.js
 delete (mongoose.models as any).Employee;
 
 const Employee: Model<IEmployee> =
