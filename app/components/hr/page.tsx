@@ -1,74 +1,66 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
+import { 
+  Users, 
+  ClipboardList, 
+  Calculator, 
+  FolderOpen, 
+  UserPlus, 
+  CalendarOff,
+  Banknote
+} from 'lucide-react';
 
-// Renamed function to HRPortal as requested
 const HRPortal = () => {
-  // Common Tailwind classes for the button style
-  const buttonClasses = `
-    w-full h-20 text-base font-semibold cursor-pointer 
-    rounded-xl border border-gray-200 bg-white text-black 
-    shadow-md transition-all duration-300 ease-in-out 
-    flex items-center justify-center text-center px-5
-    hover:scale-105 hover:shadow-xl
-    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-  `;
+  const navItems = [
+    { label: 'Attendance', href: '/components/attendance/allday', icon: Users },
+    { label: 'Task Management', href: '/components/hr/task-view', icon: ClipboardList },
+    { label: 'Payroll Calculation', href: '/components/hr/Payroll-Calculation', icon: Calculator },
+    { label: 'Employee Directory', href: '/components/founders/view-emp', icon: FolderOpen },
+    { label: 'New Employee Onboard', href: '/components/hr/new-emp', icon: UserPlus },
+    { label: 'Employee Leaves', href: '/components/hr/leaves', icon: CalendarOff },
+    { label: 'Salary and Payslip', href: '/components/hr/salary-payslip', icon: Banknote },
+  ];
+
+  const sortedNavItems = [...navItems].sort((a, b) => 
+    a.label.localeCompare(b.label)
+  );
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-5">
-      <div className="max-w-6xl w-full">
-        {/* Left-aligned content section */}
-        <div className="text-left mb-12">
-          {/* Main Heading: Left Aligned */}
-          <h1 className="text-4xl font-semibold text-gray-900 mb-2">
-            Welcome to HR Portal
+    <div className="min-h-screen bg-white flex items-center justify-center p-8">
+      <div className="w-full max-w-5xl">
+        <div className="text-left mb-10 border-l-4 border-blue-600 pl-6">
+          <h1 className="text-4xl font-black text-gray-900 mb-2 uppercase tracking-tight">
+            HR Portal
           </h1>
-          
-          {/* Subheading: Left Aligned */}
-          <p className="text-xl text-gray-600">
-            Choose your next action
+          <p className="text-gray-500 font-medium">
+            System management and workforce orchestration
           </p>
         </div>
         
-        {/* Grid Container for Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          
-          {/* 1. Attendance Button */}
-          <Link href="/components/attendance/allday" passHref>
-            <button className={buttonClasses}>
-              Attendance
-            </button>
-          </Link>
-          
-          {/* 2. Task View Button */}
-          <Link href="/components/hr/task-view" passHref>
-            <button className={buttonClasses}>
-              Task Management
-            </button>
-          </Link>
-          
-          {/* 3. Overall Calculation Button */}
-          <Link href="/components/hr/Payroll-Calculation" passHref>
-            <button className={buttonClasses}>
-              Payroll Calculation
-            </button>
-          </Link>
-          
-          {/* 4. Sand Dunes / Employee Data Button */}
-          <Link href="/tours/desert-safari" passHref>
-            <button className={buttonClasses}>
-              Employee Directory
-            </button>
-          </Link>
-
-          {/* Optional: Add a 5th button to fill out the 5-column grid on larger screens */}
-          <Link href="/components/onboarding" passHref>
-            <button className={buttonClasses}>
-              Onboarding/Offboarding
-            </button>
-          </Link>
-          
+        <div className="flex flex-wrap justify-center gap-4">
+          {sortedNavItems.map((item) => (
+            <a 
+              key={item.label} 
+              href={item.href}
+              className="group block w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1rem)]"
+            >
+              <div className="h-20 bg-white rounded-xl border border-gray-200 hover:border-blue-500 transition-all duration-300 hover:shadow-md cursor-pointer overflow-hidden px-5">
+                <div className="h-full flex items-center gap-4">
+                  <div className="p-2.5 rounded-lg bg-gray-50 group-hover:bg-blue-50 transition-colors duration-300">
+                    <item.icon className="w-5 h-5 text-gray-600 group-hover:text-blue-500 transition-colors duration-300" strokeWidth={2.5} />
+                  </div>
+                  
+                  <div className="text-left">
+                    <h3 className="text-gray-800 group-hover:text-blue-600 font-bold text-sm transition-colors duration-300">
+                      {item.label}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider group-hover:text-blue-400">
+                      Management
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </a>
+          ))}
         </div>
       </div>
     </div>
