@@ -91,9 +91,9 @@ const Page = () => {
       const m = d.getMinutes();
 
       const after930 = h > 9 || (h === 9 && m >= 30);
-      const after935 = h > 9 || (h === 9 && m > 35);
+      const after940 = h > 9 || (h === 9 && m > 35);
 
-      if (after935) {
+      if (after940) {
         isLate = true;
       } else if (after930) {
         isGrace = true;
@@ -520,16 +520,16 @@ const Page = () => {
                           const d = new Date(record.punchInTime!);
                           const h = d.getHours();
                           const m = d.getMinutes();
-                          const after935 = h > 9 || (h === 9 && m > 35);
+                          const after940 = h > 9 || (h === 9 && m > 35);
                           const after930 = h > 9 || (h === 9 && m >= 30);
                           
                           return (
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-green-600">Status:</span>
                               <span className={`text-xs font-semibold ${
-                                after935 ? 'text-red-600' : after930 ? 'text-amber-600' : 'text-green-600'
+                                after940 ? 'text-red-600' : after930 ? 'text-amber-600' : 'text-green-600'
                               }`}>
-                                {after935 ? '⚠️ Late' : after930 ? '⏰ Grace' : '✅ On Time'}
+                                {after940 ? '⚠️ Late' : after930 ? '⏰ Grace' : '✅ On Time'}
                               </span>
                             </div>
                           );
