@@ -242,4 +242,4 @@ const AddEmployeePage: React.FC = () => {
   );
 };
 
-export default AddEmployeePage;
+export default AddEmployeePage; 
