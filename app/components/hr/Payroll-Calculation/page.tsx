@@ -147,11 +147,11 @@ function BehaviorComponent({
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-2xl font-bold text-gray-900">{employeeName}</h3>
-          <p className="text-sm text-gray-500 mt-1">Behavior Assessment</p>
+          <h3 className="text-2xl font-bold text-gray-800">{employeeName}</h3>
+          <p className="text-sm text-gray-600 mt-1">Behavior Assessment</p>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <X size={20} className="text-gray-500" />
+          <X size={20} className="text-gray-600" />
         </button>
       </div>
       {error && (
@@ -170,7 +170,7 @@ function BehaviorComponent({
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-700">{label}</label>
-              <span className="text-sm font-bold text-gray-900">{formData[key as keyof typeof formData]}/5</span>
+              <span className="text-sm font-bold text-gray-800">{formData[key as keyof typeof formData]}/5</span>
             </div>
             <input
               type="range"
@@ -178,7 +178,7 @@ function BehaviorComponent({
               max="5"
               value={formData[key as keyof typeof formData]}
               onChange={(e) => setFormData({ ...formData, [key]: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-900"
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-700"
             />
           </div>
         ))}
@@ -187,7 +187,7 @@ function BehaviorComponent({
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full p-3 border border-gray-200 rounded-lg text-sm text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-gray-400"
             rows={3}
           />
         </div>
@@ -195,12 +195,12 @@ function BehaviorComponent({
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-gray-600">Calculated Behavior Score</span>
-          <span className="text-3xl font-bold text-gray-900">{behaviorScore}%</span>
+          <span className="text-3xl font-bold text-gray-800">{behaviorScore}%</span>
         </div>
       </div>
       <div className="flex gap-3">
         <button onClick={onClose} className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold">Cancel</button>
-        <button onClick={handleSubmit} disabled={loading} className="flex-1 px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold disabled:opacity-50">
+        <button onClick={handleSubmit} disabled={loading} className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-xl font-semibold disabled:opacity-50">
           {loading ? "Saving..." : "Save Assessment"}
         </button>
       </div>
@@ -311,7 +311,7 @@ export default function PerformancePage() {
 
   const EmployeeRow = ({ s, index }: { s: Score, index: number }) => (
     <tr key={s.employeeId} className="group hover:bg-gray-50/50 transition-colors">
-      <td className="px-6 py-4 text-center font-mono text-xs font-semibold text-gray-400">
+      <td className="px-6 py-4 text-center font-mono text-xs font-semibold text-gray-500">
         {(index + 1).toString().padStart(2, '0')}
       </td>
       <td className="px-6 py-4" onClick={() => setSelectedEmployee(s)}>
@@ -321,11 +321,11 @@ export default function PerformancePage() {
       </td>
       <td className="px-2 py-4 text-center font-semibold text-gray-600 text-xs">{s.taskScore}%</td>
       <td className="px-2 py-4 text-center font-semibold text-gray-600 text-xs">{s.attendanceScore}%</td>
-      <td className="px-2 py-4 text-center text-xs font-bold text-gray-900">{s.total}%</td>
+      <td className="px-2 py-4 text-center text-xs font-bold text-gray-800">{s.total}%</td>
       <td className="px-6 py-4 text-center">
         <button 
           onClick={(e) => { e.stopPropagation(); setBehaviorTarget(s); }}
-          className="p-2 bg-gray-900 text-white rounded-lg hover:bg-blue-600 transition-all shadow-md"
+          className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all shadow-md"
         >
           <Star size={12} className={s.otherScore !== 100 ? "fill-yellow-400 text-yellow-400" : ""} />
         </button>
@@ -334,7 +334,7 @@ export default function PerformancePage() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 flex flex-col items-center justify-center p-6 font-sans text-gray-900">
+    <div className="min-h-screen w-full bg-slate-50 flex flex-col items-center justify-center p-6 font-sans text-gray-800">
       <AnimatePresence>
         {behaviorTarget && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -359,49 +359,49 @@ export default function PerformancePage() {
               <button onClick={() => setSelectedEmployee(null)} className="absolute top-5 right-5 p-2.5 hover:bg-gray-100 rounded-full z-10 transition-all">
                 <X size={20} className="text-gray-600" />
               </button>
-              <div className="bg-gray-900 p-8 md:p-10">
+              <div className="bg-gray-800 p-8 md:p-10">
                 <div className="flex items-center gap-6">
                   <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center text-white text-3xl font-bold">
                     {selectedEmployee.name.charAt(0)}
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold text-white mb-1">{selectedEmployee.name}</h2>
-                    <p className="text-gray-400 text-sm font-medium uppercase tracking-widest">{selectedEmployee.team}</p>
+                    <p className="text-gray-300 text-sm font-medium uppercase tracking-widest">{selectedEmployee.team}</p>
                   </div>
                 </div>
               </div>
               <div className="p-8 md:p-10 overflow-y-auto max-h-[calc(85vh-160px)]">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
                   {[
-                    { label: "Task Performance", val: selectedEmployee.taskScore, icon: <Target size={18}/>, desc: `${selectedEmployee.taskCount} Total Tasks`, color: "blue" },
-                    { label: "Attendance", val: selectedEmployee.attendanceScore, icon: <Calendar size={18}/>, desc: `${selectedEmployee.presentCount} / ${currentWorkingDays} Days Present`, color: "emerald" },
-                    { label: "Behavior", val: selectedEmployee.otherScore, icon: <Star size={18}/>, desc: "Peer Assessment", color: "purple" },
+                    { label: "Task Performance", val: selectedEmployee.taskScore, icon: <Target size={18}/>, desc: `${selectedEmployee.taskCount} Total Tasks` },
+                    { label: "Attendance", val: selectedEmployee.attendanceScore, icon: <Calendar size={18}/>, desc: `${selectedEmployee.presentCount} / ${currentWorkingDays} Days Present` },
+                    { label: "Behavior", val: selectedEmployee.otherScore, icon: <Star size={18}/>, desc: "Peer Assessment" },
                   ].map((item) => (
                     <div key={item.label} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="p-2 rounded-lg bg-gray-50 text-gray-600">{item.icon}</div>
                         <span className="text-xs font-bold text-gray-500 uppercase">{item.label}</span>
-                        <span className="ml-auto text-xl font-bold text-gray-900">{item.val}%</span>
+                        <span className="ml-auto text-xl font-bold text-gray-800">{item.val}%</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-600 mb-3">{item.desc}</p>
                       <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${item.val}%` }} transition={{ duration: 1 }} className="bg-gray-900 h-full" />
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${item.val}%` }} transition={{ duration: 1 }} className="bg-gray-800 h-full" />
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
-                  <div className="md:col-span-2 bg-gray-900 rounded-2xl p-6 text-white shadow-lg">
+                  <div className="md:col-span-2 bg-gray-800 rounded-2xl p-6 text-white shadow-lg">
                     <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Aggregate Score</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-6xl font-bold">{selectedEmployee.total}</span>
-                      <span className="text-xl text-gray-500">/100</span>
+                      <span className="text-6xl font-bold text-white">{selectedEmployee.total}</span>
+                      <span className="text-xl text-gray-400">/100</span>
                     </div>
                   </div>
                   <div className="md:col-span-3 bg-white border border-gray-200 rounded-2xl p-6">
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Salary Hike Recommendation</p>
-                    <div className="text-3xl font-bold text-gray-900">{getHikeCategory(selectedEmployee.total).hikeRange}</div>
-                    <p className="text-sm font-bold text-blue-600 uppercase">{getHikeCategory(selectedEmployee.total).category}</p>
+                    <div className="text-3xl font-bold text-gray-800">{getHikeCategory(selectedEmployee.total).hikeRange}</div>
+                    <p className="text-sm font-bold text-gray-600 uppercase mt-1">{getHikeCategory(selectedEmployee.total).category}</p>
                   </div>
                 </div>
               </div>
@@ -412,9 +412,9 @@ export default function PerformancePage() {
       <div className="w-full max-w-[1400px] flex flex-col items-center">
         <div className="w-full mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-4">
           <div className="flex items-center gap-5">
-            <div className="bg-gray-900 p-4 rounded-3xl shadow-xl"><Award className="text-white" size={28} /></div>
+            <div className="bg-gray-800 p-4 rounded-3xl shadow-xl"><Award className="text-white" size={28} /></div>
             <div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{selectedTeam || "Performance Dashboard"}</h1>
+              <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">{selectedTeam || "Performance Dashboard"}</h1>
               <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Reviewing {currentWorkingDays} Operational Days</p>
             </div>
           </div>
@@ -429,10 +429,10 @@ export default function PerformancePage() {
             {TEAM_OPTIONS.map((team) => (
               <div key={team} onClick={() => setSelectedTeam(team)} className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm cursor-pointer hover:shadow-xl hover:translate-y-[-4px] transition-all group active:scale-95 w-full">
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-gray-900 transition-colors"><Users className="text-slate-400 group-hover:text-white" size={22} /></div>
-                  <span className="text-2xl font-black text-gray-300 group-hover:text-gray-900 transition-colors">{scores.filter(s => s.team === team).length}</span>
+                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-gray-800 transition-colors"><Users className="text-slate-400 group-hover:text-white" size={22} /></div>
+                  <span className="text-2xl font-black text-gray-300 group-hover:text-gray-800 transition-colors">{scores.filter(s => s.team === team).length}</span>
                 </div>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{team}</h3>
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{team}</h3>
               </div>
             ))}
           </div>
@@ -440,26 +440,26 @@ export default function PerformancePage() {
           <div className="flex flex-col lg:flex-row gap-8 px-4 w-full justify-center">
             <div className="flex-1 max-w-[600px]">
               <div className="flex items-center gap-3 mb-6">
-                <AlertCircle className="text-orange-500" size={20} />
+                <AlertCircle className="text-gray-600" size={20} />
                 <h2 className="text-lg font-bold text-gray-800 uppercase tracking-tight">Need Improvement (≤50%)</h2>
               </div>
               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-gray-50/50 border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-400">S.No</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-400">Name</th>
-                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-400 text-center">Tsk</th>
-                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-400 text-center">Att</th>
-                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-400 text-center">Score</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-400 text-center">Edit</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-500">S.No</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-500">Name</th>
+                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-500 text-center">Tsk</th>
+                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-500 text-center">Att</th>
+                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-500 text-center">Score</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-500 text-center">Edit</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {underperforming.length > 0 ? underperforming.map((s, i) => (
                       <EmployeeRow key={s.employeeId} s={s} index={i} />
                     )) : (
-                      <tr><td colSpan={6} className="py-10 text-center text-gray-400 text-sm italic">All team members are above 50%</td></tr>
+                      <tr><td colSpan={6} className="py-10 text-center text-gray-500 text-sm italic">All team members are above 50%</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -467,26 +467,26 @@ export default function PerformancePage() {
             </div>
             <div className="flex-1 max-w-[600px]">
               <div className="flex items-center gap-3 mb-6">
-                <TrendingUp className="text-emerald-500" size={20} />
+                <TrendingUp className="text-gray-600" size={20} />
                 <h2 className="text-lg font-bold text-gray-800 uppercase tracking-tight">Top Performers ({'>'}50%)</h2>
               </div>
-              <div className="bg-white rounded-3xl shadow-lg border border-emerald-100 overflow-hidden ring-1 ring-emerald-50">
+              <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden ring-1 ring-gray-100">
                 <table className="w-full text-left">
-                  <thead className="bg-emerald-50/30 border-b border-emerald-50">
+                  <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-emerald-600">S.No</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-emerald-600">Name</th>
-                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-emerald-600 text-center">Tsk</th>
-                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-emerald-600 text-center">Att</th>
-                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-emerald-600 text-center">Score</th>
-                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-emerald-600 text-center">Edit</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-600">S.No</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-600">Name</th>
+                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-600 text-center">Tsk</th>
+                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-600 text-center">Att</th>
+                      <th className="px-2 py-4 text-[10px] font-bold uppercase text-gray-600 text-center">Score</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase text-gray-600 text-center">Edit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-emerald-50/50">
+                  <tbody className="divide-y divide-gray-50">
                     {qualified.length > 0 ? qualified.map((s, i) => (
                       <EmployeeRow key={s.employeeId} s={s} index={i} />
                     )) : (
-                      <tr><td colSpan={6} className="py-10 text-center text-gray-400 text-sm italic">No high performers recorded yet</td></tr>
+                      <tr><td colSpan={6} className="py-10 text-center text-gray-500 text-sm italic">No high performers recorded yet</td></tr>
                     )}
                   </tbody>
                 </table>
