@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import Attendance, { AttendanceMode } from "@/models/Attendance";
-
-/* ---------------- GET (for hike calculation with date filtering) ---------------- */
+import Attendance from "@/models/Attendance";
 
 export async function GET(req: Request) {
   try {
     await connectDB();
-
     const { searchParams } = new URL(req.url);
     const days = searchParams.get("days");
     const from = searchParams.get("from");
@@ -16,54 +13,37 @@ export async function GET(req: Request) {
     let dateFilter: any = {};
 
     if (from && to) {
-      // Custom date range
       dateFilter = {
-        date: {
-          $gte: from,
-          $lte: to,
-        },
+        date: { $gte: from, $lte: to },
       };
     } else if (days) {
-      // Days filter (e.g., last 90, 180, 365 days)
       const daysNum = parseInt(days);
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysNum);
       const cutoffDateStr = cutoffDate.toISOString().split("T")[0];
-      
-      dateFilter = {
-        date: { $gte: cutoffDateStr },
-      };
+      dateFilter = { date: { $gte: cutoffDateStr } };
     }
 
-    const records = await Attendance.find(
-      dateFilter,
-      {
-        employeeId: 1,
-        date: 1,
-        punchInTime: 1,
-      }
-    ).lean();
+    const records = await Attendance.find(dateFilter, {
+      employeeId: 1,
+      date: 1,
+      punchInTime: 1,
+    }).lean();
 
     const attendances = records.map((r) => ({
-      employeeId: String(r.employeeId), // Ensure it's a string
+      employeeId: String(r.employeeId),
       present: Boolean(r.punchInTime),
       date: r.date,
     }));
 
-    console.log(`Attendance API: Returning ${attendances.length} records`);
-    console.log("Sample attendance:", attendances.slice(0, 2));
-
     return NextResponse.json({ attendances });
   } catch (err: any) {
-    console.error("Attendance API Error:", err);
     return NextResponse.json(
       { error: "Failed to fetch attendance", details: err.message },
       { status: 500 }
     );
   }
 }
-
-/* ---------------- POST (unchanged punch logic) ---------------- */
 
 export async function POST(req: Request) {
   try {
@@ -74,6 +54,9 @@ export async function POST(req: Request) {
       employeeId,
       punchType,
       mode = "IN_OFFICE",
+      latitude,
+      longitude,
+      imageData
     } = body;
 
     if (!employeeId || !punchType) {
@@ -101,15 +84,19 @@ export async function POST(req: Request) {
 
     if (punchType === "IN") {
       attendance.punchInTime = new Date();
-    }
-
-    if (punchType === "OUT") {
+      attendance.punchInLatitude = latitude;
+      attendance.punchInLongitude = longitude;
+      attendance.punchInImage = imageData; 
+    } else if (punchType === "OUT") {
       attendance.punchOutTime = new Date();
+      attendance.punchOutLatitude = latitude;
+      attendance.punchOutLongitude = longitude;
+      attendance.punchOutImage = imageData;
     }
 
     await attendance.save();
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data: attendance });
   } catch (err: any) {
     return NextResponse.json(
       { error: "Attendance save failed", details: err.message },

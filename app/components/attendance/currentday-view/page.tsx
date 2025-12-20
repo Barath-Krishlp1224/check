@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { Calendar, Loader2, Clock, XCircle } from "lucide-react";
+import { Calendar, Loader2, Clock, XCircle, MapPin } from "lucide-react";
 
 type AttendanceMode =
   | "IN_OFFICE"
@@ -10,10 +10,9 @@ type AttendanceMode =
   | "REGULARIZATION";
 
 const BRANCHES = [
-  { name: "Branch 1", lat: 11.939198361614558, lon: 79.81654494108358 },
-  { name: "Branch 2", lat: 11.940000000000000, lon: 79.82000000000000 } 
+  { name: "Branch 1", lat: 11.939198361614558, lon: 79.81654494108358, radius: 100 },
+  { name: "Branch 2", lat: 11.940000000000000, lon: 79.82000000000000, radius: 300 } 
 ];
-const OFFICE_ALLOWED_RADIUS_METERS = 60;
 
 function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;
@@ -27,9 +26,17 @@ function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: numbe
   return Math.round(R * c);
 }
 
-const getNearestBranchDistance = (lat: number, lon: number) => {
-  const distances = BRANCHES.map(branch => getDistanceMeters(lat, lon, branch.lat, branch.lon));
-  return Math.min(...distances);
+const getBranchValidation = (lat: number, lon: number) => {
+  const calculations = BRANCHES.map(branch => {
+    const dist = getDistanceMeters(lat, lon, branch.lat, branch.lon);
+    return {
+      distance: dist,
+      isAllowed: dist <= branch.radius,
+      branchName: branch.name
+    };
+  });
+  // Returns the branch that is physically closest to the coordinates
+  return calculations.reduce((prev, curr) => (curr.distance < prev.distance ? curr : prev));
 };
 
 const getTodayDateKey = () => new Date().toISOString().slice(0, 10);
@@ -127,10 +134,16 @@ const AttendanceRecords: React.FC = () => {
   };
 
   const getDistInfo = (lat?: number | null, lon?: number | null, mode?: AttendanceMode) => {
-    if (lat == null || lon == null || mode !== "IN_OFFICE") return { label: "-", className: "text-black" };
-    const dist = getNearestBranchDistance(lat, lon);
-    // Even if color highlights (red/green) are used for bg, the text remains black
-    return { label: `${dist}m`, className: "text-black font-bold" };
+    if (lat == null || lon == null) return { label: "-", branch: "", className: "text-gray-400" };
+    if (mode !== "IN_OFFICE") return { label: "N/A", branch: "", className: "text-gray-400" };
+
+    const validation = getBranchValidation(lat, lon);
+    
+    return { 
+      label: `${validation.distance}m`, 
+      branch: validation.branchName,
+      className: validation.isAllowed ? "text-green-600 font-bold" : "text-red-600 font-bold"
+    };
   };
 
   return (
@@ -158,7 +171,7 @@ const AttendanceRecords: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  {["Name", "Mode", "In", "Out", "Dur.", "In Dist.", "Out Dist.", "Status"].map(h => (
+                  {["Name", "Mode", "In Time", "In Branch/Dist", "Out Time", "Out Branch/Dist", "Status"].map(h => (
                     <th key={h} className="px-3 py-3 text-left text-xs font-bold text-black uppercase">{h}</th>
                   ))}
                 </tr>
@@ -176,11 +189,26 @@ const AttendanceRecords: React.FC = () => {
                           {getModeLabel(r.mode)}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-black">{formatTime(r.punchInTime)}</td>
-                      <td className="px-3 py-3 text-black">{formatTime(r.punchOutTime)}</td>
-                      <td className="px-3 py-3 text-black">{getDuration(r)}</td>
-                      <td className={`px-3 py-3 ${inD.className}`}>{inD.label}</td>
-                      <td className={`px-3 py-3 ${outD.className}`}>{outD.label}</td>
+                      <td className="px-3 py-3 text-black font-semibold">{formatTime(r.punchInTime)}</td>
+                      
+                      {/* Punch In Branch & Distance */}
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500 font-bold uppercase">{inD.branch}</span>
+                          <span className={inD.className}>{inD.label}</span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-3 text-black font-semibold">{formatTime(r.punchOutTime)}</td>
+
+                      {/* Punch Out Branch & Distance */}
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500 font-bold uppercase">{outD.branch}</span>
+                          <span className={outD.className}>{outD.label}</span>
+                        </div>
+                      </td>
+
                       <td className="px-3 py-3">
                         <span className={`px-2 py-0.5 font-semibold rounded-full ${getStatusBadgeClass(status)}`}>
                           {status}
