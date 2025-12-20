@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { Calendar, Loader2, Clock, XCircle, MapPin } from "lucide-react";
+import { Calendar, Loader2, Clock, XCircle } from "lucide-react";
 
-type AttendanceMode =
-  | "IN_OFFICE"
-  | "WORK_FROM_HOME"
-  | "ON_DUTY"
-  | "REGULARIZATION";
+type AttendanceMode = "IN_OFFICE" | "WORK_FROM_HOME" | "ON_DUTY" | "REGULARIZATION";
 
 const BRANCHES = [
   { name: "Branch 1", lat: 11.939198361614558, lon: 79.81654494108358, radius: 100 },
@@ -17,25 +13,17 @@ const BRANCHES = [
 function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;
   const toRad = (v: number) => (v * Math.PI) / 180;
-  const φ1 = toRad(lat1);
-  const φ2 = toRad(lat2);
-  const Δφ = toRad(lat2 - lat1);
-  const Δλ = toRad(lon2 - lon1);
+  const φ1 = toRad(lat1), φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1), Δλ = toRad(lon2 - lon1);
   const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
 const getBranchValidation = (lat: number, lon: number) => {
   const calculations = BRANCHES.map(branch => {
     const dist = getDistanceMeters(lat, lon, branch.lat, branch.lon);
-    return {
-      distance: dist,
-      isAllowed: dist <= branch.radius,
-      branchName: branch.name
-    };
+    return { distance: dist, isAllowed: dist <= branch.radius, branchName: branch.name };
   });
-  // Returns the branch that is physically closest to the coordinates
   return calculations.reduce((prev, curr) => (curr.distance < prev.distance ? curr : prev));
 };
 
@@ -99,14 +87,6 @@ const AttendanceRecords: React.FC = () => {
     return Number.isNaN(d.getTime()) ? "-" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
   };
 
-  const getDuration = (r: AttendanceRecord) => {
-    if (!r.punchInTime || !r.punchOutTime) return "-";
-    const start = new Date(r.punchInTime), end = new Date(r.punchOutTime);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return "-";
-    const diff = Math.floor((end.getTime() - start.getTime()) / 60000);
-    return diff < 60 ? `${diff}m` : `${Math.floor(diff / 60)}h ${diff % 60}m`;
-  };
-
   const getStatusLabel = (r: AttendanceRecord): string => {
     const key = extractDateKey(r.date);
     if (!r.punchInTime && !r.punchOutTime) return "Absent";
@@ -130,15 +110,13 @@ const AttendanceRecords: React.FC = () => {
 
   const getModeLabel = (m?: AttendanceMode) => {
     const map = { IN_OFFICE: "IO", WORK_FROM_HOME: "WFH", ON_DUTY: "OD", REGULARIZATION: "REG" };
-    return m ? map[m] || m : "-";
+    return m ? (map as any)[m] || m : "-";
   };
 
   const getDistInfo = (lat?: number | null, lon?: number | null, mode?: AttendanceMode) => {
     if (lat == null || lon == null) return { label: "-", branch: "", className: "text-gray-400" };
     if (mode !== "IN_OFFICE") return { label: "N/A", branch: "", className: "text-gray-400" };
-
     const validation = getBranchValidation(lat, lon);
-    
     return { 
       label: `${validation.distance}m`, 
       branch: validation.branchName,
@@ -167,12 +145,12 @@ const AttendanceRecords: React.FC = () => {
             <p>{attendanceError}</p>
           </div>
         ) : todayAttendance.length > 0 ? (
-          <div className="overflow-x-auto max-h-[500px] border rounded-lg">
+          <div className="overflow-x-auto h-[225px] overflow-y-auto border rounded-lg scrollbar-thin shadow-inner">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+              <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
                   {["Name", "Mode", "In Time", "In Branch/Dist", "Out Time", "Out Branch/Dist", "Status"].map(h => (
-                    <th key={h} className="px-3 py-3 text-left text-xs font-bold text-black uppercase">{h}</th>
+                    <th key={h} className="px-3 py-3 text-left text-[10px] font-bold text-black uppercase">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -182,35 +160,29 @@ const AttendanceRecords: React.FC = () => {
                   const inD = getDistInfo(r.punchInLatitude, r.punchInLongitude, r.mode);
                   const outD = getDistInfo(r.punchOutLatitude, r.punchOutLongitude, r.mode);
                   return (
-                    <tr key={r._id} className="hover:bg-gray-50 text-xs">
-                      <td className="px-3 py-3 font-medium text-black">{r.employeeName || r.employeeId}</td>
-                      <td className="px-3 py-3">
-                        <span className="px-2 py-0.5 font-bold rounded-full bg-indigo-100 text-black">
+                    <tr key={r._id} className="hover:bg-gray-50 text-xs h-[55px]">
+                      <td className="px-3 py-2 font-medium text-black truncate max-w-[120px]">{r.employeeName || r.employeeId}</td>
+                      <td className="px-3 py-2">
+                        <span className="px-2 py-0.5 font-bold rounded-full bg-indigo-100 text-[10px] text-black">
                           {getModeLabel(r.mode)}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-black font-semibold">{formatTime(r.punchInTime)}</td>
-                      
-                      {/* Punch In Branch & Distance */}
-                      <td className="px-3 py-3">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500 font-bold uppercase">{inD.branch}</span>
-                          <span className={inD.className}>{inD.label}</span>
+                      <td className="px-3 py-2 text-black font-semibold">{formatTime(r.punchInTime)}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-[9px] text-gray-500 font-bold uppercase">{inD.branch}</span>
+                          <span className={`${inD.className} text-[10px]`}>{inD.label}</span>
                         </div>
                       </td>
-
-                      <td className="px-3 py-3 text-black font-semibold">{formatTime(r.punchOutTime)}</td>
-
-                      {/* Punch Out Branch & Distance */}
-                      <td className="px-3 py-3">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500 font-bold uppercase">{outD.branch}</span>
-                          <span className={outD.className}>{outD.label}</span>
+                      <td className="px-3 py-2 text-black font-semibold">{formatTime(r.punchOutTime)}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-[9px] text-gray-500 font-bold uppercase">{outD.branch}</span>
+                          <span className={`${outD.className} text-[10px]`}>{outD.label}</span>
                         </div>
                       </td>
-
-                      <td className="px-3 py-3">
-                        <span className={`px-2 py-0.5 font-semibold rounded-full ${getStatusBadgeClass(status)}`}>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-0.5 font-semibold rounded-full text-[10px] whitespace-nowrap ${getStatusBadgeClass(status)}`}>
                           {status}
                         </span>
                       </td>
