@@ -27,7 +27,6 @@ export default function AdminPage() {
       icon: Users,
       onClick: goToEmployeeList,
       gradient: "from-blue-500 to-blue-600",
-      delay: "0ms"
     },
     {
       id: "tasks",
@@ -35,7 +34,6 @@ export default function AdminPage() {
       icon: CheckSquare,
       onClick: () => router.push("/components/all-tasks/task-view"),
       gradient: "from-purple-500 to-purple-600",
-      delay: "100ms"
     },
     {
       id: "attendance",
@@ -43,7 +41,6 @@ export default function AdminPage() {
       icon: Clock,
       onClick: goToAttendancePage,
       gradient: "from-green-500 to-green-600",
-      delay: "200ms"
     },
     {
       id: "bills",
@@ -51,7 +48,6 @@ export default function AdminPage() {
       icon: FileText,
       onClick: goToBillsPage,
       gradient: "from-orange-500 to-orange-600",
-      delay: "300ms"
     },
     {
       id: "expenses",
@@ -59,7 +55,6 @@ export default function AdminPage() {
       icon: TrendingUp,
       onClick: goToExpensesPage,
       gradient: "from-red-500 to-red-600",
-      delay: "400ms"
     },
     {
       id: "leaves",
@@ -67,9 +62,8 @@ export default function AdminPage() {
       icon: Calendar,
       onClick: goToLeavesPage,
       gradient: "from-indigo-500 to-indigo-600",
-      delay: "500ms"
     }
-  ];
+  ].sort((a, b) => a.title.localeCompare(b.title));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
@@ -105,7 +99,7 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
-                {actionCards.map((card) => {
+                {actionCards.map((card, index) => {
                   const Icon = card.icon;
                   return (
                     <div
@@ -118,7 +112,7 @@ export default function AdminPage() {
                         ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}
                         ${hoveredButton === card.id ? "scale-[1.02]" : "scale-100"}`}
                       style={{
-                        transitionDelay: loaded ? card.delay : "0ms",
+                        transitionDelay: loaded ? `${index * 100}ms` : "0ms",
                       }}
                       onMouseEnter={() => setHoveredButton(card.id)}
                       onMouseLeave={() => setHoveredButton(null)}
