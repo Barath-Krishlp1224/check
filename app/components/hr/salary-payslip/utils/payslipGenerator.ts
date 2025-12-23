@@ -38,9 +38,13 @@ const numberToWords = (num: number): string => {
   return format(Math.floor(num)) + " Rupees Only";
 };
 
-export const generatePayslip = async (person: Staff, action: 'download' | 'view' = 'download') => {
+export const generatePayslip = async (person: Staff, action: 'download' | 'view' = 'download', paymentDate?: Date) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Use the passed date or default to current date
+  const selectedDate = paymentDate || new Date();
+  
   const ICON_SIZE_MM = 8.467; 
   const SMALL_ICON_SIZE = 3.2;
   const DOT_SIZE = 2.91; 
@@ -112,7 +116,7 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
     canvas.width = 64; canvas.height = 64;
     const ctx = canvas.getContext('2d')!;
     ctx.scale(4, 4); 
-    ctx.strokeStyle = "#F3E8FF"; ctx.lineWidth = 1.33; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 1.33; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath(); ctx.moveTo(5.33, 1.33); ctx.lineTo(5.33, 4); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(10.66, 1.33); ctx.lineTo(10.66, 4); ctx.stroke();
     ctx.beginPath(); ctx.roundRect(2, 2.66, 12, 12, 1.33); ctx.stroke();
@@ -149,9 +153,8 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
   // --- CONTENT TITLE ---
   doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(147, 51, 234);
   doc.text("PAYSLIP", pageWidth / 2, headerH + 15, { align: 'center' });
-  const now = new Date();
   doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100);
-  doc.text(`Pay Period: ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerH + 22, { align: 'center' });
+  doc.text(`Pay Period: ${selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerH + 22, { align: 'center' });
 
   // --- EMPLOYEE CARD ---
   const cardY = headerH + 35;
@@ -183,20 +186,23 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
 
   const drawTable = (x: number, y: number, title: string, data: {l: string, v: number}[], accent: string[], isEarning: boolean) => {
     drawShadow(x, y, boxWidth, boxHeight, 3);
-    doc.setFillColor(isEarning ? 245 : 255, isEarning ? 253 : 240, isEarning ? 248 : 240);
+    if (isEarning) doc.setFillColor(220, 252, 231); else doc.setFillColor(255, 226, 226);
     doc.roundedRect(x, y, boxWidth, boxHeight, 3, 3, 'F');
     if (isEarning) doc.setFillColor(0, 128, 54); else doc.setFillColor(193, 0, 7);
     doc.ellipse(x + 10, y + 10, DOT_SIZE/2, DOT_SIZE/2, 'F');
     drawGradientText(title, x + 15, y + 10, accent, 13);
+    
     data.forEach((item, i) => {
       const rowY = y + 25 + (i * 11);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(100);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
       doc.text(item.l, x + 8, rowY);
       doc.setTextColor(20);
       doc.text(`${item.v.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + boxWidth - 8, rowY, { align: 'right' });
-      doc.setDrawColor(220); doc.setLineWidth(0.1);
+      doc.setDrawColor(isEarning ? 187 : 220, isEarning ? 220 : 180, isEarning ? 190 : 180); 
+      doc.setLineWidth(0.1);
       doc.line(x + 8, rowY + 3, x + boxWidth - 8, rowY + 3);
     });
+    
     doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
     doc.text(`Total ${title}`, x + 8, y + boxHeight - 10);
     const total = data.reduce((s, i) => s + i.v, 0);
@@ -218,49 +224,43 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
   doc.setFillColor(0, 0, 0);
   doc.roundedRect(15, summaryY, outerBoxWidth, summaryH, 3, 3, 'F');
   
-  // Net Pay Header
-  doc.setTextColor(200); doc.setFontSize(9); 
-  doc.text(`Net Pay for ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}`, 23, summaryY + 10);
+  doc.setTextColor(180, 180, 180); doc.setFontSize(8.5); 
+  doc.text(`Net Pay for ${selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}`, 23, summaryY + 8);
   
-  // Net Salary Amount
-  doc.setTextColor(255); doc.setFontSize(20); doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255); doc.setFontSize(19); doc.setFont("helvetica", "bold");
   const salaryStr = `Rs. ${netSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-  doc.text(salaryStr, 23, summaryY + 22);
+  doc.text(salaryStr, 23, summaryY + 17);
   
-  // Calculate dynamic X for "Paid on..." to stay on the left after the amount
-  const salaryWidth = doc.getTextWidth(salaryStr);
-  const iconX = 23 + salaryWidth + 8; // Small gap after the amount
-  const iconY = summaryY + 17.5;
-  const iconSize = 4.23;
+  const iconX = 23; 
+  const iconY = summaryY + 21.5; 
+  const iconSize = 3.5;
 
-  // Calendar Icon next to salary
   try {
     doc.addImage(getCalendarIconBase64(), 'PNG', iconX, iconY, iconSize, iconSize);
   } catch(e){}
 
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const paidText = `Paid on ${lastDay.toLocaleString('default', { month: 'long' })} ${lastDay.getDate()}, ${lastDay.getFullYear()}`;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(243, 232, 255);
-  doc.text(paidText, iconX + 5.5, iconY + 3.2);
+  // Using dynamic date here
+  const paidText = `Paid on ${selectedDate.toLocaleString('default', { month: 'long' })} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}`;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(200, 200, 200);
+  doc.text(paidText, iconX + 5, iconY + 2.8);
 
-  // Glass Box for Amount in Words (Remains on the Right)
-  const wordBoxW = 89.5; 
-  const wordBoxH = 20.5; 
+  const wordBoxW = 88; 
+  const wordBoxH = 18; 
   const wordBoxX = pageWidth - 15 - wordBoxW - 5;
   const wordBoxY = summaryY + (summaryH - wordBoxH) / 2;
 
   doc.setGState(new (doc as any).GState({ opacity: 0.1 })); 
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(wordBoxX, wordBoxY, wordBoxW, wordBoxH, 2.6, 2.6, 'F');
+  doc.roundedRect(wordBoxX, wordBoxY, wordBoxW, wordBoxH, 2, 2, 'F');
   doc.setGState(new (doc as any).GState({ opacity: 0.2 })); 
-  doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.2);
-  doc.roundedRect(wordBoxX, wordBoxY, wordBoxW, wordBoxH, 2.6, 2.6, 'S');
+  doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.1);
+  doc.roundedRect(wordBoxX, wordBoxY, wordBoxW, wordBoxH, 2, 2, 'S');
   doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-  doc.setTextColor(255, 255, 255); doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255); doc.setFontSize(7.5);
   const amountWords = numberToWords(netSalary);
   const splitWords = doc.splitTextToSize(amountWords, wordBoxW - 8);
-  doc.text(splitWords, wordBoxX + 4.5, wordBoxY + 8);
+  doc.text(splitWords, wordBoxX + 4, wordBoxY + 7);
 
   // --- FOOTER ---
   doc.setFontSize(8); doc.setTextColor(150);

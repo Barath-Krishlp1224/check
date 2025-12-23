@@ -2,23 +2,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  ArrowLeft, Search, X, PencilLine, FileText, 
+  ArrowLeft, Search, PencilLine, FileText, 
   Loader2, Download, Eye, Landmark, CalendarDays, 
-  Calculator, Coins, ShieldAlert, BadgeIndianRupee 
+  Calculator, BadgeIndianRupee, Calendar 
 } from 'lucide-react';
 import { generatePayslip, type Staff } from './utils/payslipGenerator';
 
 interface ExtendedStaff extends Staff {
   team?: string;
   ifscCode?: string;
-  basic?: number;
-  hra?: number;
-  bonus?: number;
-  specialAllowance?: number;
-  pf?: number;
-  incomeTax?: number;
-  healthInsurance?: number;
-  professionalTax?: number;
 }
 
 export default function SalaryPayslipPage() {
@@ -29,6 +21,8 @@ export default function SalaryPayslipPage() {
   const [editForm, setEditForm] = useState<Partial<ExtendedStaff>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedPayDate, setSelectedPayDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => { fetchStaff(); }, []);
 
@@ -56,61 +50,29 @@ export default function SalaryPayslipPage() {
 
   const handleEditInit = (s: ExtendedStaff) => {
     setEditingId(s._id || null);
-    setEditForm({
-      salary: s.salary || 0,
-      basic: s.basic || 0,
-      hra: s.hra || 0,
-      bonus: s.bonus || 0,
-      specialAllowance: s.specialAllowance || 0,
-      pf: s.pf || 0,
-      incomeTax: s.incomeTax || 0,
-      healthInsurance: s.healthInsurance || 0,
-      professionalTax: s.professionalTax || 0,
-      bankAccount: s.bankAccount,
-      doj: s.doj,
-      department: s.department,
-      role: s.role
-    });
+    setEditForm({ ...s });
   };
 
-  const currentTotalEarnings = (Number(editForm.basic) || 0) + 
-                               (Number(editForm.hra) || 0) + 
-                               (Number(editForm.bonus) || 0) + 
-                               (Number(editForm.specialAllowance) || 0);
-
-  const currentTotalDeductions = (Number(editForm.incomeTax) || 0) + 
-                                 (Number(editForm.pf) || 0) + 
-                                 (Number(editForm.healthInsurance) || 0) + 
-                                 (Number(editForm.professionalTax) || 0);
+  const currentTotalEarnings = (Number(editForm.basic) || 0) + (Number(editForm.hra) || 0) + (Number(editForm.bonus) || 0) + (Number(editForm.specialAllowance) || 0);
+  const currentTotalDeductions = (Number(editForm.incomeTax) || 0) + (Number(editForm.pf) || 0) + (Number(editForm.healthInsurance) || 0) + (Number(editForm.professionalTax) || 0);
 
   const saveEmployeeDetails = async () => {
     if (!editingId) return;
     setIsSaving(true);
     try {
-      const payload = { 
-        id: editingId, 
-        ...editForm,
-        salary: currentTotalEarnings // Gross
-      };
-
       const res = await fetch('/api/employees/update', { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ id: editingId, ...editForm, salary: currentTotalEarnings }),
       });
-      
-      const result = await res.json();
-      if (result.success) {
-        setStaffList(prev => prev.map(s => s._id === editingId ? { 
-          ...s, ...editForm, salary: currentTotalEarnings 
-        } : s));
+      if ((await res.json()).success) {
+        setStaffList(prev => prev.map(s => s._id === editingId ? { ...s, ...editForm, salary: currentTotalEarnings } : s));
         setEditingId(null);
         setShowConfirm(false);
       }
     } catch (err) { alert("Network error"); } finally { setIsSaving(false); }
   };
 
-  // Helper to calculate Net for list items
   const calculateNet = (s: ExtendedStaff) => {
     const earnings = (s.basic || 0) + (s.hra || 0) + (s.bonus || 0) + (s.specialAllowance || 0);
     const deductions = (s.pf || 0) + (s.incomeTax || 0) + (s.healthInsurance || 0) + (s.professionalTax || 0);
@@ -144,7 +106,7 @@ export default function SalaryPayslipPage() {
         </div>
       )}
 
-      <div className="w-full max-w-7xl bg-white rounded-[3rem] shadow-2xl h-[850px] flex flex-col overflow-hidden border border-slate-200">
+      <div className="w-full max-w-7xl bg-white mt-[5%] rounded-[3rem] shadow-2xl h-[750px] flex flex-col overflow-hidden border border-slate-200">
         <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
           <div className="flex items-center gap-5">
             <button onClick={() => window.history.back()} className="p-3 hover:bg-slate-100 rounded-2xl">
@@ -154,7 +116,12 @@ export default function SalaryPayslipPage() {
           </div>
           <div className="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
             <Search className="w-5 h-5 text-slate-400" />
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search..." className="bg-transparent outline-none text-sm w-64 font-medium" />
+            <input 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              placeholder="Search by name or ID..." 
+              className="bg-transparent outline-none text-sm w-64 font-bold text-black placeholder:text-slate-500" 
+            />
           </div>
         </div>
 
@@ -165,9 +132,7 @@ export default function SalaryPayslipPage() {
                 <div className="p-8 rounded-[2.4rem] bg-white border border-slate-100">
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 font-black">
-                        {s.name.charAt(0)}
-                      </div>
+                      <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 font-black">{s.name.charAt(0)}</div>
                       <div>
                         <p className="font-black text-slate-900 text-xl">{s.name}</p>
                         <p className="text-xs text-slate-400 font-bold uppercase">{s.empId} • {s.department}</p>
@@ -192,7 +157,6 @@ export default function SalaryPayslipPage() {
                             <InputField label="Special" value={editForm.specialAllowance} onChange={v => setEditForm({...editForm, specialAllowance: Number(v)})} />
                           </div>
                         </div>
-
                         <div className="space-y-4 p-6 bg-red-50 rounded-3xl">
                           <span className="text-[11px] font-black text-red-600 uppercase">Deductions (₹{currentTotalDeductions})</span>
                           <div className="grid grid-cols-2 gap-4">
@@ -225,7 +189,22 @@ export default function SalaryPayslipPage() {
           </div>
 
           <div className="flex-1 p-10 bg-slate-50/80 border-l border-slate-100 overflow-y-auto custom-scrollbar">
-            <h2 className="text-sm font-black text-slate-900 uppercase mb-8">Generate Reports</h2>
+            <div className="mb-8">
+              <h2 className="text-sm font-black text-slate-900 uppercase mb-4">Report Settings</h2>
+              <div className="p-4 bg-white rounded-3xl border border-slate-200 space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Calendar className="w-3 h-3"/> Set Payment Date
+                 </label>
+                 <input 
+                  type="date" 
+                  value={selectedPayDate} 
+                  onChange={(e) => setSelectedPayDate(e.target.value)}
+                  className="w-full bg-slate-50 p-2 rounded-xl text-xs font-bold outline-none border border-slate-100 text-black"
+                 />
+              </div>
+            </div>
+
+            <h2 className="text-sm font-black text-slate-900 uppercase mb-4">Generate Reports</h2>
             <div className="space-y-4">
               {filteredStaff.map(s => (
                 <div key={`ps-${s._id}`} className="p-5 bg-white rounded-3xl border border-slate-200 flex items-center justify-between group transition-all">
@@ -239,8 +218,8 @@ export default function SalaryPayslipPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => generatePayslip(s, 'view')} className="p-2.5 text-slate-400 hover:text-blue-600 transition-all"><Eye className="w-5 h-5" /></button>
-                    <button onClick={() => generatePayslip(s, 'download')} className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all"><Download className="w-5 h-5" /></button>
+                    <button onClick={() => generatePayslip(s, 'view', new Date(selectedPayDate))} className="p-2.5 text-slate-400 hover:text-blue-600 transition-all"><Eye className="w-5 h-5" /></button>
+                    <button onClick={() => generatePayslip(s, 'download', new Date(selectedPayDate))} className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all"><Download className="w-5 h-5" /></button>
                   </div>
                 </div>
               ))}
@@ -260,7 +239,13 @@ function InputField({ label, value, onChange }: { label: string, value: any, onC
   return (
     <div className="space-y-1.5">
       <label className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{label}</label>
-      <input type="number" value={value ?? ''} onChange={e => onChange(e.target.value)} className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-blue-300" />
+      <input 
+        type="number" 
+        value={value ?? ''} 
+        onChange={e => onChange(e.target.value)} 
+        placeholder="0"
+        className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-blue-300 text-black placeholder:text-slate-500" 
+      />
     </div>
   );
 }
