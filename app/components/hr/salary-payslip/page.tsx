@@ -2,17 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Search, Check, X, PencilLine, FileText, Loader2, Download, Eye } from 'lucide-react';
-import { generatePayslip } from './utils/payslipGenerator';
-
-interface Staff {
-  _id: string;
-  empId: string;
-  name: string;
-  displayName: string;
-  department: string;
-  role: string;
-  salary: number;
-}
+import { generatePayslip, type Staff } from './utils/payslipGenerator';
 
 export default function SalaryPayslipPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -31,7 +21,14 @@ export default function SalaryPayslipPage() {
     try {
       const response = await fetch('/api/employees');
       const data = await response.json();
-      if (data.success) setStaffList(data.employees);
+      if (data.success) {
+        const sanitizedData = data.employees.map((emp: any) => ({
+          ...emp,
+          doj: emp.doj || new Date().toLocaleDateString(),
+          bankAccount: emp.bankAccount || 'XXXXXXXXXXXX'
+        }));
+        setStaffList(sanitizedData);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -91,7 +88,7 @@ export default function SalaryPayslipPage() {
       <div className="w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl h-[600px] flex flex-col overflow-hidden border border-gray-200">
         <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <ArrowLeft className="w-6 h-6 text-black cursor-pointer" />
+            <ArrowLeft className="w-6 h-6 text-black cursor-pointer" onClick={() => window.history.back()} />
             <h1 className="text-2xl font-black text-black">Payroll Dashboard</h1>
           </div>
           <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
@@ -119,7 +116,7 @@ export default function SalaryPayslipPage() {
                   ) : (
                     <div className="flex items-center gap-4">
                       <span className="font-mono font-bold text-black text-sm">₹{(s.salary || 0).toLocaleString()}</span>
-                      <div onClick={() => {setEditingId(s._id); setTempSalary((s.salary || 0).toString())}} className="p-2 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors group">
+                      <div onClick={() => {setEditingId(s._id || null); setTempSalary((s.salary || 0).toString())}} className="p-2 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors group">
                         <PencilLine className="w-4 h-4 text-gray-300 group-hover:text-blue-600" />
                       </div>
                     </div>
