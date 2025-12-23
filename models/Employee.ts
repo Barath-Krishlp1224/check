@@ -21,19 +21,21 @@ export interface IEmployee extends Document {
   password?: string;
   employmentType: "Fresher" | "Experienced";
   role: Role;
-  
-  // Salary Structure Fields
-  salary: number; // This represents Gross/Total Earnings
+
+  salary: number;
   basic: number;
   hra: number;
   bonus: number;
   specialAllowance: number;
-  
-  // Deduction Fields
+
   incomeTax: number;
   pf: number;
   healthInsurance: number;
   professionalTax: number;
+
+  // Reset fields (nullable)
+  resetToken: string | null;
+  resetTokenExpiry: Date | null;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -57,21 +59,31 @@ const EmployeeSchema = new Schema<IEmployee>(
     accountNumber: { type: String, required: true, trim: true },
     ifscCode: { type: String, required: true, trim: true },
     password: { type: String, required: true, select: false },
-    employmentType: { type: String, enum: ["Fresher", "Experienced"], required: true },
-    role: { type: String, enum: ["Admin", "Manager", "TeamLead", "Employee"], default: "Employee" },
-    
-    // Salary Breakdown (Earnings)
-    salary: { type: Number, default: 0 }, // Gross
+    employmentType: {
+      type: String,
+      enum: ["Fresher", "Experienced"],
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ["Admin", "Manager", "TeamLead", "Employee"],
+      default: "Employee"
+    },
+
+    salary: { type: Number, default: 0 },
     basic: { type: Number, default: 0 },
     hra: { type: Number, default: 0 },
     bonus: { type: Number, default: 0 },
     specialAllowance: { type: Number, default: 0 },
-    
-    // Deductions
+
     incomeTax: { type: Number, default: 0 },
     pf: { type: Number, default: 0 },
-    healthInsurance: { type: Number, default: 500 }, // Requested default
-    professionalTax: { type: Number, default: 200 }, // Requested default
+    healthInsurance: { type: Number, default: 500 },
+    professionalTax: { type: Number, default: 200 },
+
+    // Reset fields (nullable)
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null },
   },
   { timestamps: true }
 );
