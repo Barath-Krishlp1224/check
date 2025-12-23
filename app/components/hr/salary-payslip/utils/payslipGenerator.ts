@@ -33,7 +33,6 @@ const numberToWords = (num: number): string => {
 export const generatePayslip = async (person: Staff, action: 'download' | 'view' = 'download') => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const headerHeight = 35;
   const ICON_SIZE_MM = 8.467; 
   const SMALL_ICON_SIZE = 3.2;
 
@@ -114,21 +113,14 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
     canvas.width = w * scale * 3.78;
     canvas.height = h * scale * 3.78;
     const ctx = canvas.getContext('2d')!;
-    
-    const gradient = ctx.createRadialGradient(
-      canvas.width / 2, canvas.height / 2, 0,
-      canvas.width / 2, canvas.height / 2, canvas.width * 0.5
-    );
-    
+    const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width * 0.5);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
     gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.25)');
     gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.15)');
     gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.08)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     doc.addImage(canvas.toDataURL("image/png"), 'PNG', x, y, w, h);
   };
 
@@ -144,46 +136,73 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
   const totalDeductions = pf + pt + insurance + itax;
   const netSalary = totalEarnings - totalDeductions;
 
-  doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, headerHeight, 'F');
+  // --- NEW HEADER CALCULATION ---
+  const headerW = pageWidth; // Capped at pageWidth (210mm) for A4
+  const headerH = 43.4; // 164px converted to mm
+  const headerX = 0;
+  const headerY = 0;
 
+  // Shadow 0 1px 9.8px 0 rgba(0, 0, 0, 0.25)
+  // Drawn using vertical segments to simulate the 9.8px blur
+  const shadowSpread = 2.6; // 9.8px in mm
+  for (let i = 0; i < 12; i++) {
+    const opacity = (0.25 / 12) * (1 - i / 12);
+    doc.setGState(new (doc as any).GState({ opacity: opacity }));
+    doc.setFillColor(0, 0, 0);
+    // Draw shadow strip slightly offset downwards (the 1px offset)
+    doc.rect(headerX, headerY + headerH + 0.26 + (i * (shadowSpread/12)), headerW, 0.4, 'F');
+  }
+  doc.setGState(new (doc as any).GState({ opacity: 1 }));
+
+  // Main White Background Header Box
+  doc.setFillColor(255, 255, 255);
+  doc.rect(headerX, headerY, headerW, headerH, 'F');
+
+  // Content inside Header
+  const contentCenterY = headerH / 2;
   const hBoxX = 15;
-  const hBoxY = (headerHeight - 15) / 2;
+  const hBoxY = contentCenterY - 7;
   doc.setFillColor(240, 240, 255);
   doc.roundedRect(hBoxX, hBoxY, 14, 14, 2, 2, 'F');
   const iconOffset = (14 - ICON_SIZE_MM) / 2;
   doc.addImage(getSvgIconBase64(), 'PNG', hBoxX + iconOffset, hBoxY + iconOffset, ICON_SIZE_MM, ICON_SIZE_MM);
+  
   const textX = hBoxX + 18;
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14); 
   doc.text("Lemonpay Payment Solution's Private Limited", textX, hBoxY + 4);
+  
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(80, 80, 80);
   try { doc.addImage(LOC_ICON, 'PNG', textX, hBoxY + 7.5, SMALL_ICON_SIZE, SMALL_ICON_SIZE); } catch(e){}
   doc.text("4th Floor, Tidel Neo IT Park, Tiruchitrambalam, Villupuram - 605111", textX + 4.5, hBoxY + 10);
+  
   try { doc.addImage(MAIL_ICON, 'PNG', textX, hBoxY + 12.5, SMALL_ICON_SIZE, SMALL_ICON_SIZE); } catch(e){}
   doc.text("hr@lemonpay.tech", textX + 4.5, hBoxY + 15);
+  
   const emailWidth = doc.getTextWidth("hr@lemonpay.tech");
   const phoneX = textX + 4.5 + emailWidth + 8; 
   try { doc.addImage(CAL_ICON, 'PNG', phoneX, hBoxY + 12.5, SMALL_ICON_SIZE, SMALL_ICON_SIZE); } catch(e){}
   doc.text("+91 xx xx xy yy yy", phoneX + 4.5, hBoxY + 15);
+  
   try { doc.addImage(LOGO_IMAGE, 'PNG', pageWidth - 50, hBoxY, 35, 10); } catch (e) {}
 
+  // --- REST OF DOCUMENT ---
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(147, 51, 234);
-  doc.text("PAYSLIP", pageWidth / 2, headerHeight + 15, { align: 'center' });
+  doc.text("PAYSLIP", pageWidth / 2, headerH + 15, { align: 'center' });
   const now = new Date();
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 100, 100);
-  doc.text(`Pay Period: ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerHeight + 22, { align: 'center' });
+  doc.text(`Pay Period: ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerH + 22, { align: 'center' });
   doc.setFontSize(8);
-  doc.text(`Payslip ID: PAY-${now.getFullYear()}-${Math.floor(100 + Math.random() * 900)}`, pageWidth / 2, headerHeight + 27, { align: 'center' });
+  doc.text(`Payslip ID: PAY-${now.getFullYear()}-${Math.floor(100 + Math.random() * 900)}`, pageWidth / 2, headerH + 27, { align: 'center' });
 
-  const cardY = headerHeight + 35;
+  const cardY = headerH + 35;
   const cardHeight = 55;
   const cardWidth = pageWidth - 30;
   const cardX = 15;
@@ -214,7 +233,6 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
 
   const drawTable = (x: number, y: number, title: string, data: {l: string, v: number}[], accent: string[], isEarning: boolean) => {
     drawShadow(x, y, boxWidth, boxHeight, 3);
-    
     if (isEarning) {
       for (let i = 0; i < boxHeight; i += 0.5) {
         const ratio = i / boxHeight;
@@ -230,7 +248,6 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
       doc.setFillColor(255, 240, 240);
       doc.roundedRect(x, y, boxWidth, boxHeight, 3, 3, 'F');
     }
-
     drawGradientText(title, x + 10, y + 10, accent, 13);
     const rgb = hexToRgb(accent[0]);
     doc.setFillColor(rgb[0], rgb[1], rgb[2]);
@@ -259,30 +276,24 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
   const summaryY = sectionY + boxHeight + 10;
   const outerBoxHeight = 32;
   const outerBoxWidth = pageWidth - 30;
-  
   doc.setFillColor(0, 0, 0);
   doc.roundedRect(15, summaryY, outerBoxWidth, outerBoxHeight, 3, 3, 'F');
-  
   drawGlacierEffect(15, summaryY, outerBoxWidth, outerBoxHeight);
-  
   doc.setTextColor(200); 
   doc.setFontSize(9); 
   doc.text(`Net Pay for ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}`, 23, summaryY + 8);
   doc.setTextColor(255); 
   doc.setFontSize(20); 
   doc.text(`Rs. ${netSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 23, summaryY + 19);
-  
   const fullMonth = now.toLocaleString('en-US', { month: 'long' });
   const paidDateFormatted = `Paid on ${fullMonth} ${now.getDate()}, ${now.getFullYear()}`;
   doc.setFontSize(8); 
   doc.setTextColor(180); 
   doc.text(paidDateFormatted, 23, summaryY + 26);
-
   const glassWidth = 89.5; 
   const glassHeight = 22; 
   const glassX = pageWidth - 15 - glassWidth - 5;
   const glassY = summaryY + (outerBoxHeight - glassHeight) / 2;
-
   doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(glassX, glassY, glassWidth, glassHeight, 2.6, 2.6, 'F');
@@ -299,13 +310,11 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
   const paddingX = 4.4; 
   const splitWords = doc.splitTextToSize(amountWords, glassWidth - (paddingX * 2));
   doc.text(splitWords, glassX + glassWidth - paddingX, glassY + 10, { align: 'right', lineHeightFactor: 1.42 });
-
   const lineY = summaryY + outerBoxHeight + 15;
   const rgbLine = hexToRgb("#E2E8F0");
   doc.setDrawColor(rgbLine[0], rgbLine[1], rgbLine[2]);
   doc.setLineWidth(0.4);
   doc.line(15, lineY, pageWidth - 15, lineY);
-
   doc.setFontSize(8); doc.setTextColor(150);
   doc.text("This is a computer-generated payslip and does not require a signature. For any queries, please contact the HR department.", pageWidth / 2, 285, { align: 'center' });
 
