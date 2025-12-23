@@ -7,101 +7,74 @@ import Employee from "@/models/Employee";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function escapeRegex(input: string) {
+// FIX: Type the parameter correctly
+function escapeRegex(input: string = "") {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function ensureConnected() {
-  await connectDB();
-  let tries = 0;
-  while (Number(mongoose.connection.readyState) !== 1 && tries < 20) {
-    await new Promise((r) => setTimeout(r, 100));
-    tries++;
-  }
-  if (Number(mongoose.connection.readyState) !== 1) {
-    throw new Error("Failed to connect to MongoDB");
-  }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureConnected();
+    // Ensure DB connection (Vercel-safe)
+    await connectDB();
 
-    let body: { empIdOrEmail?: string; password?: string };
-
-    try {
-      body = await req.json();
-    } catch {
+    const body = await req.json().catch(() => null);
+    if (!body) {
       return NextResponse.json(
         { error: "Invalid JSON body." },
         { status: 400 }
       );
     }
 
-    const empIdOrEmailRaw = body.empIdOrEmail?.trim();
-    const password = body.password;
+    const { empIdOrEmail, password } = body;
 
-    if (!empIdOrEmailRaw || !password) {
+    if (!empIdOrEmail?.trim() || !password) {
       return NextResponse.json(
         { error: "Employee ID / Email and Password are required." },
         { status: 400 }
       );
     }
 
-    const escaped = escapeRegex(empIdOrEmailRaw);
+    const escaped = escapeRegex(empIdOrEmail.trim());
     const regex = new RegExp(`^${escaped}$`, "i");
 
-    // FIX 1: Use .exec() for better Vercel compatibility
+    // FIX: No .exec() after lean()
     const employee = await Employee.findOne({
       $or: [{ mailId: regex }, { empId: regex }],
     })
       .select("+password")
-      .lean()
-      .exec();
+      .lean();
 
     if (!employee) {
       return NextResponse.json(
-        { error: "User not found with given Employee ID or Email." },
+        { error: "User not found." },
         { status: 404 }
       );
     }
 
-    console.log("LOGIN DEBUG:", {
-      empId: employee.empId,
-      hasPassword: Boolean(employee.password),
-      passwordType: typeof employee.password,
-    });
-
     if (!employee.password) {
       return NextResponse.json(
-        {
-          error:
-            "Account exists but password is not set. Contact admin to activate your account.",
-        },
+        { error: "Password is not set. Contact admin." },
         { status: 401 }
       );
     }
 
     let passwordMatches = false;
 
-    if (
-      employee.password.startsWith("$2a$") ||
-      employee.password.startsWith("$2b$")
-    ) {
+    // If already bcrypt hashed password
+    if (employee.password.startsWith("$2a$") || employee.password.startsWith("$2b$")) {
       passwordMatches = await bcrypt.compare(password, employee.password);
     } else {
+      // Plain password → hash it now
       passwordMatches = password === employee.password;
 
       if (passwordMatches) {
         const hashed = await bcrypt.hash(password, 10);
-        
-        // FIX 2: Use updateOne with explicit ObjectId for better Vercel compatibility
+
+        // FIX: ObjectId safe update
         await Employee.updateOne(
-          { _id: new mongoose.Types.ObjectId(employee._id) },
+          { _id: employee._id },
           { $set: { password: hashed } }
-        ).exec();
-        
-        console.log("Password hashed and updated for employee:", employee.empId);
+        );
       }
     }
 

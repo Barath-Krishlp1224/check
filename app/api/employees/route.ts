@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import connectDB from "@/lib/mongodb";
+import { connectDB } from "@/lib/mongodb"; // Fixed import based on your previous codes
 import Employee from "@/models/Employee";
 
 export async function GET(request: Request) {
@@ -10,9 +10,9 @@ export async function GET(request: Request) {
     const name = url.searchParams.get("name");
     const search = url.searchParams.get("search");
 
-    // ✅ Added salary safely
+    // ✅ Selection includes all fields needed for Payslips & Editing
     const selectFields =
-      "_id empId name displayName department role team category salary";
+      "_id empId name displayName department role team category salary accountNumber ifscCode joiningDate mailId";
 
     // 1️⃣ Partial search (name / empId)
     if (search) {
