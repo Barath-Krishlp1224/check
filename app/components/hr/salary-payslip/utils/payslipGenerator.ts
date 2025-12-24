@@ -5,19 +5,35 @@ export interface Staff {
   name: string;
   empId: string;
   role: string;
-  salary: number; 
+  salary: number; // Gross Salary
   doj: string;        
   bankAccount: string; 
   displayName?: string;
   department?: string;
+  designation?: string;
+  bankName?: string;
+  ifscCode?: string;
+  pfNumber?: string;
+  
+  // Earnings Components
   basic?: number;
   hra?: number;
   bonus?: number;
   specialAllowance?: number;
+  overtime?: number;
+
+  // Deductions Components
   pf?: number;
+  esi?: number;
   incomeTax?: number;
-  healthInsurance?: number;
   professionalTax?: number;
+  healthInsurance?: number;
+  loanRecovery?: number;
+
+  // Attendance
+  leavePresent?: number;
+  leaveAbsent?: number;
+  lop?: number;
 }
 
 const LOGO_IMAGE = "/logo hd.png";
@@ -41,27 +57,28 @@ const numberToWords = (num: number): string => {
 export const generatePayslip = async (person: Staff, action: 'download' | 'view' = 'download', paymentDate?: Date) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // Use the passed date or default to current date
   const selectedDate = paymentDate || new Date();
   
   const ICON_SIZE_MM = 8.467; 
   const SMALL_ICON_SIZE = 3.2;
   const DOT_SIZE = 2.91; 
 
-  // --- LOGIC: CALCULATION ---
+  // --- LOGIC: CALCULATION (Extended to handle new fields) ---
   const basic = person.basic ?? (person.salary * 0.45);
   const hra = person.hra ?? (person.salary * 0.20);
+  const overtime = person.overtime ?? 0;
   const bonus = person.bonus ?? 0;
   const special = person.specialAllowance ?? (person.salary - (basic + hra + bonus)); 
   
   const pf = person.pf ?? 0;
+  const esi = person.esi ?? 0;
   const pt = person.professionalTax ?? 0;
   const insurance = person.healthInsurance ?? 0;
   const itax = person.incomeTax ?? 0;
+  const loan = person.loanRecovery ?? 0;
   
-  const totalEarnings = basic + hra + bonus + special;
-  const totalDeductions = pf + pt + insurance + itax;
+  const totalEarnings = basic + hra + bonus + special + overtime;
+  const totalDeductions = pf + pt + insurance + itax + esi + loan;
   const netSalary = totalEarnings - totalDeductions;
 
   // --- UI HELPERS ---
@@ -174,7 +191,7 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
   };
   drawField("Employee Name", person.name, 22, cardY + 20);
   drawField("Employee ID", person.empId, 110, cardY + 20);
-  drawField("Designation", person.role, 22, cardY + 33);
+  drawField("Designation", person.designation || person.role, 22, cardY + 33);
   drawField("Date of Joining", person.doj, 110, cardY + 33);
   drawField("Department", person.department || "Engineering", 22, cardY + 46);
   drawField("Bank Account", person.bankAccount, 110, cardY + 46);
@@ -193,28 +210,38 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
     drawGradientText(title, x + 15, y + 10, accent, 13);
     
     data.forEach((item, i) => {
-      const rowY = y + 25 + (i * 11);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+      const rowY = y + 22 + (i * 9); // Adjusted row spacing for more items
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(60, 60, 60);
       doc.text(item.l, x + 8, rowY);
       doc.setTextColor(20);
       doc.text(`${item.v.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + boxWidth - 8, rowY, { align: 'right' });
       doc.setDrawColor(isEarning ? 187 : 220, isEarning ? 220 : 180, isEarning ? 190 : 180); 
       doc.setLineWidth(0.1);
-      doc.line(x + 8, rowY + 3, x + boxWidth - 8, rowY + 3);
+      doc.line(x + 8, rowY + 2.5, x + boxWidth - 8, rowY + 2.5);
     });
     
     doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
-    doc.text(`Total ${title}`, x + 8, y + boxHeight - 10);
+    doc.text(`Total ${title}`, x + 8, y + boxHeight - 8);
     const total = data.reduce((s, i) => s + i.v, 0);
-    drawGradientText(`${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + boxWidth - 8, y + boxHeight - 10, accent, 12, 'right');
+    drawGradientText(`${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, x + boxWidth - 8, y + boxHeight - 8, accent, 12, 'right');
   };
 
+  // Multi-line table data
   drawTable(15, sectionY, "Earnings", [
-    { l: "Basic Salary", v: basic }, { l: "HRA", v: hra }, { l: "Performance Bonus", v: bonus }, { l: "Special Allowance", v: special }
+    { l: "Basic Salary", v: basic }, 
+    { l: "HRA", v: hra }, 
+    { l: "Performance Bonus", v: bonus }, 
+    { l: "Special Allowance", v: special },
+    { l: "Overtime Pay", v: overtime }
   ], ["#008236", "#007A55"], true);
 
   drawTable(pageWidth - 15 - boxWidth, sectionY, "Deductions", [
-    { l: "Income Tax", v: itax }, { l: "Provident Fund", v: pf }, { l: "Health Insurance", v: insurance }, { l: "Professional Tax", v: pt }
+    { l: "Income Tax", v: itax }, 
+    { l: "Provident Fund", v: pf }, 
+    { l: "ESI Contribution", v: esi },
+    { l: "Health Insurance", v: insurance }, 
+    { l: "Professional Tax", v: pt },
+    { l: "Loan/Other Recovery", v: loan }
   ], ["#C10007", "#CA3500"], false);
 
   // --- SUMMARY BAR (BLACK BOX) ---
@@ -239,7 +266,6 @@ export const generatePayslip = async (person: Staff, action: 'download' | 'view'
     doc.addImage(getCalendarIconBase64(), 'PNG', iconX, iconY, iconSize, iconSize);
   } catch(e){}
 
-  // Using dynamic date here
   const paidText = `Paid on ${selectedDate.toLocaleString('default', { month: 'long' })} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}`;
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(200, 200, 200);
   doc.text(paidText, iconX + 5, iconY + 2.8);
