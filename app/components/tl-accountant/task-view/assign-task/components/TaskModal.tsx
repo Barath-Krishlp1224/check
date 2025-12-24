@@ -421,13 +421,26 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
       if (name === "assigneeNames") {
         // Filter employees to show:
-        // 1. All employees from the current task's team
+        // 1. All employees from the current task's team/department
         // 2. All TeamLeads regardless of team
+        // 3. All employees from "Accounts" or "TL Accountant" team/department
         const currentTeam = (task as any).team || (task as any).department || '';
         const filteredEmployees = employees.filter(emp => {
-          const empTeam = (emp as any).team || (emp as any).department || '';
+          const empTeam = ((emp as any).team || '').toLowerCase();
+          const empDept = ((emp as any).department || '').toLowerCase();
           const empRole = (emp as any).role || '';
-          return empTeam === currentTeam || empRole === 'TeamLead';
+          
+          // Include TeamLeads
+          if (empRole === 'TeamLead') return true;
+          
+          // Include employees from same team/department
+          if (empTeam === currentTeam.toLowerCase() || empDept === currentTeam.toLowerCase()) return true;
+          
+          // Include all Accounts/TL Accountant employees
+          if (empTeam === 'accounts' || empTeam === 'tl accountant' || 
+              empDept === 'accounts' || empDept === 'tl accountant') return true;
+          
+          return false;
         });
 
         return (

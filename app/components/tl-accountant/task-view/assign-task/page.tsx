@@ -199,7 +199,9 @@ const TasksPage: React.FC = () => {
     () =>
       employees.filter((e) => {
         const team = (e as any).team?.toLowerCase?.();
-        return team === "accounts";
+        const dept = (e as any).department?.toLowerCase?.();
+        return team === "accounts" || team === "tl accountant" || 
+               dept === "accounts" || dept === "tl accountant";
       }),
     [employees]
   );
@@ -207,7 +209,7 @@ const TasksPage: React.FC = () => {
   const visibleTasks = useMemo(() => {
     return tasks.filter((task) => {
       const dept = (task.department || "").toLowerCase();
-      return dept.includes("accounts");
+      return dept.includes("accounts") || dept.includes("tl accountant");
     });
   }, [tasks]);
 
@@ -659,7 +661,7 @@ const TasksPage: React.FC = () => {
                     <AlertCircle className="w-8 h-8 text-slate-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                    No Accounts tasks found
+                    No Accounts/TL Accountant tasks found
                   </h3>
                   <p className="text-slate-500">
                     Try adjusting filters or check if those departments are
