@@ -231,7 +231,6 @@ const sumAllSubtasksStoryPoints = (
   }, 0);
 };
 
-
 const TaskModal: React.FC<TaskModalProps> = (props) => {
   const {
     task,
@@ -260,6 +259,16 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
   const [isSubtaskModalOpen, setIsSubtaskModalOpen] = useState(false);
   const [selectedSubtask, setSelectedSubtask] = useState<Subtask | null>(null);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+
+  // Initialize selected assignees when editing starts
+  React.useEffect(() => {
+    if (isEditing && draftTask.assigneeNames) {
+      setSelectedAssignees(draftTask.assigneeNames);
+    } else if (!isEditing) {
+      setSelectedAssignees([]);
+    }
+  }, [isEditing, draftTask.assigneeNames]);
 
   const handleViewSubtask = useCallback((subtask: Subtask) => {
     setSelectedSubtask(subtask);
@@ -289,6 +298,30 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     },
     [task._id, onSubtaskStatusChange]
   );
+
+  const handleAssigneeToggle = useCallback((employeeName: string) => {
+    setSelectedAssignees((prev) => {
+      const newSelection = prev.includes(employeeName)
+        ? prev.filter((name) => name !== employeeName)
+        : [...prev, employeeName];
+      
+      // Create a synthetic event to update draftTask
+      const syntheticEvent = {
+        target: {
+          name: 'assigneeNames',
+          value: newSelection
+        }
+      } as any;
+      
+      handleDraftChange(syntheticEvent);
+      
+      return newSelection;
+    });
+  }, [handleDraftChange]);
+
+  const removeAssignee = useCallback((employeeName: string) => {
+    handleAssigneeToggle(employeeName);
+  }, [handleAssigneeToggle]);
 
   if (!isOpen) return null;
 
@@ -363,8 +396,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     }
     
     if (name === "taskStoryPoints" && isEditing) {
+      return null;
     }
-
 
     const displayValue = task[name];
     const displayString =
@@ -387,24 +420,85 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       const inputWidthClass = "w-full max-w-sm";
 
       if (name === "assigneeNames") {
+        // Filter employees to show:
+        // 1. All employees from the current task's team
+        // 2. All TeamLeads regardless of team
+        const currentTeam = (task as any).team || (task as any).department || '';
+        const filteredEmployees = employees.filter(emp => {
+          const empTeam = (emp as any).team || (emp as any).department || '';
+          const empRole = (emp as any).role || '';
+          return empTeam === currentTeam || empRole === 'TeamLead';
+        });
+
         return (
-          <select
-            name={name}
-            value={
-              current.assigneeNames && current.assigneeNames.length > 0
-                ? current.assigneeNames[0]
-                : ""
-            }
-            onChange={handleDraftChange}
-            className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-gray-900`}
-          >
-            <option value="">Select Assignee</option>
-            {employees.map((employee) => (
-              <option key={employee._id} value={employee.name}>
-                {employee.name}
-              </option>
-            ))}
-          </select>
+          <div className={inputWidthClass}>
+            {/* Selected Assignees Display */}
+            <div className="mb-2 flex flex-wrap gap-2 min-h-[32px]">
+              {selectedAssignees.length > 0 ? (
+                selectedAssignees.map((assignee) => (
+                  <span
+                    key={assignee}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium"
+                  >
+                    {assignee}
+                    <button
+                      type="button"
+                      onClick={() => removeAssignee(assignee)}
+                      className="ml-1 hover:bg-indigo-200 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-slate-500 italic py-1">No assignees selected</span>
+              )}
+            </div>
+            
+            {/* Assignee Selection Dropdown */}
+            <div className="border border-slate-300 rounded-lg bg-white max-h-48 overflow-y-auto">
+              {filteredEmployees.length > 0 ? (
+                filteredEmployees.map((employee) => {
+                  const isSelected = selectedAssignees.includes(employee.name);
+                  return (
+                    <label
+                      key={employee._id}
+                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors ${
+                        isSelected ? 'bg-indigo-50' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleAssigneeToggle(employee.name)}
+                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className={`text-sm ${isSelected ? 'font-semibold text-indigo-900' : 'text-gray-900'}`}>
+                          {employee.name}
+                        </span>
+                        <div className="flex gap-2 text-xs text-slate-500">
+                          {(employee as any).role && (
+                            <span>{(employee as any).role}</span>
+                          )}
+                          {(employee as any).team && (
+                            <span>• {(employee as any).team}</span>
+                          )}
+                          {(employee as any).department && (
+                            <span>• {(employee as any).department}</span>
+                          )}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-2 text-sm text-slate-500 text-center">
+                  No employees available
+                </div>
+              )}
+            </div>
+          </div>
         );
       } else if (name === "status") {
         const onChangeHandler = isEditing
@@ -532,7 +626,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {renderField("Task Name", "project", "text")}
-              {renderField("Assignee", "assigneeNames", "select")}
+              {renderField("Assignees", "assigneeNames", "select")}
               {renderField("Start Date", "startDate", "date")}
               {renderField("Due Date", "dueDate", "date")}
               {renderField("End Date", "endDate", "date")}
