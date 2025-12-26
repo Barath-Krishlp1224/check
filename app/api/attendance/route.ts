@@ -2,41 +2,60 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Attendance from "@/models/Attendance";
 
+/* -------------------------------------------------------------------------- */
+/*                                    GET                                     */
+/* -------------------------------------------------------------------------- */
 export async function GET(req: Request) {
   try {
     await connectDB();
+
     const { searchParams } = new URL(req.url);
-    const days = searchParams.get("days");
+    const empId = searchParams.get("empId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const days = searchParams.get("days");
 
-    let dateFilter: any = {};
+    const dateFilter: any = {};
 
-    if (from && to) {
-      dateFilter = {
-        date: { $gte: from, $lte: to },
-      };
-    } else if (days) {
-      const daysNum = parseInt(days);
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysNum);
-      const cutoffDateStr = cutoffDate.toISOString().split("T")[0];
-      dateFilter = { date: { $gte: cutoffDateStr } };
+    if (empId) {
+      dateFilter.employeeId = empId;
     }
 
-    const records = await Attendance.find(dateFilter, {
-      employeeId: 1,
-      date: 1,
-      punchInTime: 1,
-    }).lean();
+    if (from && to) {
+      dateFilter.date = { $gte: from, $lte: to };
+    } else if (days) {
+      const daysNum = Number(days);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - daysNum);
+      dateFilter.date = {
+        $gte: cutoff.toISOString().split("T")[0],
+      };
+    }
 
-    const attendances = records.map((r) => ({
+    const records = await Attendance.find(
+      dateFilter,
+      {
+        employeeId: 1,
+        date: 1,
+        punchInTime: 1,
+        punchOutTime: 1,
+        mode: 1,
+      }
+    ).lean();
+
+    const attendances = records.map((r: any) => ({
       employeeId: String(r.employeeId),
-      present: Boolean(r.punchInTime),
       date: r.date,
+      present: Boolean(r.punchInTime),
+      punchInTime: r.punchInTime ?? null,
+      punchOutTime: r.punchOutTime ?? null,
+      mode: r.mode ?? "IN_OFFICE",
     }));
 
-    return NextResponse.json({ attendances });
+    return NextResponse.json({
+      attendances,
+      presentCount: attendances.filter(a => a.present).length,
+    });
   } catch (err: any) {
     return NextResponse.json(
       { error: "Failed to fetch attendance", details: err.message },
@@ -45,10 +64,12 @@ export async function GET(req: Request) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                    POST                                    */
+/* -------------------------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
     await connectDB();
-    const body = await req.json();
 
     const {
       employeeId,
@@ -56,12 +77,12 @@ export async function POST(req: Request) {
       mode = "IN_OFFICE",
       latitude,
       longitude,
-      imageData
-    } = body;
+      imageData,
+    } = await req.json();
 
     if (!employeeId || !punchType) {
       return NextResponse.json(
-        { error: "employeeId and punchType required" },
+        { error: "employeeId and punchType are required" },
         { status: 400 }
       );
     }
@@ -86,8 +107,10 @@ export async function POST(req: Request) {
       attendance.punchInTime = new Date();
       attendance.punchInLatitude = latitude;
       attendance.punchInLongitude = longitude;
-      attendance.punchInImage = imageData; 
-    } else if (punchType === "OUT") {
+      attendance.punchInImage = imageData;
+    }
+
+    if (punchType === "OUT") {
       attendance.punchOutTime = new Date();
       attendance.punchOutLatitude = latitude;
       attendance.punchOutLongitude = longitude;
@@ -96,7 +119,10 @@ export async function POST(req: Request) {
 
     await attendance.save();
 
-    return NextResponse.json({ success: true, data: attendance });
+    return NextResponse.json({
+      success: true,
+      data: attendance,
+    });
   } catch (err: any) {
     return NextResponse.json(
       { error: "Attendance save failed", details: err.message },

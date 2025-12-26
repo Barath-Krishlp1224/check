@@ -1,6 +1,21 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, Calendar, CalendarCheck, Clock, MessageSquare, FileText, X } from "lucide-react";
+import { 
+  AlertCircle, 
+  LayoutGrid, 
+  ListTodo, 
+  Calendar, 
+  CalendarCheck, 
+  Clock, 
+  MessageSquare, 
+  FileText, 
+  X,
+  Briefcase,
+  UserCheck,
+  ClipboardList,
+  Kanban,
+  Palmtree
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -53,7 +68,7 @@ const TasksPage: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>("tasks");
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>("leave"); // Set default to leave
   const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
@@ -375,15 +390,60 @@ const TasksPage: React.FC = () => {
     <div className="flex min-h-screen bg-white">
       <ToastContainer /> 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
-        <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
-          <button onClick={() => { setCurrentScreen("tasks"); setViewType("card"); }} className={`p-3 rounded-xl ${currentScreen === "tasks" && viewType === "card" ? "bg-green-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}><LayoutGrid className="w-6 h-6" /></button>
-          <button onClick={() => { setCurrentScreen("tasks"); setViewType("board"); }} className={`p-3 rounded-xl ${currentScreen === "tasks" && viewType === "board" ? "bg-green-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}><ListTodo className="w-6 h-6" /></button>
-          <button onClick={() => setCurrentScreen("leave")} className={`p-3 rounded-xl ${currentScreen === "leave" ? "bg-green-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}><CalendarCheck className="w-6 h-6" /></button>
-          <button onClick={() => setIsHolidaysOpen(true)} className="p-3 rounded-xl text-gray-500 hover:bg-gray-100"><Calendar className="w-6 h-6" /></button>
-          <button onClick={() => setCurrentScreen("attendance")} className={`p-3 rounded-xl ${currentScreen === "attendance" ? "bg-green-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}><Clock className="w-6 h-6" /></button>
-          <button onClick={() => setCurrentScreen("chat")} className={`p-3 rounded-xl ${currentScreen === "chat" ? "bg-green-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}><MessageSquare className="w-6 h-6" /></button>
+        
+        {/* NEW ENHANCED NAVBAR */}
+        <nav className="fixed top-25 left-1/2 transform -translate-x-1/2 bg-white shadow-2xl rounded-full px-8 py-4 flex items-center space-x-10 z-20 border border-gray-100">
+          
+          <button 
+            onClick={() => setCurrentScreen("leave")} 
+            className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "leave" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}
+          >
+            <Palmtree className={`w-7 h-7 mb-1 ${currentScreen === "leave" ? "fill-green-50" : ""}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Leave</span>
+          </button>
+
+          <button 
+            onClick={() => setCurrentScreen("attendance")} 
+            className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "attendance" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}
+          >
+            <UserCheck className={`w-7 h-7 mb-1 ${currentScreen === "attendance" ? "fill-green-50" : ""}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Attendance</span>
+          </button>
+
+          <button 
+            onClick={() => { setCurrentScreen("tasks"); setViewType("card"); }} 
+            className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "tasks" && viewType === "card" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}
+          >
+            <ClipboardList className={`w-7 h-7 mb-1 ${currentScreen === "tasks" && viewType === "card" ? "fill-green-50" : ""}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Task List</span>
+          </button>
+
+          <button 
+            onClick={() => { setCurrentScreen("tasks"); setViewType("board"); }} 
+            className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "tasks" && viewType === "board" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}
+          >
+            <Kanban className={`w-7 h-7 mb-1 ${currentScreen === "tasks" && viewType === "board" ? "fill-green-50" : ""}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Board</span>
+          </button>
+
+          <button 
+            onClick={() => setIsHolidaysOpen(true)} 
+            className="flex flex-col items-center text-gray-400 hover:text-green-500 transition-all duration-200"
+          >
+            <Calendar className="w-7 h-7 mb-1" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Holidays</span>
+          </button>
+
+          <button 
+            onClick={() => setCurrentScreen("chat")} 
+            className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "chat" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}
+          >
+            <MessageSquare className={`w-7 h-7 mb-1 ${currentScreen === "chat" ? "fill-green-50" : ""}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Chat</span>
+          </button>
         </nav>
-        <div className="max-w-[1800px] mx-auto bg-white">
+
+        <div className="max-w-[1800px] mx-auto bg-white mt-12">
           {currentScreen === "tasks" ? (
             <>
               <TaskTableHeader uniqueProjects={uniqueProjects} employees={employees} downloadFilterType={downloadFilterType} setDownloadFilterType={setDownloadFilterType} downloadFilterValue={downloadFilterValue} setDownloadFilterValue={setDownloadFilterValue} xlsxLoaded={xlsxLoaded} handleExcelDownload={() => {}} />

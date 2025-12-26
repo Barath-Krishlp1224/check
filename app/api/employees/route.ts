@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb"; // Fixed import based on your previous codes
+import { connectDB } from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 
 export async function GET(request: Request) {
@@ -7,14 +7,40 @@ export async function GET(request: Request) {
     await connectDB();
 
     const url = new URL(request.url);
+
     const name = url.searchParams.get("name");
     const search = url.searchParams.get("search");
+    const checkBirthdays = url.searchParams.get("birthdays");
 
-    // ✅ Selection includes all fields needed for Payslips & Editing
+    // ✅ Unified field selection (covers payroll, profile, birthday, edit)
     const selectFields =
-      "_id empId name displayName department role team category salary accountNumber ifscCode joiningDate mailId";
+      "_id empId name displayName department role team category salary accountNumber ifscCode joiningDate mailId dateOfBirth photo";
 
-    // 1️⃣ Partial search (name / empId)
+    /* ------------------------------------------------------------------
+       1️⃣ Birthday check ( ?birthdays=true )
+       ------------------------------------------------------------------ */
+    if (checkBirthdays === "true") {
+      const today = new Date();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+
+      // Matches YYYY-MM-DD → -MM-DD
+      const todaySuffix = `-${month}-${day}`;
+
+      const birthdayFolks = await Employee.find(
+        { dateOfBirth: { $regex: todaySuffix + "$" } },
+        "name displayName photo team"
+      ).lean();
+
+      return NextResponse.json({
+        success: true,
+        birthdays: birthdayFolks,
+      });
+    }
+
+    /* ------------------------------------------------------------------
+       2️⃣ Partial search ( ?search= )
+       ------------------------------------------------------------------ */
     if (search) {
       const regex = new RegExp(search, "i");
 
@@ -33,7 +59,9 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2️⃣ Exact name match (case-insensitive)
+    /* ------------------------------------------------------------------
+       3️⃣ Exact name match ( ?name= )
+       ------------------------------------------------------------------ */
     if (name) {
       const employee = await Employee.findOne(
         { name: { $regex: `^${name}$`, $options: "i" } },
@@ -53,7 +81,9 @@ export async function GET(request: Request) {
       });
     }
 
-    // 3️⃣ All employees (default / hike / payroll pages)
+    /* ------------------------------------------------------------------
+       4️⃣ Default: fetch all employees
+       ------------------------------------------------------------------ */
     const employees = await Employee.find({}, selectFields)
       .sort({ name: 1 })
       .lean();
@@ -65,7 +95,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Error fetching employees:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch employees" },
+      { success: false, error: "Server Error" },
       { status: 500 }
     );
   }
