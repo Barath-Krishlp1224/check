@@ -8,13 +8,23 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /* -------------------------------------------------------------------------- */
+/*                               Types                                        */
+/* -------------------------------------------------------------------------- */
+
+interface LoginRequestBody {
+  empIdOrEmail: string;
+  password: string;
+}
+
+/* -------------------------------------------------------------------------- */
 /*                               Helper Utils                                 */
 /* -------------------------------------------------------------------------- */
-function escapeRegex(input: string) {
+
+function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function ensureConnected() {
+async function ensureConnected(): Promise<void> {
   await connectDB();
 
   let retries = 0;
@@ -31,12 +41,16 @@ async function ensureConnected() {
 /* -------------------------------------------------------------------------- */
 /*                                    POST                                    */
 /* -------------------------------------------------------------------------- */
+
 export async function POST(req: NextRequest) {
   try {
     await ensureConnected();
 
-    const body = await req.json().catch(() => null);
-    if (!body) {
+    let body: LoginRequestBody;
+
+    try {
+      body = (await req.json()) as LoginRequestBody;
+    } catch {
       return NextResponse.json(
         { error: "Invalid JSON body" },
         { status: 400 }
@@ -45,7 +59,12 @@ export async function POST(req: NextRequest) {
 
     const { empIdOrEmail, password } = body;
 
-    if (!empIdOrEmail || !password) {
+    if (
+      typeof empIdOrEmail !== "string" ||
+      typeof password !== "string" ||
+      !empIdOrEmail.trim() ||
+      !password.trim()
+    ) {
       return NextResponse.json(
         { error: "Employee ID / Email and password are required" },
         { status: 400 }
@@ -56,7 +75,7 @@ export async function POST(req: NextRequest) {
     const escaped = escapeRegex(input);
     const regex = new RegExp(`^${escaped}$`, "i");
 
-    // ❗ DO NOT use lean() for auth
+    // ❗ Do NOT use lean() for auth
     const employee = await Employee.findOne({
       $or: [{ empId: regex }, { mailId: regex }],
     }).select("+password");
@@ -105,17 +124,21 @@ export async function POST(req: NextRequest) {
       id: employee._id.toString(),
       empId: employee.empId,
       name: employee.name,
-      role: employee.role || "Employee",
-      team: employee.team || null,
-      department: employee.department || null,
+      role: employee.role ?? "Employee",
+      team: employee.team ?? null,
+      department: employee.department ?? null,
     };
 
     return NextResponse.json(
       { message: "Login successful", user },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("LOGIN API ERROR:", error.message);
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error";
+
+    console.error("LOGIN API ERROR:", message);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
