@@ -265,8 +265,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   React.useEffect(() => {
     if (isEditing && draftTask.assigneeNames) {
       setSelectedAssignees(draftTask.assigneeNames);
-    } else if (!isEditing) {
-      setSelectedAssignees([]);
     }
   }, [isEditing, draftTask.assigneeNames]);
 
@@ -299,7 +297,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     [task._id, onSubtaskStatusChange]
   );
 
-  const handleAssigneeToggle = useCallback((employeeName: string) => {
+  const handleAssigneeToggle = (employeeName: string) => {
     setSelectedAssignees((prev) => {
       const newSelection = prev.includes(employeeName)
         ? prev.filter((name) => name !== employeeName)
@@ -317,11 +315,11 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       
       return newSelection;
     });
-  }, [handleDraftChange]);
+  };
 
-  const removeAssignee = useCallback((employeeName: string) => {
+  const removeAssignee = (employeeName: string) => {
     handleAssigneeToggle(employeeName);
-  }, [handleAssigneeToggle]);
+  };
 
   if (!isOpen) return null;
 
@@ -420,33 +418,10 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       const inputWidthClass = "w-full max-w-sm";
 
       if (name === "assigneeNames") {
-        // Filter employees to show:
-        // 1. All employees from the current task's team/department
-        // 2. All TeamLeads regardless of team
-        // 3. All employees from "Accounts" or "TL Accountant" team/department
-        const currentTeam = (task as any).team || (task as any).department || '';
-        const filteredEmployees = employees.filter(emp => {
-          const empTeam = ((emp as any).team || '').toLowerCase();
-          const empDept = ((emp as any).department || '').toLowerCase();
-          const empRole = (emp as any).role || '';
-          
-          // Include TeamLeads
-          if (empRole === 'TeamLead') return true;
-          
-          // Include employees from same team/department
-          if (empTeam === currentTeam.toLowerCase() || empDept === currentTeam.toLowerCase()) return true;
-          
-          // Include all Accounts/TL Accountant employees
-          if (empTeam === 'accounts' || empTeam === 'tl accountant' || 
-              empDept === 'accounts' || empDept === 'tl accountant') return true;
-          
-          return false;
-        });
-
         return (
           <div className={inputWidthClass}>
             {/* Selected Assignees Display */}
-            <div className="mb-2 flex flex-wrap gap-2 min-h-[32px]">
+            <div className="mb-2 flex flex-wrap gap-2">
               {selectedAssignees.length > 0 ? (
                 selectedAssignees.map((assignee) => (
                   <span
@@ -464,52 +439,33 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
                   </span>
                 ))
               ) : (
-                <span className="text-sm text-slate-500 italic py-1">No assignees selected</span>
+                <span className="text-sm text-slate-500 italic">No assignees selected</span>
               )}
             </div>
             
             {/* Assignee Selection Dropdown */}
             <div className="border border-slate-300 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {filteredEmployees.length > 0 ? (
-                filteredEmployees.map((employee) => {
-                  const isSelected = selectedAssignees.includes(employee.name);
-                  return (
-                    <label
-                      key={employee._id}
-                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors ${
-                        isSelected ? 'bg-indigo-50' : ''
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleAssigneeToggle(employee.name)}
-                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-2 focus:ring-indigo-500"
-                      />
-                      <div className="flex flex-col">
-                        <span className={`text-sm ${isSelected ? 'font-semibold text-indigo-900' : 'text-gray-900'}`}>
-                          {employee.name}
-                        </span>
-                        <div className="flex gap-2 text-xs text-slate-500">
-                          {(employee as any).role && (
-                            <span>{(employee as any).role}</span>
-                          )}
-                          {(employee as any).team && (
-                            <span>• {(employee as any).team}</span>
-                          )}
-                          {(employee as any).department && (
-                            <span>• {(employee as any).department}</span>
-                          )}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })
-              ) : (
-                <div className="px-3 py-2 text-sm text-slate-500 text-center">
-                  No employees available
-                </div>
-              )}
+              {employees.map((employee) => {
+                const isSelected = selectedAssignees.includes(employee.name);
+                return (
+                  <label
+                    key={employee._id}
+                    className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors ${
+                      isSelected ? 'bg-indigo-50' : ''
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleAssigneeToggle(employee.name)}
+                      className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span className={`text-sm ${isSelected ? 'font-semibold text-indigo-900' : 'text-gray-900'}`}>
+                      {employee.name}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         );

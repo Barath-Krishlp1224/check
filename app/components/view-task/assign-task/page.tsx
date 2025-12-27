@@ -49,6 +49,74 @@ const allTaskStatuses = [
   "Paused",
 ];
 
+// Coming Soon Component
+const ComingSoon: React.FC = () => {
+  return (
+    <div className="flex items-center justify-center min-h-[calc(100vh-200px)] bg-gradient-to-br from-green-50 via-white to-green-50">
+      <div className="text-center">
+        <div className="relative inline-block">
+          {/* Animated circles */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-32 h-32 bg-green-200 rounded-full animate-ping opacity-20"></div>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center animation-delay-300">
+            <div className="w-24 h-24 bg-green-300 rounded-full animate-ping opacity-30"></div>
+          </div>
+          
+          {/* Icon */}
+          <div className="relative z-10 bg-white rounded-full p-8 shadow-xl">
+            <MessageSquare className="w-16 h-16 text-green-600 animate-bounce" />
+          </div>
+        </div>
+        
+        {/* Text */}
+        <h1 className="mt-8 text-5xl font-bold text-gray-800 animate-fade-in">
+          Coming Soon
+        </h1>
+        <p className="mt-4 text-xl text-gray-600 animate-fade-in animation-delay-300">
+          Chat feature is under development
+        </p>
+        
+        {/* Animated dots */}
+        <div className="flex justify-center items-center mt-6 space-x-2">
+          <div className="w-3 h-3 bg-green-600 rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-green-600 rounded-full animate-bounce animation-delay-200"></div>
+          <div className="w-3 h-3 bg-green-600 rounded-full animate-bounce animation-delay-400"></div>
+        </div>
+      </div>
+      
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out forwards;
+        }
+        
+        .animation-delay-200 {
+          animation-delay: 0.2s;
+        }
+        
+        .animation-delay-300 {
+          animation-delay: 0.3s;
+        }
+        
+        .animation-delay-400 {
+          animation-delay: 0.4s;
+        }
+      `}</style>
+    </div>
+  );
+};
+
 const TasksPage: React.FC = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -68,7 +136,7 @@ const TasksPage: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [isHolidaysOpen, setIsHolidaysOpen] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>("leave"); // Set default to leave
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>("leave");
   const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
@@ -391,7 +459,7 @@ const TasksPage: React.FC = () => {
       <ToastContainer /> 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
         
-        {/* NEW ENHANCED NAVBAR */}
+        {/* ENHANCED NAVBAR */}
         <nav className="fixed top-25 left-1/2 transform -translate-x-1/2 bg-white shadow-2xl rounded-full px-8 py-4 flex items-center space-x-10 z-20 border border-gray-100">
           
           <button 
@@ -455,7 +523,7 @@ const TasksPage: React.FC = () => {
               )}
               {selectedTaskForModal && <TaskModal task={selectedTaskForModal} isOpen={isModalOpen} onClose={closeTaskModal} isEditing={isEditing} draftTask={draftTask} subtasks={subtasks} employees={employees} currentProjectPrefix={currentProjectPrefix} allTaskStatuses={allTaskStatuses} handleEdit={handleEdit} handleDelete={handleDelete} handleUpdate={handleUpdate} cancelEdit={cancelEdit} handleDraftChange={handleDraftChange} handleSubtaskChange={handleSubtaskChange} addSubtask={addSubtask} removeSubtask={removeSubtask} onToggleEdit={handleToggleEdit} onToggleExpansion={handleToggleExpansion} handleStartSprint={handleStartSprint} onTaskStatusChange={onTaskStatusChange} onSubtaskStatusChange={onSubtaskStatusChange} />}
             </>
-          ) : currentScreen === "leave" ? <EmpLeave /> : currentScreen === "attendance" ? <AttendancePage /> : <IframeComponent url="https://check-seven-steel.vercel.app/" />}
+          ) : currentScreen === "leave" ? <EmpLeave /> : currentScreen === "attendance" ? <AttendancePage /> : currentScreen === "chat" ? <ComingSoon /> : null}
         </div>
       </div>
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
