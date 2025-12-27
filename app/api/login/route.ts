@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
 import Employee from "@/models/Employee";
 
@@ -8,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /* -------------------------------------------------------------------------- */
-/*                               Types                                        */
+/* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
 interface LoginRequestBody {
@@ -17,34 +16,21 @@ interface LoginRequestBody {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                               Helper Utils                                 */
+/* Utils                                                                      */
 /* -------------------------------------------------------------------------- */
 
 function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function ensureConnected(): Promise<void> {
-  await connectDB();
-
-  let retries = 0;
-  while (mongoose.connection.readyState !== 1 && retries < 15) {
-    await new Promise((r) => setTimeout(r, 100));
-    retries++;
-  }
-
-  if (mongoose.connection.readyState !== 1) {
-    throw new Error("MongoDB not connected");
-  }
-}
-
 /* -------------------------------------------------------------------------- */
-/*                                    POST                                    */
+/* POST                                                                       */
 /* -------------------------------------------------------------------------- */
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureConnected();
+    // ✅ Single, safe connection
+    await connectDB();
 
     let body: LoginRequestBody;
 
@@ -59,12 +45,7 @@ export async function POST(req: NextRequest) {
 
     const { empIdOrEmail, password } = body;
 
-    if (
-      typeof empIdOrEmail !== "string" ||
-      typeof password !== "string" ||
-      !empIdOrEmail.trim() ||
-      !password.trim()
-    ) {
+    if (!empIdOrEmail?.trim() || !password?.trim()) {
       return NextResponse.json(
         { error: "Employee ID / Email and password are required" },
         { status: 400 }
@@ -72,50 +53,38 @@ export async function POST(req: NextRequest) {
     }
 
     const input = empIdOrEmail.trim();
-    const escaped = escapeRegex(input);
-    const regex = new RegExp(`^${escaped}$`, "i");
+    const regex = new RegExp(`^${escapeRegex(input)}$`, "i");
 
-    // ❗ Do NOT use lean() for auth
+    // ❗ Never use lean() for auth
     const employee = await Employee.findOne({
       $or: [{ empId: regex }, { mailId: regex }],
     }).select("+password");
 
-    if (!employee) {
+    if (!employee || !employee.password) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    if (!employee.password) {
-      return NextResponse.json(
-        { error: "Password not set. Contact admin" },
+        { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
     let isValid = false;
 
-    // bcrypt hash
-    if (
-      employee.password.startsWith("$2a$") ||
-      employee.password.startsWith("$2b$")
-    ) {
+    // bcrypt password
+    if (employee.password.startsWith("$2")) {
       isValid = await bcrypt.compare(password, employee.password);
     } else {
       // legacy plain-text password
       isValid = password === employee.password;
 
       if (isValid) {
-        const hashed = await bcrypt.hash(password, 10);
-        employee.password = hashed;
+        employee.password = await bcrypt.hash(password, 10);
         await employee.save();
       }
     }
 
     if (!isValid) {
       return NextResponse.json(
-        { error: "Invalid password" },
+        { error: "Invalid credentials" },
         { status: 401 }
       );
     }
@@ -133,11 +102,8 @@ export async function POST(req: NextRequest) {
       { message: "Login successful", user },
       { status: 200 }
     );
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-
-    console.error("LOGIN API ERROR:", message);
+  } catch (error) {
+    console.error("LOGIN API ERROR:", error);
 
     return NextResponse.json(
       { error: "Internal server error" },
