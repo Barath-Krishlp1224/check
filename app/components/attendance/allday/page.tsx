@@ -77,23 +77,43 @@ const App: React.FC = () => {
     return `${h}h ${m}m`;
   };
 
-  const getDistInfo = (lat?: number | null, lon?: number | null, mode?: AttendanceMode) => {
-    if (lat == null || lon == null) return { label: "-", branch: "N/A", className: "text-slate-400" };
-    if (mode !== "IN_OFFICE") return { label: "N/A", branch: "Remote", className: "text-slate-400" };
+  // Improved Logic: prioritize API branch field, then calculate from coordinates
+  const getBranchDisplay = (r: any, type: 'in' | 'out') => {
+    const branchField = type === 'in' ? r.punchInBranch : r.punchOutBranch;
+    const lat = type === 'in' ? r.punchInLatitude : r.punchOutLatitude;
+    const lon = type === 'in' ? r.punchInLongitude : r.punchOutLongitude;
+
+    // 1. If API provides the branch name directly, use it
+    if (branchField && branchField !== "N/A") return { name: branchField, dist: "", color: "text-slate-700" };
+
+    // 2. If no coordinates, return N/A
+    if (lat == null || lon == null) return { name: "N/A", dist: "", color: "text-slate-400" };
+
+    // 3. Calculate based on Mode
+    if (r.mode !== "IN_OFFICE") return { name: "REMOTE", dist: "", color: "text-blue-500" };
+
+    // 4. Calculate based on GPS
     const validation = getBranchValidation(lat, lon);
-    return { label: `${validation.distance}m`, branch: validation.branchName, className: validation.isAllowed ? "text-green-600" : "text-red-600" };
+    return { 
+      name: validation.branchName, 
+      dist: `${validation.distance}m`, 
+      color: validation.isAllowed ? "text-green-600" : "text-red-600" 
+    };
   };
 
   const filteredAttendance = useMemo(() => {
     return attendance.filter((r) => {
-      if (selectedEmployeeId !== "ALL" && r.employeeId !== selectedEmployeeId) return false;
-      const d = r.date.slice(0, 10);
-      return !(fromDate && d < fromDate || toDate && d > toDate);
+      const matchesEmployee = selectedEmployeeId === "ALL" || r.employeeId === selectedEmployeeId;
+      const recordDate = r.date.slice(0, 10);
+      const matchesFromDate = !fromDate || recordDate >= fromDate;
+      const matchesToDate = !toDate || recordDate <= toDate;
+      return matchesEmployee && matchesFromDate && matchesToDate;
     });
   }, [attendance, selectedEmployeeId, fromDate, toDate]);
 
   const stats = useMemo(() => {
     const staff = employees.filter(e => !(`${e.role}${e.category}${e.team}`.toLowerCase().includes("founder")));
+    const records = filteredAttendance.length;
     const onTime = filteredAttendance.filter(r => {
       if (!r.punchInTime) return false;
       const t = new Date(r.punchInTime);
@@ -104,10 +124,14 @@ const App: React.FC = () => {
       const t = new Date(r.punchInTime);
       return (t.getHours() === 9 && t.getMinutes() >= 30 && t.getMinutes() <= 35);
     }).length;
+    
     let absent = 0;
     const checkList = selectedEmployeeId === "ALL" ? staff : staff.filter(e => e.employeeId === selectedEmployeeId);
-    checkList.forEach(emp => { if (!filteredAttendance.some(r => r.employeeId === emp.employeeId)) absent += 1; });
-    return { totalStaff: staff.length, records: filteredAttendance.length, onTime, grace, late: filteredAttendance.length - (onTime + grace), absent };
+    checkList.forEach(emp => { 
+      if (!filteredAttendance.some(r => r.employeeId === emp.employeeId)) absent += 1; 
+    });
+
+    return { totalStaff: staff.length, records, onTime, grace, late: records - (onTime + grace), absent };
   }, [filteredAttendance, employees, selectedEmployeeId]);
 
   const exportCSV = () => {
@@ -125,7 +149,7 @@ const App: React.FC = () => {
         <h1 className="text-3xl font-black text-slate-900 mb-6 tracking-tight text-left uppercase">Attendance Dashboard</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* LEFT: FILTERS */}
+          {/* FILTERS */}
           <div className="bg-white rounded-3xl border-2 border-slate-100 shadow-xl p-6 flex flex-col justify-center space-y-4">
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Staff Member</label>
@@ -155,7 +179,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* RIGHT: STATS BOXES */}
+          {/* STATS */}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'Staff', val: stats.totalStaff, color: 'text-slate-900', border: 'border-l-slate-400' },
@@ -173,7 +197,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* TABLE SECTION */}
+        {/* TABLE */}
         <div className="bg-white rounded-3xl border-2 border-slate-100 shadow-xl overflow-hidden">
           {loadingAttendance ? (
             <div className="py-20 flex flex-col items-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>
@@ -182,45 +206,53 @@ const App: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white z-10 border-b-2 border-slate-100">
                   <tr>
-                    {['Employee', 'In Time', 'In Dist', 'Out Time', 'Out Dist', 'Hours'].map((h) => (
+                    {['Employee', 'In Time', 'In Branch', 'Out Time', 'Out Branch', 'Hours'].map((h) => (
                       <th key={h} className="px-5 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredAttendance.map(r => {
-                    const inD = getDistInfo(r.punchInLatitude, r.punchInLongitude, r.mode);
-                    const outD = getDistInfo(r.punchOutLatitude, r.punchOutLongitude, r.mode);
-                    return (
-                      <tr key={r._id} className="hover:bg-slate-50/50 h-[80px]">
-                        <td className="px-5 py-3">
-                          <div className="flex flex-col items-center">
-                            <span className="text-sm font-black text-slate-800 line-clamp-1">{r.employeeName}</span>
-                            <span className="text-[10px] font-mono text-slate-400 uppercase">{r.mode?.replace('_', ' ')}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-sm font-bold text-slate-600 text-center">{formatTime(r.punchInTime)}</td>
-                        <td className="px-5 py-3 text-center">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 leading-none">{inD.branch}</span>
-                            <span className={`text-xs font-black ${inD.className}`}>{inD.label}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-sm font-bold text-slate-600 text-center">{formatTime(r.punchOutTime)}</td>
-                        <td className="px-5 py-3 text-center">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 leading-none">{outD.branch}</span>
-                            <span className={`text-xs font-black ${outD.className}`}>{outD.label}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-center">
-                          <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-black">
-                            {getDuration(r.punchInTime, r.punchOutTime)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filteredAttendance.length > 0 ? (
+                    filteredAttendance.map(r => {
+                      const inInfo = getBranchDisplay(r, 'in');
+                      const outInfo = getBranchDisplay(r, 'out');
+                      return (
+                        <tr key={r._id} className="hover:bg-slate-50/50 h-[80px]">
+                          <td className="px-5 py-3">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-black text-slate-800 line-clamp-1">{r.employeeName}</span>
+                              <span className="text-[10px] font-mono text-slate-400 uppercase">{r.mode?.replace('_', ' ')}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-sm font-bold text-slate-600 text-center">{formatTime(r.punchInTime)}</td>
+                          <td className="px-5 py-3 text-center">
+                            <div className="flex flex-col">
+                              <span className={`text-xs font-black uppercase ${inInfo.color}`}>{inInfo.name}</span>
+                              {inInfo.dist && <span className="text-[9px] font-bold text-slate-400 mt-0.5">{inInfo.dist}</span>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-sm font-bold text-slate-600 text-center">{formatTime(r.punchOutTime)}</td>
+                          <td className="px-5 py-3 text-center">
+                            <div className="flex flex-col">
+                              <span className={`text-xs font-black uppercase ${outInfo.color}`}>{outInfo.name}</span>
+                              {outInfo.dist && <span className="text-[9px] font-bold text-slate-400 mt-0.5">{outInfo.dist}</span>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-center">
+                            <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-black">
+                              {getDuration(r.punchInTime, r.punchOutTime)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-20 text-center">
+                        <p className="font-bold text-slate-400 italic">No attendance records match your filters.</p>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

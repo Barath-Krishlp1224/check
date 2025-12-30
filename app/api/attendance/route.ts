@@ -11,21 +11,12 @@ const s3Client = new S3Client({
   },
 });
 
-/**
- * Uploads to S3 with structure: 
- * attendances / YYYY-MM-DD / Name-EmpID / punchType_timestamp.jpg
- */
 async function uploadToS3(base64Data: string, date: string, empName: string, empId: string, punchType: string) {
   const buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ""), "base64");
-  
-  // Format folder path: "John-Doe-LP001"
   const safeName = empName.toLowerCase().replace(/\s+/g, "-");
   const folderName = `${safeName}-${empId}`;
-  
   const timestamp = Date.now();
   const fileName = `${punchType}_${timestamp}.jpg`;
-  
-  // Path: attendances/2025-12-30/john-doe-LP001/IN_1735555200.jpg
   const key = `attendances/${date}/${folderName}/${fileName}`;
 
   await s3Client.send(
@@ -50,13 +41,13 @@ export async function POST(req: Request) {
       mode, 
       latitude, 
       longitude, 
-      imageData 
+      imageData,
+      branch // Added branch from frontend
     } = await req.json();
 
     const today = new Date().toISOString().split("T")[0];
     const now = new Date();
 
-    // 1. Upload to S3 with Name/ID folder
     const imageUrl = await uploadToS3(
       imageData, 
       today, 
@@ -65,7 +56,6 @@ export async function POST(req: Request) {
       punchType
     );
 
-    // 2. Database Update
     let attendance = await Attendance.findOne({ employeeId, date: today, mode });
     if (!attendance) {
       attendance = new Attendance({ employeeId, date: today, mode });
@@ -76,11 +66,13 @@ export async function POST(req: Request) {
       attendance.punchInImage = imageUrl;
       attendance.punchInLatitude = latitude;
       attendance.punchInLongitude = longitude;
+      attendance.punchInBranch = branch; // Storing branch name for IN
     } else {
       attendance.punchOutTime = now;
       attendance.punchOutImage = imageUrl;
       attendance.punchOutLatitude = latitude;
       attendance.punchOutLongitude = longitude;
+      attendance.punchOutBranch = branch; // Storing branch name for OUT
     }
 
     await attendance.save();

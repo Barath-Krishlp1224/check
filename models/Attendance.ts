@@ -25,6 +25,10 @@ export interface IAttendance extends Document {
   punchOutLatitude?: number;
   punchOutLongitude?: number;
 
+  // 🔹 New fields for Branch tracking
+  punchInBranch?: string;
+  punchOutBranch?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,12 +52,14 @@ const AttendanceSchema: Schema<IAttendance> = new Schema(
     punchInImage: { type: String },
     punchInLatitude: { type: Number },
     punchInLongitude: { type: Number },
+    punchInBranch: { type: String }, // 🔹 Added
 
     // Punch Out
     punchOutTime: { type: Date },
     punchOutImage: { type: String },
     punchOutLatitude: { type: Number },
     punchOutLongitude: { type: Number },
+    punchOutBranch: { type: String }, // 🔹 Added
   },
   { timestamps: true }
 );
