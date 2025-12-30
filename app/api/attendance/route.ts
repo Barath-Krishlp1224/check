@@ -1,132 +1,93 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Attendance from "@/models/Attendance";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-/* -------------------------------------------------------------------------- */
-/*                                    GET                                     */
-/* -------------------------------------------------------------------------- */
-export async function GET(req: Request) {
-  try {
-    await connectDB();
+const s3Client = new S3Client({
+  region: process.env.S3_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
 
-    const { searchParams } = new URL(req.url);
-    const empId = searchParams.get("empId");
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
-    const days = searchParams.get("days");
+/**
+ * Uploads to S3 with structure: 
+ * attendances / YYYY-MM-DD / Name-EmpID / punchType_timestamp.jpg
+ */
+async function uploadToS3(base64Data: string, date: string, empName: string, empId: string, punchType: string) {
+  const buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ""), "base64");
+  
+  // Format folder path: "John-Doe-LP001"
+  const safeName = empName.toLowerCase().replace(/\s+/g, "-");
+  const folderName = `${safeName}-${empId}`;
+  
+  const timestamp = Date.now();
+  const fileName = `${punchType}_${timestamp}.jpg`;
+  
+  // Path: attendances/2025-12-30/john-doe-LP001/IN_1735555200.jpg
+  const key = `attendances/${date}/${folderName}/${fileName}`;
 
-    const dateFilter: any = {};
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: "image/jpeg",
+    })
+  );
 
-    if (empId) {
-      dateFilter.employeeId = empId;
-    }
-
-    if (from && to) {
-      dateFilter.date = { $gte: from, $lte: to };
-    } else if (days) {
-      const daysNum = Number(days);
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - daysNum);
-      dateFilter.date = {
-        $gte: cutoff.toISOString().split("T")[0],
-      };
-    }
-
-    const records = await Attendance.find(
-      dateFilter,
-      {
-        employeeId: 1,
-        date: 1,
-        punchInTime: 1,
-        punchOutTime: 1,
-        mode: 1,
-      }
-    ).lean();
-
-    const attendances = records.map((r: any) => ({
-      employeeId: String(r.employeeId),
-      date: r.date,
-      present: Boolean(r.punchInTime),
-      punchInTime: r.punchInTime ?? null,
-      punchOutTime: r.punchOutTime ?? null,
-      mode: r.mode ?? "IN_OFFICE",
-    }));
-
-    return NextResponse.json({
-      attendances,
-      presentCount: attendances.filter(a => a.present).length,
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: "Failed to fetch attendance", details: err.message },
-      { status: 500 }
-    );
-  }
+  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                    POST                                    */
-/* -------------------------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
     await connectDB();
-
-    const {
-      employeeId,
-      punchType,
-      mode = "IN_OFFICE",
-      latitude,
-      longitude,
-      imageData,
+    const { 
+      employeeId, 
+      employeeName, 
+      punchType, 
+      mode, 
+      latitude, 
+      longitude, 
+      imageData 
     } = await req.json();
 
-    if (!employeeId || !punchType) {
-      return NextResponse.json(
-        { error: "employeeId and punchType are required" },
-        { status: 400 }
-      );
-    }
-
     const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
 
-    let attendance = await Attendance.findOne({
-      employeeId,
-      date: today,
-      mode,
-    });
+    // 1. Upload to S3 with Name/ID folder
+    const imageUrl = await uploadToS3(
+      imageData, 
+      today, 
+      employeeName || "unknown", 
+      employeeId, 
+      punchType
+    );
 
+    // 2. Database Update
+    let attendance = await Attendance.findOne({ employeeId, date: today, mode });
     if (!attendance) {
-      attendance = new Attendance({
-        employeeId,
-        date: today,
-        mode,
-      });
+      attendance = new Attendance({ employeeId, date: today, mode });
     }
 
     if (punchType === "IN") {
-      attendance.punchInTime = new Date();
+      attendance.punchInTime = now;
+      attendance.punchInImage = imageUrl;
       attendance.punchInLatitude = latitude;
       attendance.punchInLongitude = longitude;
-      attendance.punchInImage = imageData;
-    }
-
-    if (punchType === "OUT") {
-      attendance.punchOutTime = new Date();
+    } else {
+      attendance.punchOutTime = now;
+      attendance.punchOutImage = imageUrl;
       attendance.punchOutLatitude = latitude;
       attendance.punchOutLongitude = longitude;
-      attendance.punchOutImage = imageData;
     }
 
     await attendance.save();
 
-    return NextResponse.json({
-      success: true,
-      data: attendance,
-    });
+    return NextResponse.json({ success: true, record: attendance });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: "Attendance save failed", details: err.message },
-      { status: 500 }
-    );
+    console.error("Attendance API Error:", err);
+    return NextResponse.json({ error: "Failed to process attendance" }, { status: 500 });
   }
 }
