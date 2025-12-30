@@ -195,7 +195,7 @@ const sumAllSubtasksTime = (
   if (!subtasks || subtasks.length === 0) return 0;
 
   return subtasks.reduce((total, sub) => {
-    const raw: unknown = (sub as any).timeSpent;
+    const raw: unknown = sub.timeSpent;
     let current = 0;
 
     if (typeof raw === "number") {
@@ -216,7 +216,7 @@ const sumAllSubtasksStoryPoints = (
   if (!subtasks || subtasks.length === 0) return 0;
 
   return subtasks.reduce((total, sub) => {
-    const raw: unknown = (sub as any).storyPoints;
+    const raw: unknown = sub.storyPoints;
     let current = 0;
 
     if (typeof raw === "number") {
@@ -327,9 +327,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   const subtasksToDisplay: Subtask[] = isEditing
     ? subtasks
     : task.subtasks || [];
-  const hasSubtasks = subtasksToDisplay.length > 0;
-
-  const totalTimeSpent = sumAllSubtasksTime(subtasksToDisplay);
+  
   const totalStoryPoints = sumAllSubtasksStoryPoints(subtasksToDisplay);
 
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
@@ -354,13 +352,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             <input
               type="number"
               name="taskTimeSpent"
-              value={
-                typeof current.taskTimeSpent === "number"
-                  ? current.taskTimeSpent
-                  : typeof current.taskTimeSpent === "string"
-                  ? parseFloat(current.taskTimeSpent) || 0
-                  : 0
-              }
+              value={current.taskTimeSpent ?? ""}
               onChange={handleDraftChange}
               className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
               min={0}
@@ -368,12 +360,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             />
           ) : (
             <p className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-gray-900 font-medium">
-              {typeof task.taskTimeSpent === "number"
-                ? task.taskTimeSpent
-                : typeof task.taskTimeSpent === "string"
-                ? parseFloat(task.taskTimeSpent) || 0
-                : 0}{" "}
-              hrs
+              {task.taskTimeSpent || 0} hrs
             </p>
           )}
         </div>
@@ -394,7 +381,21 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     }
     
     if (name === "taskStoryPoints" && isEditing) {
-      return null;
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          <input
+            type="number"
+            name="taskStoryPoints"
+            value={current.taskStoryPoints ?? ""}
+            onChange={handleDraftChange}
+            className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black"
+            min={0}
+          />
+        </div>
+      );
     }
 
     const displayValue = task[name];
@@ -420,7 +421,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       if (name === "assigneeNames") {
         return (
           <div className={inputWidthClass}>
-            {/* Selected Assignees Display */}
             <div className="mb-2 flex flex-wrap gap-2">
               {selectedAssignees.length > 0 ? (
                 selectedAssignees.map((assignee) => (
@@ -443,7 +443,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               )}
             </div>
             
-            {/* Assignee Selection Dropdown */}
             <div className="border border-slate-300 rounded-lg bg-white max-h-48 overflow-y-auto">
               {employees.map((employee) => {
                 const isSelected = selectedAssignees.includes(employee.name);
@@ -489,16 +488,16 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             ))}
           </select>
         );
-      } else if (name === "taskStoryPoints" || name === "completion") {
+      } else if (name === "completion") {
         return (
           <input
             type="number"
             name={name}
-            value={(current[name] as number) || 0}
+            value={current[name] ?? 0}
             onChange={handleDraftChange}
             className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
             min={0}
-            max={name === "completion" ? 100 : undefined}
+            max={100}
           />
         );
       } else if (name === "remarks") {
@@ -526,8 +525,6 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             value={(current[name] as string | number) || ""}
             onChange={handleDraftChange}
             className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
-            min={type === "number" ? 0 : undefined}
-            max={type === "number" ? 100 : undefined}
           />
         );
       }
@@ -623,7 +620,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
               onViewSubtask={handleViewSubtask}
               allTaskStatuses={["Pending", "In Progress", "Completed", "Paused"]}
             />
-          ) : hasSubtasks ? (
+          ) : subtasksToDisplay.length > 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
               <SubtaskViewer
                 subtasks={subtasksToDisplay}
