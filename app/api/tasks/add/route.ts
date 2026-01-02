@@ -16,7 +16,6 @@ interface Subtask {
   endDate?: string;
   timeSpent?: string;
   assigneeName?: string;
-  // ✨ ADDED DATE FIELD
   date?: string;
   subtasks?: Subtask[];
 }
@@ -35,7 +34,6 @@ type ReqBody = {
   subtasks?: Subtask[]; 
 };
 
-// UPDATED: Added tl accountant to the webhook map
 const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   tech: process.env.SLACK_WEBHOOK_URL,
   accounts: process.env.SLACK_WEBHOOK_URL_ACC,
@@ -46,7 +44,7 @@ const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   hr: process.env.SLACK_WEBHOOK_URL_HR ?? process.env.SLACK_WEBHOOK_URL,
   founders: process.env.SLACK_WEBHOOK_URL_FOUNDERS ?? process.env.SLACK_WEBHOOK_URL,
   "tl-reporting manager": process.env.SLACK_WEBHOOK_URL_TL ?? process.env.SLACK_WEBHOOK_URL,
-  "tl accountant": process.env.SLFLACK_WEBHOOK_URL_TLACC ?? process.env.SLACK_WEBHOOK_URL_ACC, // NEW
+  "tl accountant": process.env.SLFLACK_WEBHOOK_URL_TLACC ?? process.env.SLACK_WEBHOOK_URL_ACC,
 };
 
 const normalizeDeptKey = (d?: string) => (d ? d.toString().trim().toLowerCase() : "");
@@ -88,7 +86,6 @@ export async function POST(req: Request) {
       subtasks, 
     } = body || {};
 
-    // Basic validation
     if (!projectId || !project || !assigneeNames || assigneeNames.length === 0) { 
       return NextResponse.json(
         { success: false, error: "Missing required fields: projectId, project, or at least one assignee." },
@@ -107,7 +104,6 @@ export async function POST(req: Request) {
       completion !== "" && completion !== undefined ? Number(completion) : 0;
     const taskStatus = status || "Backlog";
 
-    // Create and save task, using assigneeNames
     const newTask = new Task({
       assigneeNames, 
       projectId,
@@ -123,13 +119,11 @@ export async function POST(req: Request) {
     });
 
     const savedTask = await newTask.save();
-    console.log("✅ Task saved successfully:", savedTask._id ?? savedTask);
-
-    // Prepare Slack notification
+    
+    // Prepare Assignee Display Logic
     const primaryAssignee = assigneeNames[0];
     let assigneeLabel = primaryAssignee;
     
-    // Enrich primary assignee label with empId if exists
     try {
       const emp = await Employee.findOne({ name: new RegExp(`^${primaryAssignee}$`, "i") }, "empId name").lean();
       if (emp) assigneeLabel = `${emp.name}${emp.empId ? ` (${emp.empId})` : ""}`;
@@ -140,11 +134,9 @@ export async function POST(req: Request) {
     const totalAssignees = assigneeNames.length;
     const assigneeDisplay = totalAssignees > 1 
       ? `${assigneeLabel} (+${totalAssignees - 1} others)`
-      : assigneeLabel;
+      : `${assigneeLabel}`;
     
-    // Determine webhook
     const deptKey = normalizeDeptKey(department);
-    // Logic handles the new key "tl accountant" being present
     const webhookUrl = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
 
     if (!webhookUrl) {
@@ -154,23 +146,33 @@ export async function POST(req: Request) {
         const subtaskCount = subtasks?.length || 0;
         const subtaskNote = subtaskCount > 0 ? ` (+${subtaskCount} Subtask${subtaskCount > 1 ? 's' : ''})` : '';
         
-        const headline = `📌 New Task — ${department}`;
+        // ✨ NEW HEADLINE: Bold Assignee Name at the top
+        const headline = `👤 Assignee: ${assigneeDisplay}`;
+        
         const blocks: any[] = [
-          { type: "section", text: { type: "mrkdwn", text: `*${headline}*` } },
+          { 
+            type: "section", 
+            text: { 
+              type: "mrkdwn", 
+              text: `${headline}\n📌 New Task — ${department}` 
+            } 
+          },
           {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*Project:* ${project} (${projectId})${subtaskNote}\n*Assignee(s):* ${assigneeDisplay}\n*Department:* ${department}\n*Status:* ${taskStatus}${dueDate ? `\n*Due:* ${dueDate}` : ""}`, 
+              text: `Project: ${project} (${projectId})${subtaskNote}\nDepartment: ${department}\nStatus: ${taskStatus}${dueDate ? `\nDue: ${dueDate}` : ""}`, 
             },
           },
-          ...(remarks ? [{ type: "section", text: { type: "mrkdwn", text: `*Remarks:* ${remarks}` } }] : []),
-          { type: "context", elements: [{ type: "mrkdwn", text: `Task saved: ${savedTask._id}` }] },
+          ...(remarks ? [{ type: "section", text: { type: "mrkdwn", text: `Remarks: ${remarks}` } }] : []),
+          { 
+            type: "context", 
+            elements: [{ type: "mrkdwn", text: `Task saved: ${savedTask._id}` }] 
+          },
         ];
 
         await postToSlack(webhookUrl, { blocks });
-
-        console.log(`✅ Slack notification sent to webhook for department="${deptKey}"`);
+        console.log(`✅ Slack notification sent for ${assigneeLabel}`);
       } catch (slackErr) {
         console.error("⚠️ Slack notification failed:", slackErr);
       }
