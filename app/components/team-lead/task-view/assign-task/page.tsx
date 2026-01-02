@@ -6,7 +6,23 @@ import React, {
   useCallback,
   ChangeEvent,
 } from "react";
-import { AlertCircle, LayoutGrid, ListTodo, BarChart2 } from "lucide-react";
+import { 
+  AlertCircle, 
+  LayoutGrid, 
+  ListTodo, 
+  BarChart2, 
+  User, 
+  X, 
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  CalendarDays,
+  List,
+  Target,
+  Percent,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import TaskTableHeader from "./components/TaskTableHeader";
 import TaskCard from "./components/TaskCard";
@@ -29,54 +45,351 @@ import "react-toastify/dist/ReactToastify.css";
 export type ViewType = "card" | "board" | "chart";
 
 const allTaskStatuses = [
-  "Backlog",
-  "In Progress",
-  "Dev Review",
-  "Deployed in QA",
-  "Test In Progress",
-  "QA Sign Off",
-  "Deployment Stage",
-  "Pilot Test",
-  "Completed",
-  "Paused",
+  "Backlog", "In Progress", "Dev Review", "Deployed in QA",
+  "Test In Progress", "QA Sign Off", "Deployment Stage",
+  "Pilot Test", "Completed", "Paused",
 ];
 
+// --- Helper Functions ---
+const getPreviousWeek = (weekStr: string) => {
+  if (!weekStr || !weekStr.includes("-W")) return "";
+  const [year, week] = weekStr.split("-W").map(Number);
+  if (week === 1) return `${year - 1}-W52`;
+  return `${year}-W${String(week - 1).padStart(2, '0')}`;
+};
+
+const isDateInWeek = (dateStr?: string, weekStr?: string): boolean => {
+  if (!dateStr || !weekStr || !weekStr.includes("-W")) return false;
+  const [year, weekNum] = weekStr.split("-W").map(Number);
+  const date = new Date(dateStr);
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() === year && weekNo === weekNum;
+};
+
+// --- Sub-Component: Employee Detailed Stats Modal ---
+const EmployeeStatsModal: React.FC<{
+  emp: any;
+  isOpen: boolean;
+  onClose: () => void;
+  week: string;
+}> = ({ emp, isOpen, onClose, week }) => {
+  if (!isOpen || !emp) return null;
+
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const trend = emp.percentage - emp.prevPercentage;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+        <div className="p-6 border-b border-indigo-100 flex justify-between items-center bg-indigo-600 text-white">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2"><User className="w-5 h-5" />{emp.name}</h2>
+            <p className="text-xs opacity-90 font-medium">Weekly Resource Analysis • {week}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+        
+        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto bg-slate-50/50">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Avg Weekly Completion</p>
+              <div className="flex items-center gap-2">
+                <p className="text-3xl font-black text-indigo-600">{emp.percentage}%</p>
+                {trend !== 0 && (
+                  <span className={`flex items-center text-xs font-bold ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {trend > 0 ? <TrendingUp className="w-3 h-3 mr-1"/> : <TrendingDown className="w-3 h-3 mr-1"/>}
+                    {Math.abs(trend)}%
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Subtasks Handled</p>
+              <p className="text-3xl font-black text-slate-700">{emp.taskCount}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <h3 className="text-xs font-black text-slate-400 uppercase mb-4 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-indigo-500" /> Daily Work Pulse
+            </h3>
+            <div className="flex justify-between gap-2">
+              {days.map((day, idx) => {
+                const dayData = emp.dailyCompletion[idx + 1] || 0;
+                const isPresent = dayData > 0;
+                return (
+                  <div key={day} className="flex-1 text-center">
+                    <div className={`aspect-square rounded-xl flex items-center justify-center mb-2 border-2 transition-all ${isPresent ? 'bg-green-50 border-green-200 text-green-600' : 'bg-red-50 border-red-200 text-red-400'}`}>
+                      <span className="text-xs font-black">{isPresent ? `${dayData}%` : 'ABS'}</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">{day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 px-1"><List className="w-4 h-4 text-indigo-500" />Detailed Work Log</h3>
+            <div className="space-y-3">
+               {emp.items && emp.items.length > 0 ? emp.items.map((item: any, idx: number) => (
+                 <div key={idx} className="p-4 border border-slate-100 rounded-2xl bg-white shadow-sm hover:border-indigo-200 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                           <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 uppercase tracking-tight">
+                              <Target className="w-3 h-3"/> {item.parentTask}
+                           </div>
+                           <div className="text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200 uppercase">
+                              {item.parentStatus}
+                           </div>
+                           <div className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100">
+                              Completion: {item.parentCompletion}%
+                           </div>
+                        </div>
+                        <p className="text-sm font-bold text-slate-700 leading-tight">{item.title}</p>
+                      </div>
+                      <div className="ml-4 text-right">
+                        <span className="text-xs font-black text-white bg-indigo-600 px-2 py-1 rounded-lg shadow-sm">
+                          {item.completion}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50 text-[10px] text-slate-400 font-bold uppercase">
+                       <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3"/> {item.date}</span>
+                       <span className={`italic font-black flex items-center gap-1 ${item.status === 'Completed' ? 'text-green-500' : 'text-amber-500'}`}>
+                         {item.status === 'Completed' ? <CheckCircle2 className="w-3 h-3"/> : <Clock className="w-3 h-3"/>}
+                         Subtask: {item.status || "Pending"}
+                       </span>
+                    </div>
+                 </div>
+               )) : (
+                 <p className="text-center text-sm text-slate-400 py-6">No tasks logged.</p>
+               )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TasksPage: React.FC = () => {
-  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [minLoadTimePassed, setMinLoadTimePassed] = useState(false);
-  const [error, setError] = useState("");
   const [viewType, setViewType] = useState<ViewType>("card");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTaskForModal, setSelectedTaskForModal] =
-    useState<Task | null>(null);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [draftTask, setDraftTask] = useState<Partial<Task>>({});
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-  const [currentProjectPrefix, setCurrentProjectPrefix] =
-    useState<string>("");
-  const [downloadFilterType, setDownloadFilterType] =
-    useState<string>("all");
-  const [downloadFilterValue, setDownloadFilterValue] =
-    useState<string>("");
+  const [currentProjectPrefix, setCurrentProjectPrefix] = useState<string>("");
+  const [downloadFilterType, setDownloadFilterType] = useState<string>("all");
+  const [downloadFilterValue, setDownloadFilterValue] = useState<string>("");
   const [xlsxLoaded, setXlsxLoaded] = useState(false);
+  const [selectedEmpStats, setSelectedEmpStats] = useState<any | null>(null);
 
-  const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
-    id: prefix + (path.length > 0 ? `.${path.join(".")}` : "-S1"),
-    title: "",
-    assigneeName: "",
-    status: "Pending",
-    completion: 0,
-    remarks: "",
-    subtasks: [],
-    isEditing: true,
-    isExpanded: true,
-    date: new Date().toISOString().split("T")[0],
-    timeSpent: "",
-    storyPoints: 0,
-  });
+  const getApiUrl = (path: string): string => {
+    if (typeof window !== "undefined") return `${window.location.origin}${path}`;
+    return `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}${path}`;
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch(getApiUrl("/api/tasks"));
+      const data = await res.json();
+      if (res.ok && data.success) setTasks(data.tasks);
+    } catch (err) {}
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch(getApiUrl("/api/employees"));
+      const data = await res.json();
+      if (res.ok && data.success) setEmployees(data.employees);
+    } catch (err) {}
+  };
+
+  useEffect(() => {
+    import("xlsx").then((XLSX) => {
+        (window as any).XLSX = XLSX;
+        setXlsxLoaded(true);
+    }).catch(() => {});
+
+    const init = async () => {
+      await Promise.all([fetchTasks(), fetchEmployees()]);
+      setLoading(false);
+    };
+    const timer = setTimeout(() => setMinLoadTimePassed(true), 2000);
+    init();
+    return () => clearTimeout(timer);
+  }, []);
+
+  const techEmployees = useMemo(() => 
+    employees.filter((e) => {
+        const team = (e as any).team?.toLowerCase?.();
+        return team === "tech" || team === "it admin";
+    }), [employees]
+  );
+
+  const visibleTasks = useMemo(() => 
+    tasks.filter((task) => {
+      const dept = (task.department || "").toLowerCase();
+      return dept.includes("tech") || dept.includes("it admin");
+    }), [tasks]
+  );
+
+  const filteredTasks = useMemo(() => {
+    if (downloadFilterType === "all" || !downloadFilterValue) return visibleTasks;
+    return visibleTasks.filter((task) => {
+      switch (downloadFilterType) {
+        case "project": return task.project.toLowerCase() === downloadFilterValue.toLowerCase();
+        case "assignee": return downloadFilterValue === "all" ? true : task.assigneeNames?.some(a => a.toLowerCase() === downloadFilterValue.toLowerCase());
+        case "status": return task.status.toLowerCase() === downloadFilterValue.toLowerCase();
+        case "week": return isDateInWeek(task.startDate, downloadFilterValue);
+        default: return true;
+      }
+    });
+  }, [visibleTasks, downloadFilterType, downloadFilterValue]);
+
+  // --- Logic for Alignment and Specific Weekly Subtask Export ---
+  const handleExcelDownload = useCallback(() => {
+    const XLSX = (window as any).XLSX;
+    if (!XLSX) {
+      toast.error("Excel library is still loading...");
+      return;
+    }
+
+    let finalData: any[] = [];
+    let wscols: any[] = [];
+
+    if (downloadFilterType === "week" && downloadFilterValue) {
+      // Logic: Export specific subtasks for the selected week
+      tasks.forEach((task: any) => {
+        const parentTitle = task.title || task.project || "Main Task";
+        const processSubs = (subs: Subtask[]) => {
+          subs.forEach(s => {
+            if (isDateInWeek(s.date, downloadFilterValue)) {
+              finalData.push({
+                "Date": s.date,
+                "Employee Name": s.assigneeName || "Unassigned",
+                "Subtask Title": s.title,
+                "Completion %": s.completion,
+                "Subtask Status": s.status,
+                "Project Name": task.project,
+                "Parent Task": parentTitle,
+                "Parent Status": task.status
+              });
+            }
+            if (s.subtasks) processSubs(s.subtasks);
+          });
+        };
+        if (task.subtasks) processSubs(task.subtasks);
+      });
+
+      // Specific Alignment Widths for Weekly Export
+      wscols = [
+        { wch: 12 }, { wch: 20 }, { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }
+      ];
+    } else {
+      // Logic: Default Parent Task Export
+      finalData = filteredTasks.map((task: any) => {
+        const aggregated = getAggregatedTaskData(task);
+        return {
+          "Project ID": task.projectId,
+          "Project Name": task.project,
+          "Main Task Title": task.title || task.project,
+          "Task Status": task.status,
+          "Completion %": aggregated.completion,
+          "Assigned To": task.assigneeNames?.join(", ") || "Unassigned",
+          "Start Date": task.startDate,
+          "Due Date": task.dueDate,
+          "Department": task.department
+        };
+      });
+
+      // Specific Alignment Widths for Standard Export
+      wscols = [
+        { wch: 15 }, { wch: 20 }, { wch: 35 }, { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+      ];
+    }
+
+    if (finalData.length === 0) {
+      toast.info("No records match your filters.");
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(finalData);
+    worksheet["!cols"] = wscols; // Applying the alignment/width fix
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Resource Report");
+    XLSX.writeFile(workbook, `Report_${downloadFilterValue || 'Data'}.xlsx`);
+    
+    toast.success("Excel report exported with proper formatting!");
+  }, [tasks, filteredTasks, downloadFilterType, downloadFilterValue]);
+
+  const employeeStats = useMemo(() => {
+    if (downloadFilterType !== "week" || !downloadFilterValue) return [];
+    const prevWeek = getPreviousWeek(downloadFilterValue);
+
+    return techEmployees.map(emp => {
+      let currentItems: any[] = [];
+      let currentTotalSum = 0;
+      let prevTotalSum = 0;
+      let prevCount = 0;
+      let dailyCompletion: Record<number, number> = {};
+
+      tasks.forEach((task: any) => {
+        const aggregatedParent = getAggregatedTaskData(task);
+        const parentTitle = task.title || task.project || "Main Task";
+        const parentCompletion = aggregatedParent.completion || 0;
+        const parentStatus = task.status;
+
+        const processSubs = (subs: Subtask[]) => {
+          subs.forEach(s => {
+            if (s.assigneeName === emp.name) {
+              if (isDateInWeek(s.date, downloadFilterValue)) {
+                currentItems.push({ 
+                  title: s.title, 
+                  parentTask: parentTitle,
+                  parentCompletion: parentCompletion,
+                  parentStatus: parentStatus,
+                  completion: s.completion || 0, 
+                  status: s.status,
+                  date: s.date 
+                });
+                currentTotalSum += (s.completion || 0);
+                const day = new Date(s.date as string).getUTCDay();
+                if (day >= 1 && day <= 5) dailyCompletion[day] = Math.max(dailyCompletion[day] || 0, s.completion || 0);
+              }
+              if (isDateInWeek(s.date, prevWeek)) {
+                prevTotalSum += (s.completion || 0);
+                prevCount++;
+              }
+            }
+            if (s.subtasks) processSubs(s.subtasks);
+          });
+        };
+        if (task.subtasks) processSubs(task.subtasks);
+      });
+
+      return {
+        ...emp,
+        taskCount: currentItems.length,
+        items: currentItems,
+        dailyCompletion,
+        percentage: currentItems.length > 0 ? Math.round(currentTotalSum / currentItems.length) : 0,
+        prevPercentage: prevCount > 0 ? Math.round(prevTotalSum / prevCount) : 0
+      };
+    });
+  }, [tasks, techEmployees, downloadFilterType, downloadFilterValue]);
 
   const updateSubtaskState = (
     currentSubs: Subtask[],
@@ -84,646 +397,206 @@ const TasksPage: React.FC = () => {
     updater: (sub: Subtask, index: number) => Subtask | null,
     action: "update" | "remove" | "add" = "update"
   ): Subtask[] => {
-    let newSubs = [...currentSubs];
-    let currentLevel: Subtask[] = newSubs;
+    const newSubs = JSON.parse(JSON.stringify(currentSubs));
+    let currentLevel = newSubs;
+    
     for (let i = 0; i < path.length; i++) {
       const index = path[i];
-      if (!currentLevel) return currentSubs;
       if (i === path.length - 1) {
         if (action === "remove") {
           currentLevel.splice(index, 1);
         } else if (action === "add") {
           const parent = currentLevel[index];
           if (!parent.subtasks) parent.subtasks = [];
-          const nextSubIndex = parent.subtasks.length;
-          const newPath = [...path, nextSubIndex];
-          const newNestedId =
-            (parent.id || currentProjectPrefix) + `.${nextSubIndex + 1}`;
+          const nextIdx = parent.subtasks.length + 1;
           parent.subtasks.push({
-            ...getNewSubtask(currentProjectPrefix, newPath),
-            id: newNestedId,
+            id: `${parent.id}.${nextIdx}`,
+            title: "", assigneeName: "", status: "Pending", completion: 0, remarks: "", subtasks: [],
+            isEditing: true, isExpanded: true, date: new Date().toISOString().split("T")[0],
           });
         } else {
-          const updatedSub = updater(currentLevel[index], index);
-          if (updatedSub) {
-            currentLevel[index] = updatedSub;
-          }
+          const updated = updater(currentLevel[index], index);
+          if (updated) currentLevel[index] = updated;
         }
       } else {
-        const sub: Subtask = currentLevel[index];
-        if (!sub || !sub.subtasks) return currentSubs;
-        currentLevel = sub.subtasks;
+        if (!currentLevel[index].subtasks) currentLevel[index].subtasks = [];
+        currentLevel = currentLevel[index].subtasks;
       }
     }
     return newSubs;
   };
-
-  const getApiUrl = (path: string): string => {
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}${path}`;
-    }
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-    return `${base}${path}`;
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const url = getApiUrl("/api/tasks");
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok && data.success) setTasks(data.tasks);
-      else {
-        setError(data.error || "Failed to fetch tasks.");
-        toast.error(data.error || "Failed to fetch tasks.");
-      }
-    } catch (err) {
-      setError("Server connection error while fetching tasks.");
-      toast.error("Server connection error while fetching tasks.");
-    }
-  };
-
-  const fetchEmployees = async () => {
-    try {
-      const url = getApiUrl("/api/employees");
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok && data.success) setEmployees(data.employees);
-    } catch (err) {
-    }
-  };
-
-  const triggerDueDateNotifications = async () => {
-    try {
-      const url = getApiUrl("/api/tasks/reminders");
-      const res = await fetch(url, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        console.warn(
-          "Reminders job failed:",
-          data.error || "Unknown error"
-        );
-      }
-    } catch (err) {
-      console.warn("Error calling reminders API:", err);
-    }
-  };
-
-  useEffect(() => {
-    import("xlsx")
-      .then((XLSX) => {
-        (window as any).XLSX = XLSX;
-        setXlsxLoaded(true);
-      })
-      .catch(() => {
-        toast.warn(
-          "Excel library failed to load. Download functionality may be limited."
-        );
-      });
-
-    const init = async () => {
-      await Promise.all([fetchTasks(), fetchEmployees()]);
-      await triggerDueDateNotifications();
-      setLoading(false);
-    };
-
-    const timer = setTimeout(() => {
-      setMinLoadTimePassed(true);
-    }, 2000);
-
-    init();
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const techEmployees = useMemo(
-    () =>
-      employees.filter((e) => {
-        const team = (e as any).team?.toLowerCase?.();
-        return team === "tech" || team === "it admin";
-      }),
-    [employees]
-  );
-
-  const visibleTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      const dept = (task.department || "").toLowerCase();
-      return dept.includes("tech") || dept.includes("it admin");
-    });
-  }, [tasks]);
-
-  const uniqueProjects = useMemo(() => {
-    return Array.from(
-      new Set(visibleTasks.map((task) => task.project).filter(Boolean))
-    );
-  }, [visibleTasks]);
-
-  const filteredTasks = useMemo(() => {
-    const filter = downloadFilterType;
-    const value = downloadFilterValue.trim().toLowerCase();
-
-    if (filter === "all" || !value) return visibleTasks;
-
-    return visibleTasks.filter((task) => {
-      switch (filter) {
-        case "project":
-          return task.project.toLowerCase() === value;
-        case "assignee":
-          return value === "all"
-            ? true
-            : task.assigneeNames?.some(
-                (assignee) => assignee.toLowerCase() === value
-              );
-        case "status":
-          return task.status.toLowerCase() === value;
-        case "date":
-          return [task.startDate, task.dueDate, task.endDate].includes(
-            downloadFilterValue
-          );
-        case "month":
-          return (
-            task.startDate.startsWith(downloadFilterValue) ||
-            task.dueDate.startsWith(downloadFilterValue) ||
-            (task.endDate &&
-              task.endDate.startsWith(downloadFilterValue))
-          );
-        default:
-          return true;
-      }
-    });
-  }, [visibleTasks, downloadFilterType, downloadFilterValue]);
 
   const openTaskModal = (task: Task) => {
     const aggregatedTask = getAggregatedTaskData(task);
     setSelectedTaskForModal(aggregatedTask);
     setIsModalOpen(true);
     setIsEditing(false);
-    setDraftTask({});
     setSubtasks(aggregatedTask.subtasks || []);
     setCurrentProjectPrefix(aggregatedTask.projectId);
   };
 
-  const closeTaskModal = () => {
-    setIsModalOpen(false);
-    setTimeout(() => {
-      setSelectedTaskForModal(null);
-      cancelEdit();
-    }, 2000);
-  };
-
-  const handleEdit = (task: Task) => {
-    setIsEditing(true);
-    setDraftTask(task);
-    setCurrentProjectPrefix(task.projectId);
-    setSubtasks(JSON.parse(JSON.stringify(task.subtasks || [])));
-  };
-
-  const cancelEdit = () => {
-    setIsEditing(false);
-    setDraftTask({});
-    setSubtasks([]);
-    setCurrentProjectPrefix("");
-    toast.info("Edit cancelled.");
-  };
-
-  const handleDraftChange = (
-    e: ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value, type } = e.target;
-
-    if (name === "assigneeNames" && type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-
-      setDraftTask((prev) => {
-        const current = (prev.assigneeNames || []) as string[];
-
-        if (checked) {
-          if (current.includes(value)) return prev;
-          return {
-            ...prev,
-            assigneeNames: [...current, value],
-          };
-        } else {
-          return {
-            ...prev,
-            assigneeNames: current.filter((n) => n !== value),
-          };
-        }
+  const onTaskStatusChange = useCallback(async (taskId: string, newStatus: string) => {
+    try {
+      await fetch(getApiUrl(`/api/tasks/${taskId}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
       });
+      fetchTasks();
+      toast.success(`Task status: ${newStatus}`);
+    } catch { toast.error("Error updating status."); }
+  }, []);
 
-      return;
-    }
-
-    let finalValue: string | number = value;
-
-    if (name === "completion" || name === "taskStoryPoints") {
-      finalValue = value === "" ? 0 : Number(value);
-    }
-
-    setDraftTask((prev) => ({
-      ...prev,
-      [name]: finalValue,
-    }));
-  };
-
-  const handleSubtaskChange: SubtaskChangeHandler = (
-    path,
-    field,
-    value
-  ) => {
-    setSubtasks((prevSubs) =>
-      updateSubtaskState(prevSubs, path, (sub) => ({ ...sub, [field]: value }))
+  const onSubtaskStatusChange = useCallback(async (taskId: string, subtaskId: string, newStatus: string) => {
+    const target = tasks.find(t => t._id === taskId);
+    if (!target) return;
+    const findAndMap = (subs: Subtask[]): Subtask[] => subs.map(s => 
+      s.id === subtaskId ? { ...s, status: newStatus } : { ...s, subtasks: findAndMap(s.subtasks || []) }
     );
-  };
+    try {
+      await fetch(getApiUrl(`/api/tasks/${taskId}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subtasks: findAndMap(target.subtasks || []) }),
+      });
+      fetchTasks();
+      toast.success("Subtask status updated.");
+    } catch { toast.error("Error updating subtask."); }
+  }, [tasks]);
 
-  const handleToggleEdit: SubtaskPathHandler = (path) => {
-    setSubtasks((prevSubs) =>
-      updateSubtaskState(prevSubs, path, (sub) => ({
-        ...sub,
-        isEditing: !sub.isEditing,
-      }))
-    );
-  };
-
-  const handleToggleExpansion: SubtaskPathHandler = (path) => {
-    setSubtasks((prevSubs) =>
-      updateSubtaskState(prevSubs, path, (sub) => ({
-        ...sub,
-        isExpanded: !sub.isExpanded,
-      }))
-    );
-  };
-
-  const addSubtask: SubtaskPathHandler = (path) => {
-    if (!currentProjectPrefix) {
-      toast.error("Cannot add subtask: Project ID is missing.");
-      return;
-    }
-    if (path.length === 0) {
-      setSubtasks((prevSubs) => [
-        ...prevSubs,
-        {
-          ...getNewSubtask(currentProjectPrefix, [prevSubs.length]),
-          id: `${currentProjectPrefix}-S${prevSubs.length + 1}`,
-        },
-      ]);
-    } else {
-      setSubtasks((prevSubs) =>
-        updateSubtaskState(prevSubs, path, () => null, "add")
-      );
-    }
-    toast.success("Subtask draft added. Remember to save the main task!");
-  };
-
-  const removeSubtask: SubtaskPathHandler = (path) => {
-    setSubtasks((prevSubs) =>
-      updateSubtaskState(prevSubs, path, () => null, "remove")
-    );
-    toast.info("Subtask draft removed. Remember to save the main task!");
-  };
-
-  const onTaskStatusChange = useCallback(
-    async (taskId: string, newStatus: string) => {
-      try {
-        const url = getApiUrl(`/api/tasks/${taskId}`);
-        const res = await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setTasks((prev) =>
-            prev.map((t) =>
-              t._id === taskId
-                ? { ...t, status: newStatus as Task["status"] }
-                : t
-            )
-          );
-          fetchTasks();
-          toast.success(`Task status updated to ${newStatus}.`);
-        } else {
-          toast.error(data.error || "Failed to update task.");
-        }
-      } catch {
-        toast.error("Server error during status update.");
+  const handleDelete = async (taskId: string) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/tasks/${taskId}`), {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Task deleted successfully");
+        setIsModalOpen(false);
+        fetchTasks();
       }
-    },
-    []
-  );
-
-  const findAndMapSubtasks = (
-    subs: Subtask[],
-    subtaskId: string,
-    newStatus: string
-  ): Subtask[] =>
-    subs.map((sub) =>
-      sub.id === subtaskId
-        ? { ...sub, status: newStatus }
-        : sub.subtasks
-        ? {
-            ...sub,
-            subtasks: findAndMapSubtasks(
-              sub.subtasks,
-              subtaskId,
-              newStatus
-            ),
-          }
-        : sub
-    );
-
-  const onSubtaskStatusChange = useCallback(
-    async (taskId: string, subtaskId: string, newStatus: string) => {
-      try {
-        const target = tasks.find((t) => t._id === taskId);
-        if (!target) return;
-        const updatedSubs = findAndMapSubtasks(
-          target.subtasks || [],
-          subtaskId,
-          newStatus
-        );
-        const url = getApiUrl(`/api/tasks/${taskId}`);
-        const res = await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subtasks: updatedSubs }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          fetchTasks();
-          toast.success(`Subtask status updated to ${newStatus}.`);
-        } else {
-          toast.error(data.error || "Failed to update subtask.");
-        }
-      } catch {
-        toast.error("Server error during subtask update.");
-      }
-    },
-    [tasks]
-  );
+    } catch { toast.error("Failed to delete task"); }
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskForModal?._id) return;
-
-    const filterEmptySubs = (subs: Subtask[]): Subtask[] =>
-      subs.filter((s) => {
-        if (s.title.trim() === "") return false;
-        if (s.subtasks) s.subtasks = filterEmptySubs(s.subtasks);
-        return true;
-      });
-
-    const validSubs = filterEmptySubs(subtasks);
-
-    const updatedTask = {
-      ...draftTask,
-      subtasks: validSubs,
-      projectId: currentProjectPrefix,
-      taskTimeSpent: (draftTask as any).taskTimeSpent,
-      taskStoryPoints: (draftTask as any).taskStoryPoints,
-    };
-
     try {
-      const url = getApiUrl(`/api/tasks/${selectedTaskForModal._id}`);
-      const res = await fetch(url, {
+      const res = await fetch(getApiUrl(`/api/tasks/${selectedTaskForModal._id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTask),
+        body: JSON.stringify({ ...draftTask, subtasks }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        toast.success("Task updated successfully!");
-        closeTaskModal();
-        fetchTasks();
-      } else {
-        toast.error(data.error || "Failed to update task.");
-      }
-    } catch {
-      toast.error("Server error during update.");
-    }
-  };
-
-  const handleStartSprint = async (taskId: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to start the sprint (set status to 'In Progress')?"
-      )
-    )
-      return;
-
-    try {
-      const url = getApiUrl(`/api/tasks/${taskId}`);
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "In Progress" }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        toast.success("Sprint started! Status set to 'In Progress'.");
-        closeTaskModal();
-        fetchTasks();
-      } else {
-        toast.error(data.error || "Failed to start sprint.");
-      }
-    } catch {
-      toast.error("Server error during sprint start.");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to permanently delete this task?"
-      )
-    )
-      return;
-
-    try {
-      const url = getApiUrl(`/api/tasks/${id}`);
-      const res = await fetch(url, { method: "DELETE" });
-      const data = await res.json();
       if (res.ok) {
-        toast.success("Task deleted successfully!");
-        closeTaskModal();
+        toast.success("Task updated!");
+        setIsModalOpen(false);
         fetchTasks();
-      } else {
-        toast.error(data.error || "Failed to delete task.");
       }
-    } catch {
-      toast.error("Server error during deletion.");
-    }
+    } catch { toast.error("Update failed."); }
   };
 
-  if (loading || !minLoadTimePassed)
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-white">
-        <div className="text-center">
-          <img
-            src="/load.gif"
-            alt="Loading..."
-            className="w-100 h-70 mx-auto mb-4"
-            style={{ objectFit: "contain" }}
-          />
-          <p className="text-slate-700 font-medium">Loading tasks...</p>
-        </div>
+  if (loading || !minLoadTimePassed) return (
+    <div className="flex justify-center items-center min-h-screen bg-white">
+      <div className="text-center">
+        <img src="/load.gif" alt="Loading..." className="w-80 h-auto mx-auto mb-4" />
+        <p className="text-slate-700 font-medium">Synchronizing Resource Data...</p>
       </div>
-    );
-
-  if (error)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white p-8">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full border border-red-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-red-100 rounded-full">
-              <AlertCircle className="w-6 h-6 text-red-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900">Error</h3>
-          </div>
-          <p className="text-red-600">{error}</p>
-        </div>
-      </div>
-    );
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen bg-white">
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <ToastContainer position="bottom-right" />
 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
-        <nav className="fixed top-30 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
-          <button
-            onClick={() => setViewType("card")}
-            className={`p-3 rounded-xl transition-all duration-200 ${
-              viewType === "card"
-                ? "bg-green-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
-            }`}
-            title="Card View"
-          >
-            <LayoutGrid className="w-6 h-6" />
-          </button>
-
-          <button
-            onClick={() => setViewType("board")}
-            className={`p-3 rounded-xl transition-all duration-200 ${
-              viewType === "board"
-                ? "bg-green-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
-            }`}
-            title="Board View"
-          >
-            <ListTodo className="w-6 h-6" />
-          </button>
-
-          <button
-            onClick={() => setViewType("chart")}
-            className={`p-3 rounded-xl transition-all duration-200 ${
-              viewType === "chart"
-                ? "bg-green-600 text-white shadow-lg"
-                : "text-gray-500 hover:bg-gray-100 hover:text-green-600"
-            }`}
-            title="Chart View"
-          >
-            <BarChart2 className="w-6 h-6" />
-          </button>
+        <nav className="fixed top-30 left-1/2 -translate-x-1/2 bg-white shadow-lg rounded-full px-6 py-3 flex items-center space-x-6 z-20 border border-gray-200">
+          <button onClick={() => setViewType("card")} className={`p-3 rounded-xl transition-all ${viewType === "card" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:bg-gray-50"}`}><LayoutGrid/></button>
+          <button onClick={() => setViewType("board")} className={`p-3 rounded-xl transition-all ${viewType === "board" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:bg-gray-50"}`}><ListTodo/></button>
+          <button onClick={() => setViewType("chart")} className={`p-3 rounded-xl transition-all ${viewType === "chart" ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:bg-gray-50"}`}><BarChart2/></button>
         </nav>
 
         <div className="max-w-[1800px] mx-auto bg-white">
-          <>
-            <TaskTableHeader
-              uniqueProjects={uniqueProjects}
-              employees={techEmployees}
-              downloadFilterType={downloadFilterType}
-              setDownloadFilterType={setDownloadFilterType}
-              downloadFilterValue={downloadFilterValue}
-              setDownloadFilterValue={setDownloadFilterValue}
-              xlsxLoaded={xlsxLoaded}
-              handleExcelDownload={() => {}}
-            />
+          <TaskTableHeader
+            uniqueProjects={Array.from(new Set(visibleTasks.map(t => t.project)))}
+            employees={techEmployees}
+            downloadFilterType={downloadFilterType}
+            setDownloadFilterType={setDownloadFilterType}
+            downloadFilterValue={downloadFilterValue}
+            setDownloadFilterValue={setDownloadFilterValue}
+            xlsxLoaded={xlsxLoaded}
+            handleExcelDownload={handleExcelDownload}
+          />
 
-            {filteredTasks.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                <div className="text-center py-16">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
-                    <AlertCircle className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                    No Tech / IT Admin tasks found
-                  </h3>
-                  <p className="text-slate-500">
-                    Try adjusting filters or check if those departments are
-                    set correctly on tasks.
-                  </p>
+          <div className="flex flex-col lg:flex-row gap-8 mt-6">
+            <div className="flex-1">
+              {viewType === "card" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {filteredTasks.map((task) => (
+                    <TaskCard key={task._id} task={task} onViewDetails={openTaskModal} />
+                  ))}
                 </div>
-              </div>
-            ) : (
-              <>
-                {viewType === "card" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {filteredTasks.map((task) => (
-                      <TaskCard
-                        key={task._id}
-                        task={task}
-                        onViewDetails={openTaskModal}
-                      />
+              )}
+              {viewType === "board" && <TaskBoardView tasks={filteredTasks} openTaskModal={openTaskModal} onTaskStatusChange={onTaskStatusChange} />}
+              {viewType === "chart" && <TaskChartView tasks={filteredTasks} />}
+            </div>
+
+            {downloadFilterType === "week" && (
+              <div className="w-full lg:w-72">
+                <div className="sticky top-32 bg-white rounded-3xl shadow-xl border border-slate-100 p-2">
+                  <h2 className="text-[10px] font-black text-slate-400 uppercase p-4 tracking-widest flex items-center gap-2">
+                    <User className="w-4 h-4 text-indigo-500"/> Team Capacity
+                  </h2>
+                  <div className="space-y-1">
+                    {employeeStats.map(emp => (
+                      <button key={emp._id} onClick={() => setSelectedEmpStats(emp)} className="w-full text-left px-5 py-4 rounded-2xl hover:bg-indigo-50 transition-all flex justify-between items-center group">
+                        <div>
+                          <span className="font-bold text-slate-700 block text-sm">{emp.name}</span>
+                          <span className="text-[10px] font-bold text-indigo-400">{emp.percentage}% weekly avg</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-all" />
+                      </button>
                     ))}
                   </div>
-                )}
-
-                {viewType === "board" && (
-                  <TaskBoardView
-                    tasks={filteredTasks}
-                    openTaskModal={openTaskModal}
-                    onTaskStatusChange={onTaskStatusChange}
-                  />
-                )}
-
-                {viewType === "chart" && (
-                  <TaskChartView tasks={filteredTasks} />
-                )}
-              </>
+                </div>
+              </div>
             )}
-
-            {selectedTaskForModal && (
-              <TaskModal
-                task={selectedTaskForModal}
-                isOpen={isModalOpen}
-                onClose={closeTaskModal}
-                isEditing={isEditing}
-                draftTask={draftTask}
-                subtasks={subtasks}
-                employees={techEmployees}
-                currentProjectPrefix={currentProjectPrefix}
-                allTaskStatuses={allTaskStatuses}
-                handleEdit={handleEdit}
-                handleDelete={handleDelete}
-                handleUpdate={handleUpdate}
-                cancelEdit={cancelEdit}
-                handleDraftChange={handleDraftChange}
-                handleSubtaskChange={handleSubtaskChange}
-                addSubtask={() => addSubtask([])}
-                removeSubtask={removeSubtask}
-                onToggleEdit={handleToggleEdit}
-                onToggleExpansion={handleToggleExpansion}
-                handleStartSprint={handleStartSprint}
-                onTaskStatusChange={onTaskStatusChange}
-                onSubtaskStatusChange={onSubtaskStatusChange}
-              />
-            )}
-          </>
+          </div>
         </div>
       </div>
+
+      <EmployeeStatsModal 
+        emp={selectedEmpStats} 
+        isOpen={!!selectedEmpStats} 
+        onClose={() => setSelectedEmpStats(null)} 
+        week={downloadFilterValue} 
+      />
+
+      {selectedTaskForModal && (
+        <TaskModal
+          task={selectedTaskForModal}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          isEditing={isEditing}
+          draftTask={draftTask}
+          subtasks={subtasks}
+          employees={techEmployees}
+          currentProjectPrefix={currentProjectPrefix}
+          allTaskStatuses={allTaskStatuses}
+          handleEdit={() => { setIsEditing(true); setDraftTask(selectedTaskForModal); }}
+          handleDelete={handleDelete}
+          handleUpdate={handleUpdate}
+          cancelEdit={() => setIsEditing(false)}
+          handleDraftChange={(e) => setDraftTask({...draftTask, [e.target.name]: e.target.value})}
+          handleSubtaskChange={(path, field, val) => setSubtasks(updateSubtaskState(subtasks, path, (s) => ({...s, [field]: val})))}
+          addSubtask={(path) => setSubtasks(updateSubtaskState(subtasks, path, () => null, "add"))}
+          removeSubtask={(path) => setSubtasks(updateSubtaskState(subtasks, path, () => null, "remove"))}
+          onToggleEdit={(path) => setSubtasks(updateSubtaskState(subtasks, path, (s) => ({...s, isEditing: !s.isEditing})))}
+          onToggleExpansion={(path) => setSubtasks(updateSubtaskState(subtasks, path, (s) => ({...s, isExpanded: !s.isExpanded})))}
+          handleStartSprint={() => onTaskStatusChange(selectedTaskForModal._id, "In Progress")}
+          onTaskStatusChange={onTaskStatusChange}
+          onSubtaskStatusChange={onSubtaskStatusChange}
+        />
+      )}
     </div>
   );
 };
