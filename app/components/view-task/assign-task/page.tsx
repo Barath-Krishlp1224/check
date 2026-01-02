@@ -30,7 +30,7 @@ import AttendancePage from "../../attendance/emp/page";
 import PayslipPage from "../../payslip/page";
 
 // Types & Utils
-import { Task, Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./components/types";
+import { Task, Subtask, Employee } from "./components/types";
 import { getAggregatedTaskData } from "./utils/aggregation";
 
 export type ViewType = "card" | "board";
@@ -70,8 +70,6 @@ const TasksPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [viewType, setViewType] = useState<ViewType>("card");
-  
-  // UPDATED: Default screen set to "tasks" (Task List)
   const [currentScreen, setCurrentScreen] = useState<ScreenType>("tasks");
   
   // Modal & Edit States
@@ -114,15 +112,9 @@ const TasksPage: React.FC = () => {
     } catch {}
   };
 
-  const triggerReminders = async () => {
-    try {
-      await fetch(getApiUrl("/api/tasks/reminders"), { method: "POST" });
-    } catch (err) { console.warn("Reminders failed", err); }
-  };
-
-  // --- Subtask Logic ---
+  // --- RECURSIVE SUBTASK LOGIC ---
   const getNewSubtask = (prefix: string, path: number[]): Subtask => ({
-    id: prefix + (path.length > 0 ? `.${path.join('.')}` : '-S1'),
+    id: prefix + (path.length > 0 ? `-S${path.join('.')}` : '-S1'),
     title: "",
     assigneeName: "",
     status: "Pending",
@@ -136,38 +128,57 @@ const TasksPage: React.FC = () => {
     storyPoints: 0,
   });
 
-  const updateSubtaskState = (currentSubs: Subtask[], path: number[], updater: (sub: Subtask, index: number) => Subtask | null, action: 'update' | 'remove' | 'add' = 'update'): Subtask[] => {
-    let newSubs = JSON.parse(JSON.stringify(currentSubs));
-    let currentLevel = newSubs;
-    
-    for (let i = 0; i < path.length; i++) {
-      const index = path[i];
-      if (i === path.length - 1) {
-        if (action === 'remove') currentLevel.splice(index, 1);
-        else if (action === 'add') {
-          const parent = currentLevel[index];
-          if (!parent.subtasks) parent.subtasks = [];
-          const newNestedId = `${parent.id}.${parent.subtasks.length + 1}`;
-          parent.subtasks.push({ ...getNewSubtask(currentProjectPrefix, [...path, parent.subtasks.length]), id: newNestedId });
-        } else {
-          const updated = updater(currentLevel[index], index);
-          if (updated) currentLevel[index] = updated;
-        }
-      } else {
-        currentLevel = currentLevel[index].subtasks;
-      }
+  const updateSubtaskState = (
+    currentSubs: Subtask[], 
+    path: number[], 
+    updater: (sub: Subtask, index: number) => Subtask | null, 
+    action: 'update' | 'remove' | 'add' = 'update'
+  ): Subtask[] => {
+    const newSubs = JSON.parse(JSON.stringify(currentSubs));
+
+    if (action === 'add' && path.length === 0) {
+      const freshSub = getNewSubtask(currentProjectPrefix, []);
+      freshSub.id = `${currentProjectPrefix}-S${newSubs.length + 1}`;
+      newSubs.push(freshSub);
+      toast.info("New top-level subtask added");
+      return newSubs;
     }
-    return newSubs;
+
+    const reachTarget = (list: Subtask[], targetPath: number[]): Subtask[] => {
+      const [currentIndex, ...remainingPath] = targetPath;
+
+      if (remainingPath.length === 0) {
+        if (action === 'remove') {
+          list.splice(currentIndex, 1);
+          toast.warn("Subtask deleted from draft");
+        } else if (action === 'add') {
+          const parent = list[currentIndex];
+          if (!parent.subtasks) parent.subtasks = [];
+          const freshNested = getNewSubtask(currentProjectPrefix, []);
+          freshNested.id = `${parent.id}.${parent.subtasks.length + 1}`;
+          parent.subtasks.push(freshNested);
+          toast.info("Nested subtask added");
+        } else {
+          const updated = updater(list[currentIndex], currentIndex);
+          if (updated) list[currentIndex] = updated;
+        }
+        return list;
+      }
+
+      if (list[currentIndex] && list[currentIndex].subtasks) {
+        list[currentIndex].subtasks = reachTarget(list[currentIndex].subtasks!, remainingPath);
+      }
+      return list;
+    };
+
+    return reachTarget(newSubs, path);
   };
 
   // --- Handlers ---
   const handleDraftChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     let finalValue: any = value;
     if (name === "completion" || name === "taskStoryPoints") finalValue = Number(value);
-    if (name === "assigneeNames" && type === "select-multiple") {
-      finalValue = Array.from((e.target as HTMLSelectElement).selectedOptions, (opt) => opt.value);
-    }
     setDraftTask(prev => ({ ...prev, [name]: finalValue }));
   };
 
@@ -176,7 +187,7 @@ const TasksPage: React.FC = () => {
     setSelectedTaskForModal(aggregated);
     setSubtasks(aggregated.subtasks || []);
     setCurrentProjectPrefix(aggregated.projectId);
-    setDraftTask(aggregated); // Initialize draft
+    setDraftTask(aggregated);
     setIsModalOpen(true);
     setIsEditing(false);
   };
@@ -196,10 +207,49 @@ const TasksPage: React.FC = () => {
       });
       if (res.ok) { 
         fetchTasks(); 
-        toast.success(`Status updated to ${newStatus}`); 
+        toast.success(`Task status updated to ${newStatus}`); 
       }
-    } catch { toast.error("Update failed."); }
+    } catch { toast.error("Failed to update task status"); }
   }, []);
+
+  const onSubtaskStatusChange = useCallback(async (taskId: string, subtaskId: string, newStatus: string) => {
+    const findAndMap = (subs: Subtask[]): Subtask[] => 
+      subs.map(s => s.id === subtaskId ? { ...s, status: newStatus } : { ...s, subtasks: findAndMap(s.subtasks || []) });
+
+    const target = tasks.find(t => t._id === taskId);
+    if (!target) return;
+
+    try {
+      const res = await fetch(getApiUrl(`/api/tasks/${taskId}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subtasks: findAndMap(target.subtasks || []) }),
+      });
+      if (res.ok) {
+        fetchTasks();
+        toast.success(`Subtask status updated to ${newStatus}`);
+      }
+    } catch { toast.error("Failed to update subtask status"); }
+  }, [tasks]);
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTaskForModal?._id) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/tasks/${selectedTaskForModal._id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...draftTask, subtasks }),
+      });
+      if (res.ok) {
+        toast.success("All changes saved successfully!");
+        fetchTasks();
+        closeTaskModal();
+      } else {
+        toast.error("Failed to save changes.");
+      }
+    } catch { toast.error("Server connection error."); }
+  };
 
   const handleStartSprint = async (taskId: string) => {
     if (!window.confirm("Start this sprint?")) return;
@@ -217,40 +267,6 @@ const TasksPage: React.FC = () => {
     } catch { toast.error("Failed to start sprint."); }
   };
 
-  const onSubtaskStatusChange = useCallback(async (taskId: string, subtaskId: string, newStatus: string) => {
-    const findAndMap = (subs: Subtask[]): Subtask[] => 
-      subs.map(s => s.id === subtaskId ? { ...s, status: newStatus } : { ...s, subtasks: findAndMap(s.subtasks || []) });
-
-    const target = tasks.find(t => t._id === taskId);
-    if (!target) return;
-
-    try {
-      const res = await fetch(getApiUrl(`/api/tasks/${taskId}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subtasks: findAndMap(target.subtasks || []) }),
-      });
-      if (res.ok) fetchTasks();
-    } catch {}
-  }, [tasks]);
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTaskForModal?._id) return;
-    try {
-      const res = await fetch(getApiUrl(`/api/tasks/${selectedTaskForModal._id}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...draftTask, subtasks }),
-      });
-      if (res.ok) {
-        toast.success("Task updated successfully!");
-        fetchTasks();
-        closeTaskModal();
-      }
-    } catch { toast.error("Update failed."); }
-  };
-
   // --- Effects ---
   useEffect(() => {
     import("xlsx").then(XLSX => { (window as any).XLSX = XLSX; setXlsxLoaded(true); });
@@ -260,13 +276,12 @@ const TasksPage: React.FC = () => {
     }
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchTasks(), fetchEmployees(), triggerReminders()]);
-      setTimeout(() => setLoading(false), 1500);
+      await Promise.all([fetchTasks(), fetchEmployees()]);
+      setTimeout(() => setLoading(false), 1000);
     };
     init();
   }, []);
 
-  // --- Memos ---
   const visibleTasks = useMemo(() => {
     if (currentUserRole === "Employee" && currentUserName.trim()) {
       const nameLower = currentUserName.toLowerCase();
@@ -292,43 +307,37 @@ const TasksPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-white">
-      <ToastContainer /> 
+      <ToastContainer position="top-right" autoClose={3000} /> 
       <div className="flex-1 min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-white pt-24">
         
-        {/* CENTERED NAVBAR */}
+        {/* NAV BAR */}
         <nav className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white shadow-2xl rounded-full px-10 py-4 flex items-center space-x-10 z-50 border border-gray-100 whitespace-nowrap">
           <button onClick={() => setCurrentScreen("attendance")} className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "attendance" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}>
-            <UserCheck className={`w-7 h-7 mb-1 ${currentScreen === "attendance" ? "fill-green-50" : ""}`} />
+            <UserCheck className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Attendance</span>
           </button>
-
           <button onClick={() => { setCurrentScreen("tasks"); setViewType("board"); }} className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "tasks" && viewType === "board" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}>
-            <Kanban className={`w-7 h-7 mb-1 ${currentScreen === "tasks" && viewType === "board" ? "fill-green-50" : ""}`} />
+            <Kanban className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Board</span>
           </button>
-
           <button onClick={() => setCurrentScreen("chat")} className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "chat" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}>
-            <MessageSquare className={`w-7 h-7 mb-1 ${currentScreen === "chat" ? "fill-green-50" : ""}`} />
+            <MessageSquare className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Chat</span>
           </button>
-
           <button onClick={() => setIsHolidaysOpen(true)} className="flex flex-col items-center text-gray-400 hover:text-green-500 transition-all duration-200">
             <Calendar className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Holidays</span>
           </button>
-
           <button onClick={() => setCurrentScreen("leave")} className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "leave" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}>
-            <Palmtree className={`w-7 h-7 mb-1 ${currentScreen === "leave" ? "fill-green-50" : ""}`} />
+            <Palmtree className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">History & Leaves</span>
           </button>
-
           <button onClick={() => setCurrentScreen("payslip")} className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "payslip" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}>
-            <Banknote className={`w-7 h-7 mb-1 ${currentScreen === "payslip" ? "fill-green-50" : ""}`} />
+            <Banknote className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Payslip</span>
           </button>
-
           <button onClick={() => { setCurrentScreen("tasks"); setViewType("card"); }} className={`flex flex-col items-center transition-all duration-200 ${currentScreen === "tasks" && viewType === "card" ? "text-green-600 scale-105" : "text-gray-400 hover:text-green-500"}`}>
-            <ClipboardList className={`w-7 h-7 mb-1 ${currentScreen === "tasks" && viewType === "card" ? "fill-green-50" : ""}`} />
+            <ClipboardList className="w-7 h-7 mb-1" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Task List</span>
           </button>
         </nav>
@@ -344,7 +353,7 @@ const TasksPage: React.FC = () => {
                 downloadFilterValue={downloadFilterValue} 
                 setDownloadFilterValue={setDownloadFilterValue} 
                 xlsxLoaded={xlsxLoaded} 
-                handleExcelDownload={() => {}} 
+                handleExcelDownload={() => toast.info("Preparing Excel download...")} 
               />
               {filteredTasks.length === 0 ? (
                 <div className="text-center py-16">
@@ -368,14 +377,31 @@ const TasksPage: React.FC = () => {
                   employees={employees} 
                   currentProjectPrefix={currentProjectPrefix} 
                   allTaskStatuses={allTaskStatuses}
-                  handleEdit={() => setIsEditing(true)} 
-                  handleDelete={async (id) => { if(confirm("Delete Task?")) { await fetch(getApiUrl(`/api/tasks/${id}`), {method: "DELETE"}); fetchTasks(); closeTaskModal(); } }} 
+                  handleEdit={() => {
+                    setIsEditing(true);
+                    toast.info("Switched to Edit Mode");
+                  }} 
+                  handleDelete={async (id) => { 
+                    if(confirm("Delete Task?")) { 
+                      await fetch(getApiUrl(`/api/tasks/${id}`), {method: "DELETE"}); 
+                      toast.success("Task deleted successfully");
+                      fetchTasks(); 
+                      closeTaskModal(); 
+                    } 
+                  }} 
                   handleUpdate={handleUpdate} 
-                  cancelEdit={() => setIsEditing(false)} 
+                  cancelEdit={() => {
+                    setIsEditing(false);
+                    toast.warn("Edit cancelled");
+                  }} 
                   handleDraftChange={handleDraftChange} 
                   handleSubtaskChange={(path, field, val) => setSubtasks(prev => updateSubtaskState(prev, path, (s) => ({ ...s, [field]: val })))} 
                   addSubtask={(path) => setSubtasks(prev => updateSubtaskState(prev, path, () => null, 'add'))} 
-                  removeSubtask={(path) => setSubtasks(prev => updateSubtaskState(prev, path, () => null, 'remove'))} 
+                  removeSubtask={(path) => {
+                    if(window.confirm("Are you sure you want to delete this subtask?")) {
+                       setSubtasks(prev => updateSubtaskState(prev, path, () => null, 'remove'));
+                    }
+                  }} 
                   onToggleEdit={(path) => setSubtasks(prev => updateSubtaskState(prev, path, (s) => ({ ...s, isEditing: !s.isEditing })))} 
                   onToggleExpansion={(path) => setSubtasks(prev => updateSubtaskState(prev, path, (s) => ({ ...s, isExpanded: !s.isExpanded })))} 
                   handleStartSprint={handleStartSprint}

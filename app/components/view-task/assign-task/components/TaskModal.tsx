@@ -15,6 +15,8 @@ import {
   Eye,
   Calendar,
   User,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import {
   Task,
@@ -68,6 +70,143 @@ const getStatusBadge = (status: string, isSubtask: boolean = false) => {
   );
 };
 
+// Calculate days remaining until due date
+const calculateDaysRemaining = (dueDate: string | undefined): number | null => {
+  if (!dueDate || dueDate === '') return null;
+  
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const due = new Date(dueDate);
+    
+    // Check if date is valid
+    if (isNaN(due.getTime())) return null;
+    
+    due.setHours(0, 0, 0, 0);
+    
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Due Date Reminder Component
+const DueDateReminder: React.FC<{ dueDate: string | undefined; status: string | undefined }> = ({ dueDate, status }) => {
+  const daysRemaining = calculateDaysRemaining(dueDate);
+  
+  if (daysRemaining === null || status === "Completed" || !dueDate) return null;
+  
+  let bgColor = "";
+  let textColor = "";
+  let icon = null;
+  let message = "";
+  
+  if (daysRemaining < 0) {
+    bgColor = "bg-gradient-to-r from-red-50 to-red-100 border-red-400";
+    textColor = "text-red-900";
+    icon = <AlertTriangle className="w-6 h-6 text-red-600 animate-pulse" />;
+    message = `Overdue by ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''}`;
+  } else if (daysRemaining === 0) {
+    bgColor = "bg-gradient-to-r from-red-50 to-orange-100 border-red-400";
+    textColor = "text-red-900";
+    icon = <AlertCircle className="w-6 h-6 text-red-600 animate-pulse" />;
+    message = "Due today!";
+  } else if (daysRemaining <= 2) {
+    bgColor = "bg-gradient-to-r from-red-50 to-orange-50 border-red-300";
+    textColor = "text-red-800";
+    icon = <Clock className="w-6 h-6 text-red-600 animate-pulse" />;
+    message = `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining - Urgent!`;
+  } else if (daysRemaining <= 5) {
+    bgColor = "bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-400";
+    textColor = "text-yellow-900";
+    icon = <AlertCircle className="w-6 h-6 text-yellow-600" />;
+    message = `${daysRemaining} days remaining`;
+  } else {
+    bgColor = "bg-gradient-to-r from-green-50 to-emerald-50 border-green-300";
+    textColor = "text-green-900";
+    icon = <CheckCircle2 className="w-6 h-6 text-green-600" />;
+    message = `${daysRemaining} days remaining`;
+  }
+  
+  const formattedDate = new Date(dueDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  return (
+    <div className={`${bgColor} ${textColor} border-2 rounded-xl p-5 mb-6 flex items-center gap-4 shadow-lg hover:shadow-xl transition-shadow duration-300`}>
+      <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-white rounded-full shadow-md">
+        {icon}
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-xl mb-1">{message}</p>
+        <p className="text-sm opacity-80 font-medium">Due Date: {formattedDate}</p>
+      </div>
+      <div className="flex-shrink-0">
+        <div className={`px-4 py-2 rounded-full font-bold text-sm shadow-md ${
+          daysRemaining < 0 ? 'bg-red-600 text-white' :
+          daysRemaining <= 2 ? 'bg-red-500 text-white' :
+          daysRemaining <= 5 ? 'bg-yellow-500 text-white' :
+          'bg-green-500 text-white'
+        }`}>
+          {daysRemaining < 0 ? 'OVERDUE' : daysRemaining === 0 ? 'TODAY' : `${daysRemaining}d`}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Loading Spinner Component
+const LoadingSpinner: React.FC = () => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{
+      background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)",
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+    }}>
+      <div className="relative">
+        {/* Outer glow ring */}
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl blur-2xl opacity-30 animate-pulse"></div>
+        
+        {/* Main card */}
+        <div className="relative bg-white rounded-3xl shadow-2xl p-12 flex flex-col items-center gap-6 border border-slate-200">
+          {/* Spinning loader with gradient */}
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full animate-spin" style={{
+              maskImage: "conic-gradient(from 0deg, transparent 0deg, black 90deg, black 360deg)",
+              WebkitMaskImage: "conic-gradient(from 0deg, transparent 0deg, black 90deg, black 360deg)"
+            }}></div>
+            <div className="absolute inset-2 bg-white rounded-full"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Clock className="w-8 h-8 text-indigo-600" />
+            </div>
+          </div>
+          
+          {/* Text content */}
+          <div className="text-center space-y-2">
+            <p className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Loading Task Details
+            </p>
+            <p className="text-sm text-slate-500">Please wait while we fetch your data...</p>
+          </div>
+          
+          {/* Animated dots */}
+          <div className="flex gap-2">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+            <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
@@ -99,6 +238,7 @@ interface TaskModalProps {
     subtaskId: string,
     newStatus: string
   ) => void;
+  isLoading?: boolean;
 }
 
 const SubtaskViewer: React.FC<{
@@ -256,6 +396,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
     handleStartSprint,
     onTaskStatusChange,
     onSubtaskStatusChange,
+    isLoading = false,
   } = props;
 
   const [isSubtaskModalOpen, setIsSubtaskModalOpen] = useState(false);
@@ -292,6 +433,11 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
   if (!isOpen) return null;
 
+  // Show loading spinner
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   const current = isEditing ? draftTask : task;
   const subtasksToDisplay: Subtask[] = isEditing
     ? subtasks
@@ -313,6 +459,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       return null;
     }
 
+    // Always show taskTimeSpent as read-only
     if (name === "taskTimeSpent") {
       return (
         <div className="mb-4">
@@ -326,7 +473,8 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
       );
     }
 
-    if (name === "taskStoryPoints" && !isEditing) {
+    // Always show taskStoryPoints as read-only
+    if (name === "taskStoryPoints") {
       return (
         <div className="mb-4">
           <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -338,9 +486,10 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         </div>
       );
     }
-    
-    if (name === "taskStoryPoints" && isEditing) {
-    }
+
+    // Disable editing for startDate, endDate, and dueDate
+    const isDateField = name === "startDate" || name === "endDate" || name === "dueDate";
+    const shouldBeReadOnly = isDateField;
 
 
     const displayValue = task[name];
@@ -403,7 +552,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             ))}
           </select>
         );
-      } else if (name === "taskStoryPoints" || name === "completion") {
+      } else if (name === "completion") {
         return (
           <input
             type="number"
@@ -412,7 +561,7 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
             onChange={handleDraftChange}
             className={`${inputWidthClass} px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-all text-black`}
             min={0}
-            max={name === "completion" ? 100 : undefined}
+            max={100}
           />
         );
       } else if (name === "remarks") {
@@ -455,7 +604,9 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         <label className="block text-sm font-medium text-slate-700 mb-1">
           {label}
         </label>
-        {isEditing || (name === "status" && !isEditing) ? (
+        {isEditing && !shouldBeReadOnly ? (
+          renderInput()
+        ) : name === "status" && !isEditing ? (
           renderInput()
         ) : (
           <p
@@ -503,6 +654,9 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
         </div>
 
         <div className="p-6 max-h-[60vh] overflow-y-auto">
+          {/* Due Date Reminder */}
+          <DueDateReminder dueDate={task.dueDate} status={task.status} />
+          
           <div className="mb-8 border-b pb-6">
             <h3 className="text-xl font-semibold text-indigo-700 mb-4">
               Task Information
