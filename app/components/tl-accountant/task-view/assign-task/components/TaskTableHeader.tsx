@@ -33,11 +33,11 @@ const TaskTableHeader: React.FC<TaskTableHeaderProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
-            Resource Tracker
+            Task Tracker
           </h1>
-          <p className="text-slate-500 font-medium flex items-center gap-2">
+          <p className="text-slate-800 font-medium flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-indigo-500" /> 
-            Tech & IT Admin Central Task Management
+            Manage the Team Tasks...
           </p>
         </div>
         
