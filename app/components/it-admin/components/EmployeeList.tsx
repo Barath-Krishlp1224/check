@@ -21,6 +21,7 @@ import {
   XCircle,
   TrendingUp,
   Users,
+  Upload,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -63,7 +64,6 @@ interface Structure {
     };
 }
 
-// --- Interfaces for Stats Data ---
 interface EmployeeStats {
   totalEmployees: number;
   managerTeamCount: number;
@@ -84,7 +84,6 @@ interface StatCard {
     teamKey: string;
 }
 
-// --- Team Structure Data ---
 const structure: Structure = {
   Manager: {
     Manager: ["Manager"],
@@ -212,6 +211,7 @@ const InputField = ({
   children,
   inputRef,
   onFocus,
+  accept,
 }: any) => {
   return (
     <div className="space-y-1.5">
@@ -233,11 +233,12 @@ const InputField = ({
           <input
             type={type}
             name={name}
-            value={value ?? ""}
+            value={type === "file" ? undefined : (value ?? "")}
             onChange={onChange}
             ref={inputRef}
+            accept={accept}
             onFocus={() => onFocus && onFocus(name)}
-            className="w-full pl-8 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-500 bg-white"
+            className="w-full pl-8 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-500 bg-white file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
           />
         )}
       </div>
@@ -283,8 +284,6 @@ const DocumentPreviewModal = ({ doc, onClose }: { doc: DocPreviewState | null; o
   );
 };
 
-
-// --- New Employee Stats Component (Modified to be Clickable) ---
 const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: string) => void }) => {
   const [stats, setStats] = useState<EmployeeStats>({
     totalEmployees: 0,
@@ -332,7 +331,6 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
     fetchStats();
   }, []);
 
-  // --- MODIFIED LOGIC: Subtract a hardcoded founders count (3) from the total
   const MOCK_FOUNDERS_COUNT = 3;
   const totalStaffExclFounders = stats.totalEmployees > MOCK_FOUNDERS_COUNT 
     ? stats.totalEmployees - MOCK_FOUNDERS_COUNT 
@@ -340,10 +338,7 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
 
   const tlAccountantCount = stats.accountsTeamCount;
 
-  // --- BEGIN STAT CARD DATA ---
-  // Mapped to the team structure keys for selection.
   const allCards: StatCard[] = [
-    // This card is non-clickable and now shows the calculated total
     { 
       label: "Total Staff (Excl. Founders)", 
       value: totalStaffExclFounders, 
@@ -351,13 +346,11 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
       sortKey: "A",
       teamKey: "None", 
     },
-    // Clickable team cards
     { label: "Manager Team", value: stats.managerTeamCount, icon: "/3.png", sortKey: "Manager Team", teamKey: "Manager" },
     { label: "TL - Reporting Manager", value: stats.tlReportingManagerTeamCount, icon: "/4.png", sortKey: "TL - Reporting Manager", teamKey: "TL-Reporting Manager" },
     { label: "IT Admin Team", value: stats.itAdminTeamCount, icon: "/5.png", sortKey: "IT Admin Team", teamKey: "IT Admin" },
     { label: "Tech Team", value: stats.techTeamCount, icon: "/6.png", sortKey: "Tech Team", teamKey: "Tech" },
     { label: "Accounts Team", value: stats.accountsTeamCount, icon: "/7.png", sortKey: "Accounts Team", teamKey: "Accounts" },
-    // TL Accountant maps to the same count as Accounts for simplicity in this example
     { label: "TL - Accountant", value: tlAccountantCount, icon: "/7.png", sortKey: "TL - Accountant", teamKey: "TL Accountant" }, 
     { label: "HR Team", value: stats.hrTeamCount, icon: "/8.png", sortKey: "HR Team", teamKey: "HR" },
     { label: "Admin & Ops Team", value: stats.adminOpsTeamCount, icon: "/9.png", sortKey: "Admin & Ops Team", teamKey: "Admin & Operations" },
@@ -368,11 +361,9 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
   const secondaryCards = allCards.slice(1);
   secondaryCards.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
   const statsCards: StatCard[] = [primaryCard, ...secondaryCards];
-  // --- END STAT CARD DATA ---
 
   return (
     <div className={`mt-8 mb-12 transition-all duration-700 ${loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-      {/* Changed accent color from indigo-600 to gray-800 */}
       <h2 className="text-4xl font-bold text-gray-800 text-center mb-10 flex items-center justify-center gap-2">
         <TrendingUp className="w-8 h-8 text-gray-800" /> 
         Organization Staff Count & Directory Access
@@ -392,7 +383,6 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
             <motion.div
               key={card.label}
               onClick={handleClick}
-              // Changed hover:bg-indigo-50 to hover:bg-gray-100
               className={`p-4 rounded-xl border border-gray-200 shadow-lg transition-all duration-300 ${
                 isClickable
                   ? "bg-white hover:bg-gray-100 cursor-pointer" 
@@ -405,19 +395,16 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  {/* Changed text-indigo-600 to text-gray-800 */}
                   <p className={`text-xs font-medium mb-1 uppercase tracking-wider truncate ${isClickable ? "text-gray-800" : "text-gray-500"}`}>
                     {card.label}
                   </p>
                   <p className="text-3xl font-extrabold text-gray-900">{card.value}</p>
                 </div>
-                {/* Changed bg-indigo-600/10 and text-indigo-600 to dark gray equivalents */}
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isClickable ? "bg-gray-800/10" : "bg-gray-300/50"}`}>
                   {isClickable ? <Users className="w-6 h-6 text-gray-800" /> : <TrendingUp className="w-6 h-6 text-gray-600" />}
                 </div>
               </div>
               {isClickable && (
-                // Changed text-indigo-500 to text-gray-600
                 <p className="mt-2 text-xs font-semibold text-gray-600">
                   Click to view staff list
                 </p>
@@ -430,8 +417,6 @@ const EmployeeStatsDisplay = ({ setSelectedTeam }: { setSelectedTeam: (team: str
   );
 };
 
-
-// --- Main Page Component ---
 export default function ViewEmpPage() {
   const router = useRouter();
   const [employees, setEmployees] = useState<IEmployee[]>([]);
@@ -496,7 +481,6 @@ export default function ViewEmpPage() {
     return structure[selectedTeam];
   }, [selectedTeam]);
 
-
   const filteredEmployees = employees.filter((emp) => {
     if (!selectedTeam) return false;
 
@@ -537,24 +521,7 @@ export default function ViewEmpPage() {
     setIsEditing(false);
     clearMessages();
 
-    setEditFormData({
-      name: emp.name,
-      fatherName: emp.fatherName,
-      dateOfBirth: emp.dateOfBirth,
-      joiningDate: emp.joiningDate,
-      team: emp.team,
-      category: emp.category,
-      subCategory: emp.subCategory,
-      department: emp.department,
-      phoneNumber: emp.phoneNumber,
-      mailId: emp.mailId,
-      accountNumber: emp.accountNumber,
-      ifscCode: emp.ifscCode,
-      employmentType: emp.employmentType,
-      aadharNumber: emp.aadharNumber,
-      panNumber: emp.panNumber,
-    });
-
+    setEditFormData({ ...emp });
     setFocusedField(null);
     inputRefs.current = inputRefs.current || {};
   };
@@ -574,13 +541,54 @@ export default function ViewEmpPage() {
 
   const closeDoc = () => setDocPreview(null);
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setEditFormData((prev) => ({ ...prev, [name]: value }));
+  // --- Helper to convert file to base64 ---
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleEditChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === "file") {
+      const fileInput = e.target as HTMLInputElement;
+      if (fileInput.files && fileInput.files[0]) {
+        // Check if a document already exists for this field
+        const existingDoc = (editFormData as any)[name];
+        if (existingDoc) {
+          const confirmReplace = window.confirm(
+            `A document is already uploaded for "${name}". Do you want to replace it with the new file?`
+          );
+          if (!confirmReplace) {
+            // Reset the input field value
+            fileInput.value = "";
+            return;
+          }
+        }
+
+        try {
+          const base64 = await fileToBase64(fileInput.files[0]);
+          setEditFormData((prev) => ({ ...prev, [name]: base64 }));
+        } catch (err) {
+          console.error("File conversion error:", err);
+        }
+      }
+    } else {
+      setEditFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleUpdate = async () => {
     if (!selectedEmployee) return;
+
+    // Conformation box before saving
+    const confirmSave = window.confirm("Are you sure you want to save these changes?");
+    if (!confirmSave) return;
+
     setLoading(true);
     clearMessages();
 
@@ -662,7 +670,6 @@ export default function ViewEmpPage() {
           {selectedEmployee?.photo ? (
             <img src={selectedEmployee.photo} alt="Employee Photo" className="w-24 h-24 object-cover rounded-full shadow-lg ring-4 ring-gray-100 transition-transform" />
           ) : (
-            // Changed indigo accent to gray-800
             <div className="w-24 h-24 bg-gradient-to-br from-gray-700 to-gray-800 rounded-full shadow-lg ring-4 ring-gray-100 flex items-center justify-center flex-shrink-0">
               <User className="w-10 h-10 text-white" />
             </div>
@@ -673,12 +680,11 @@ export default function ViewEmpPage() {
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-          {/* Changed indigo accent to gray-800 */}
-          <button type="button" onClick={() => setIsEditing(true)} className="flex-1 sm:flex-none group px-4 py-2 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
+          <button type="button" onClick={() => setIsEditing(true)} className="flex-1 mt-10 sm:flex-none group px-4 py-2 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2">
             <Edit2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
             Edit
           </button>
-          <button type="button" onClick={handleDelete} className="flex-1 sm:flex-none group px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
+          <button type="button" onClick={handleDelete} className="flex-1 sm:flex-none mt-10 group px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
             <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
             Delete
           </button>
@@ -697,8 +703,6 @@ export default function ViewEmpPage() {
         <InfoCard icon={<CreditCard className="w-5 h-5" />} label="Account Number" value={selectedEmployee?.accountNumber} />
         <InfoCard icon={<Building className="w-5 h-5" />} label="IFSC Code" value={selectedEmployee?.ifscCode} />
         <InfoCard icon={<Briefcase className="w-5 h-5" />} label="Employment Type" value={selectedEmployee?.employmentType} />
-        <InfoCard icon={<IdCard className="w-5 h-5" />} label="Aadhar Number" value={selectedEmployee?.aadharNumber} />
-        <InfoCard icon={<IdCard className="w-5 h-5" />} label="PAN Number" value={selectedEmployee?.panNumber} />
       </div>
 
       <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">Documents</h4>
@@ -727,7 +731,6 @@ export default function ViewEmpPage() {
     return (
       <div className="pt-2 animate-fade-in">
         <div className="flex items-center gap-3 mb-6">
-          {/* Changed indigo accent to gray-800 */}
           <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-800">
             <Edit2 className="w-5 h-5 text-white" />
           </div>
@@ -739,96 +742,19 @@ export default function ViewEmpPage() {
 
         <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">Basic & Contact</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InputField
-            label="Full Name"
-            name="name"
-            value={editFormData.name}
-            onChange={handleEditChange}
-            icon={<User className="w-4 h-4" />}
-            inputRef={makeRefSetter("name")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
-          <InputField
-            label="Father's Name"
-            name="fatherName"
-            value={editFormData.fatherName}
-            onChange={handleEditChange}
-            icon={<User className="w-4 h-4" />}
-            inputRef={makeRefSetter("fatherName")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
-          <InputField
-            label="Date of Birth"
-            name="dateOfBirth"
-            type="date"
-            value={editFormData.dateOfBirth}
-            onChange={handleEditChange}
-            icon={<Calendar className="w-4 h-4" />}
-            inputRef={makeRefSetter("dateOfBirth")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
-          <InputField
-            label="Joining Date"
-            name="joiningDate"
-            type="date"
-            value={editFormData.joiningDate}
-            onChange={handleEditChange}
-            icon={<Calendar className="w-4 h-4" />}
-            inputRef={makeRefSetter("joiningDate")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
-          <InputField
-            label="Phone Number"
-            name="phoneNumber"
-            value={editFormData.phoneNumber}
-            onChange={handleEditChange}
-            icon={<Phone className="w-4 h-4" />}
-            inputRef={makeRefSetter("phoneNumber")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
-          <InputField
-            label="Email"
-            name="mailId"
-            type="email"
-            value={editFormData.mailId}
-            onChange={handleEditChange}
-            icon={<Mail className="w-4 h-4" />}
-            inputRef={makeRefSetter("mailId")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
-
-          <InputField
-            label="Team"
-            name="team"
-            type="select"
-            value={editFormData.team}
-            onChange={handleEditChange}
-            icon={<Briefcase className="w-4 h-4" />}
-            inputRef={makeRefSetter("team")}
-            onFocus={(n: string) => setFocusedField(n)}
-          >
-            {teamOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
+          <InputField label="Full Name" name="name" value={editFormData.name} onChange={handleEditChange} icon={<User className="w-4 h-4" />} inputRef={makeRefSetter("name")} onFocus={(n: string) => setFocusedField(n)} />
+          <InputField label="Father's Name" name="fatherName" value={editFormData.fatherName} onChange={handleEditChange} icon={<User className="w-4 h-4" />} inputRef={makeRefSetter("fatherName")} onFocus={(n: string) => setFocusedField(n)} />
+          <InputField label="Date of Birth" name="dateOfBirth" type="date" value={editFormData.dateOfBirth} onChange={handleEditChange} icon={<Calendar className="w-4 h-4" />} inputRef={makeRefSetter("dateOfBirth")} onFocus={(n: string) => setFocusedField(n)} />
+          <InputField label="Joining Date" name="joiningDate" type="date" value={editFormData.joiningDate} onChange={handleEditChange} icon={<Calendar className="w-4 h-4" />} inputRef={makeRefSetter("joiningDate")} onFocus={(n: string) => setFocusedField(n)} />
+          <InputField label="Phone Number" name="phoneNumber" value={editFormData.phoneNumber} onChange={handleEditChange} icon={<Phone className="w-4 h-4" />} inputRef={makeRefSetter("phoneNumber")} onFocus={(n: string) => setFocusedField(n)} />
+          <InputField label="Email" name="mailId" type="email" value={editFormData.mailId} onChange={handleEditChange} icon={<Mail className="w-4 h-4" />} inputRef={makeRefSetter("mailId")} onFocus={(n: string) => setFocusedField(n)} />
+          
+          <InputField label="Team" name="team" type="select" value={editFormData.team} onChange={handleEditChange} icon={<Briefcase className="w-4 h-4" />} inputRef={makeRefSetter("team")} onFocus={(n: string) => setFocusedField(n)}>
+            {teamOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </InputField>
 
-          <InputField
-            label="Department"
-            name="department"
-            type="select"
-            value={editFormData.department}
-            onChange={handleEditChange}
-            icon={<Building className="w-4 h-4" />}
-            inputRef={makeRefSetter("department")}
-            onFocus={(n: string) => setFocusedField(n)}
-          >
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
+          <InputField label="Department" name="department" type="select" value={editFormData.department} onChange={handleEditChange} icon={<Building className="w-4 h-4" />} inputRef={makeRefSetter("department")} onFocus={(n: string) => setFocusedField(n)}>
+            {departments.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
           </InputField>
         </div>
 
@@ -836,29 +762,23 @@ export default function ViewEmpPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField label="Account Number" name="accountNumber" value={editFormData.accountNumber} onChange={handleEditChange} icon={<CreditCard className="w-4 h-4" />} inputRef={makeRefSetter("accountNumber")} onFocus={(n: string) => setFocusedField(n)} />
           <InputField label="IFSC Code" name="ifscCode" value={editFormData.ifscCode} onChange={handleEditChange} icon={<Building className="w-4 h-4" />} inputRef={makeRefSetter("ifscCode")} onFocus={(n: string) => setFocusedField(n)} />
-          <InputField label="Aadhar Number" name="aadharNumber" value={editFormData.aadharNumber} onChange={handleEditChange} icon={<IdCard className="w-4 h-4" />} inputRef={makeRefSetter("aadharNumber")} onFocus={(n: string) => setFocusedField(n)} />
-          <InputField
-            label="PAN Number"
-            name="panNumber"
-            value={editFormData.panNumber}
-            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-              handleEditChange({
-                ...e,
-                target: { ...e.target, value: (e.target.value || "").toUpperCase() },
-              })
-            }
-            icon={<IdCard className="w-4 h-4" />}
-            inputRef={makeRefSetter("panNumber")}
-            onFocus={(n: string) => setFocusedField(n)}
-          />
           <InputField label="Employment Type" name="employmentType" type="select" value={editFormData.employmentType} onChange={handleEditChange} icon={<Briefcase className="w-4 h-4" />} inputRef={makeRefSetter("employmentType")} onFocus={(n: string) => setFocusedField(n)}>
             <option value="Fresher">Fresher</option>
             <option value="Experienced">Experienced</option>
           </InputField>
         </div>
 
+        <h4 className="text-lg font-semibold text-gray-800 mt-6 mb-3 border-b pb-1">Document Uploads (Re-upload/New)</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <InputField label="Aadhar Document" name="aadharDoc" type="file" accept=".pdf,image/*" onChange={handleEditChange} icon={<Upload className="w-4 h-4" />} />
+          <InputField label="PAN Document" name="panDoc" type="file" accept=".pdf,image/*" onChange={handleEditChange} icon={<Upload className="w-4 h-4" />} />
+          <InputField label="10th Marksheet" name="tenthMarksheet" type="file" accept=".pdf,image/*" onChange={handleEditChange} icon={<Upload className="w-4 h-4" />} />
+          <InputField label="12th Marksheet" name="twelfthMarksheet" type="file" accept=".pdf,image/*" onChange={handleEditChange} icon={<Upload className="w-4 h-4" />} />
+          <InputField label="Provisional Cert." name="provisionalCertificate" type="file" accept=".pdf,image/*" onChange={handleEditChange} icon={<Upload className="w-4 h-4" />} />
+          <InputField label="Experience Cert." name="experienceCertificate" type="file" accept=".pdf,image/*" onChange={handleEditChange} icon={<Upload className="w-4 h-4" />} />
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4 pt-6 mt-6 border-t border-gray-200">
-          {/* Changed indigo accent to gray-800 */}
           <button type="button" onClick={handleUpdate} className="flex-1 group px-6 py-3 bg-gray-800 text-white font-semibold text-sm rounded-lg hover:bg-gray-900 transition-all duration-300 shadow-md flex items-center justify-center gap-2" disabled={loading}>
             <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
             {loading ? "Saving..." : "Save Changes"}
@@ -874,34 +794,21 @@ export default function ViewEmpPage() {
 
   const RenderTechCategories = () => {
     const techCategories = getSubcategoriesForTeam;
-    
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {Object.entries(techCategories).map(([category, rolesOrSubCategories]) => {
                 const hasSubcategories = !Array.isArray(rolesOrSubCategories);
-                
                 const handleCategoryClick = () => {
                     setSelectedCategory(category);
                     setSelectedSubCategory(null);
                 };
-
                 if (hasSubcategories) {
                     return (
                         <motion.div key={category} whileHover={{ scale: 1.05 }} className="bg-gray-50 border border-gray-200 p-6 rounded-2xl shadow-lg">
-                            {/* Changed hover:text-indigo-600 to hover:text-gray-800 */}
-                            <h3 className="text-xl font-semibold text-gray-900 text-center mb-4 cursor-pointer hover:text-gray-800" onClick={handleCategoryClick}>
-                                {category}
-                            </h3>
+                            <h3 className="text-xl font-semibold text-gray-900 text-center mb-4 cursor-pointer hover:text-gray-800" onClick={handleCategoryClick}>{category}</h3>
                             <div className="flex flex-col gap-3">
                                 {Object.keys(rolesOrSubCategories).map((subCategory) => (
-                                    <motion.div 
-                                        key={subCategory} 
-                                        whileHover={{ scale: 1.03 }} 
-                                        onClick={() => { setSelectedCategory(category); setSelectedSubCategory(subCategory); }} 
-                                        className="bg-white border border-gray-200 text-gray-800 rounded-xl text-center py-3 cursor-pointer hover:bg-gray-100 transition-all duration-300"
-                                    >
-                                        {subCategory}
-                                    </motion.div>
+                                    <motion.div key={subCategory} whileHover={{ scale: 1.03 }} onClick={() => { setSelectedCategory(category); setSelectedSubCategory(subCategory); }} className="bg-white border border-gray-200 text-gray-800 rounded-xl text-center py-3 cursor-pointer hover:bg-gray-100 transition-all duration-300">{subCategory}</motion.div>
                                 ))}
                             </div>
                         </motion.div>
@@ -948,45 +855,28 @@ export default function ViewEmpPage() {
       `}</style>
       
       <div className="max-w-6xl mx-auto w-full no-print">
-        {/* Render the clickable stats cards ONLY when no team is selected */}
         {!selectedTeam && <EmployeeStatsDisplay setSelectedTeam={setSelectedTeam} />}
 
-
-        {/* Navigation for specific teams / categories */}
-        {selectedTeam && (selectedTeam === "Tech" || selectedTeam !== "Tech") && !selectedEmployee && (
+        {selectedTeam && !selectedEmployee && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-semibold text-gray-800">
-                {selectedCategory || selectedTeam === "Tech" ? (
-                  getBreadcrumbTitle()
-                ) : (
-                  `${selectedTeam} Teams` // This branch is for non-Tech teams when initially clicked
-                )}
+                {selectedCategory || selectedTeam === "Tech" ? getBreadcrumbTitle() : `${selectedTeam} Teams`}
               </h2>
-              {/* Changed indigo accent to gray-800 */}
-              <button 
-                type="button" 
-                onClick={handleBackNavigation} 
-                className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition"
-              >
+              <button type="button" onClick={handleBackNavigation} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition">
                 ← Back to {selectedCategory || selectedSubCategory ? selectedTeam : 'Directory'}
               </button>
             </div>
 
-            {/* Display categories/subcategories for Tech and other complex teams */}
             {selectedTeam && !selectedCategory && (structure[selectedTeam] && Object.keys(structure[selectedTeam]).length > 1 || selectedTeam === "Tech") && (
                 <RenderTechCategories />
             )}
 
-            {/* Display list of employees if a final selection is made OR the team has a flat structure */}
-            {filteredEmployees.length > 0 && selectedTeam && (
-                selectedCategory || (Object.keys(structure[selectedTeam] || {}).length === 1 && !selectedCategory)
-            ) ? (
+            {filteredEmployees.length > 0 && selectedTeam && (selectedCategory || (Object.keys(structure[selectedTeam] || {}).length === 1 && !selectedCategory)) ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mt-6">
                 {filteredEmployees.map((emp) => (
                   <motion.div key={emp._id} whileHover={{ scale: 1.03 }} onClick={() => handleOpenDetail(emp)} className="bg-white border border-gray-200 p-5 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-300 shadow-md">
                     <div className="flex flex-col items-center text-center">
-                      {/* Changed border-indigo-300 to border-gray-300 */}
                       <img src={emp.photo || "/default-avatar.png"} alt={emp.name} className="w-20 h-20 object-cover rounded-full mb-3 border-2 border-gray-300" />
                       <p className="text-lg font-semibold text-gray-900">{emp.name}</p>
                       <p className="text-sm text-gray-600">{emp.empId}</p>
@@ -1000,11 +890,10 @@ export default function ViewEmpPage() {
           </div>
         )}
 
-        {/* Detail/Edit Modal */}
         <AnimatePresence>
           {selectedEmployee && (
             <motion.div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} tabIndex={-1}>
-              <motion.div className="bg-white text-gray-900 rounded-2xl max-w-4xl w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <motion.div className="bg-white text-gray-900 rounded-2xl max-w-4xl w-full p-6 sm:p-8 relative max-h-[80vh] mt-20 overflow-y-auto" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
                 <button type="button" onClick={handleCloseDetail} className="absolute top-3 right-3 text-gray-600 hover:text-red-500 text-lg p-2 rounded-full hover:bg-gray-100 transition" disabled={loading}>
                   <X className="w-6 h-6" />
                 </button>
@@ -1016,7 +905,6 @@ export default function ViewEmpPage() {
 
                 {loading && (
                   <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-2xl">
-                    {/* Changed indigo accent to gray-800 */}
                     <svg className="animate-spin h-8 w-8 text-gray-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
