@@ -7,7 +7,7 @@ interface MongooseCache {
 }
 
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/employeetasks";
+  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/Lemonpay_Portal";
 
 if (!MONGODB_URI) {
   throw new Error("Missing environment variable: MONGODB_URI");
@@ -31,7 +31,7 @@ export async function connectDB() {
   if (!cache.promise) {
     const opts = {
       bufferCommands: false,
-      dbName: process.env.DB_NAME || "employeetasks",
+      dbName: process.env.DB_NAME || "Lemonpay_Portal",
     };
 
     cache.promise = mongoose
