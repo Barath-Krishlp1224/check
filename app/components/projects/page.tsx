@@ -13,7 +13,6 @@ import {
   Settings,
   ChevronLeft,
   CheckCircle2,
-  CalendarDays,
   ChevronRight,
   Layers,
   Target,
@@ -21,11 +20,20 @@ import {
   Users,
   Edit2,
   Trash2,
-  Save
+  Save,
+  ArrowUp,
+  ArrowDown,
+  KanbanSquare,
+  List,
+  GitBranch,
+  Search,
+  Filter,
+  Play
 } from "lucide-react";
 
 // --- Types & Constants ---
 type ProjectType = "Scrum" | "Kanban" | "Simple";
+type IssueType = "Epic" | "Story" | "Task" | "Bug" | "Subtask";
 
 interface Subtask {
   id: string; 
@@ -38,6 +46,7 @@ interface Subtask {
   date?: string;
   remarks?: string;
   subtasks?: Subtask[];
+  issueType?: IssueType;
 }
 
 interface Employee {
@@ -77,12 +86,20 @@ interface Task {
   remarks: string;
   createdAt?: string;
   subtasks?: Subtask[];
+  priority?: "Low" | "Medium" | "High" | "Critical";
+  backlogOrder?: number;
+  issueType?: IssueType;
+  epicLink?: string;
+  storyPoints?: number;
+  sprint?: string;
 }
 
 const DEPARTMENT_OPTIONS = [
   "Tech", "Accounts", "IT Admin", "Manager", "Admin & Operations",
   "HR", "Founders", "TL-Reporting Manager", "TL Accountant",
 ] as const;
+
+const WORKFLOW_STATUSES = ["Backlog", "To Do", "In Progress", "Review", "Done", "On Hold"];
 
 const departmentAliases: Record<string, string[]> = {
   Tech: ["tech", "development", "engineering", "dev", "frontend", "backend"],
@@ -94,6 +111,29 @@ const departmentAliases: Record<string, string[]> = {
   Founders: ["founder", "founders", "leadership"],
   "TL-Reporting Manager": ["tl", "reporting manager", "tl-reporting manager", "tl-reporting"],
   "TL Accountant": ["tl accountant", "lead accountant", "tl-accounts", "senior accountant"],
+};
+
+const PRIORITY_COLORS = {
+  Low: "bg-gray-100 text-gray-600",
+  Medium: "bg-yellow-100 text-yellow-700",
+  High: "bg-orange-100 text-orange-700",
+  Critical: "bg-red-100 text-red-700"
+};
+
+const ISSUE_TYPE_COLORS = {
+  Epic: "bg-purple-100 text-purple-700",
+  Story: "bg-green-100 text-green-700",
+  Task: "bg-blue-100 text-blue-700",
+  Bug: "bg-red-100 text-red-700",
+  Subtask: "bg-gray-100 text-gray-600"
+};
+
+const ISSUE_TYPE_ICONS = {
+  Epic: "📚",
+  Story: "📖",
+  Task: "✓",
+  Bug: "🐛",
+  Subtask: "↳"
 };
 
 // --- Helper Functions ---
@@ -124,12 +164,16 @@ const calculateDaysRemaining = (dueDate: string) => {
 };
 
 // --- Sub-components ---
-const SubtaskItem: React.FC<{ sub: Subtask; level: number }> = ({ sub, level }) => {
+const SubtaskItem: React.FC<{ 
+  sub: Subtask; 
+  level: number;
+  onAddChild?: () => void;
+}> = ({ sub, level, onAddChild }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = sub.subtasks && sub.subtasks.length > 0;
   return (
     <div className={`mt-2 ${level > 0 ? "ml-6 border-l-2 border-slate-200 pl-4" : ""}`}>
-      <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+      <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100 group">
         <div className="flex items-center gap-2">
           {hasChildren && (
             <button onClick={() => setIsExpanded(!isExpanded)}>
@@ -146,6 +190,15 @@ const SubtaskItem: React.FC<{ sub: Subtask; level: number }> = ({ sub, level }) 
             {sub.status}
           </span>
           <span className="text-[10px] font-black text-slate-400">{sub.completion}%</span>
+          {level < 3 && onAddChild && (
+            <button 
+              onClick={onAddChild}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white rounded text-blue-600"
+              title="Add subtask"
+            >
+              <Plus size={12} />
+            </button>
+          )}
         </div>
       </div>
       {isExpanded && hasChildren && (
@@ -159,6 +212,422 @@ const SubtaskItem: React.FC<{ sub: Subtask; level: number }> = ({ sub, level }) 
   );
 };
 
+// Backlog Task Card Component
+const BacklogTaskCard: React.FC<{
+  task: Task;
+  index: number;
+  allTasks: Task[];
+  onReorder: (taskId: string, direction: 'up' | 'down') => void;
+  onUpdatePriority: (taskId: string, priority: Task['priority']) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (taskId: string) => void;
+}> = ({ task, index, allTasks, onReorder, onUpdatePriority, onEdit, onDelete }) => {
+  return (
+    <div className="p-4 bg-white border border-slate-100 rounded-xl flex items-center gap-3 group hover:border-blue-200 transition-all">
+      <div className="flex flex-col gap-1">
+        <button 
+          onClick={() => onReorder(task._id, 'up')}
+          disabled={index === 0}
+          className="p-1 hover:bg-slate-100 rounded disabled:opacity-20 disabled:cursor-not-allowed"
+          title="Move up"
+        >
+          <ArrowUp size={12} />
+        </button>
+        <button 
+          onClick={() => onReorder(task._id, 'down')}
+          disabled={index === allTasks.length - 1}
+          className="p-1 hover:bg-slate-100 rounded disabled:opacity-20 disabled:cursor-not-allowed"
+          title="Move down"
+        >
+          <ArrowDown size={12} />
+        </button>
+      </div>
+      
+      <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-600">
+        {index + 1}
+      </div>
+      
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{task.taskId}</span>
+          {task.issueType && (
+            <span className={`text-[8px] font-black px-2 py-0.5 rounded ${ISSUE_TYPE_COLORS[task.issueType]}`}>
+              {ISSUE_TYPE_ICONS[task.issueType]} {task.issueType}
+            </span>
+          )}
+          <select 
+            value={task.priority || 'Medium'}
+            onChange={(e) => onUpdatePriority(task._id, e.target.value as Task['priority'])}
+            className={`text-[8px] font-black px-2 py-0.5 rounded border-0 cursor-pointer ${PRIORITY_COLORS[task.priority || 'Medium']}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+          {task.storyPoints && (
+            <span className="text-[8px] font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+              {task.storyPoints} SP
+            </span>
+          )}
+        </div>
+        <p className="text-xs font-bold text-slate-700 line-clamp-1">{task.remarks}</p>
+        <div className="flex items-center gap-2 mt-1">
+          {task.assigneeNames.slice(0, 2).map((name, i) => (
+            <span key={i} className="text-[8px] text-slate-400 font-medium">{name}</span>
+          ))}
+          {task.assigneeNames.length > 2 && (
+            <span className="text-[8px] text-slate-400">+{task.assigneeNames.length - 2} more</span>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onEdit && (
+          <button 
+            onClick={() => onEdit(task)}
+            className="p-2 hover:bg-blue-50 rounded text-blue-600"
+            title="Edit task"
+          >
+            <Edit2 size={14} />
+          </button>
+        )}
+        {onDelete && (
+          <button 
+            onClick={() => {
+              if (confirm(`Delete task "${task.taskId}"?`)) {
+                onDelete(task._id);
+              }
+            }}
+            className="p-2 hover:bg-red-50 rounded text-red-600"
+            title="Delete task"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Backlog Management Component
+const BacklogManager: React.FC<{
+  tasks: Task[];
+  onReorder: (taskId: string, direction: 'up' | 'down') => void;
+  onUpdatePriority: (taskId: string, priority: Task['priority']) => void;
+  onEditTask?: (task: Task) => void;
+  onDeleteTask?: (taskId: string) => void;
+  onStartSprint: () => void;
+}> = ({ tasks, onReorder, onUpdatePriority, onEditTask, onDeleteTask, onStartSprint }) => {
+  const backlogTasks = tasks
+    .filter(t => t.status === 'Backlog')
+    .sort((a, b) => (a.backlogOrder || 999) - (b.backlogOrder || 999));
+
+  const epicTasks = backlogTasks.filter(t => t.issueType === 'Epic');
+  const otherTasks = backlogTasks.filter(t => t.issueType !== 'Epic');
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <List size={14} /> Backlog Management
+          </h3>
+          <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded-full">
+            {backlogTasks.length} Items
+          </span>
+        </div>
+        
+        {backlogTasks.length > 0 && (
+          <button 
+            onClick={onStartSprint}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-blue-200"
+          >
+            <Play size={12} fill="currentColor" /> Start Sprint
+          </button>
+        )}
+      </div>
+      
+      {/* Epics Section */}
+      {epicTasks.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-[9px] font-black text-purple-600 uppercase tracking-widest">📚 Epics</h4>
+          {epicTasks.map((task, index) => (
+            <BacklogTaskCard 
+              key={task._id} 
+              task={task} 
+              index={index}
+              allTasks={epicTasks}
+              onReorder={onReorder}
+              onUpdatePriority={onUpdatePriority}
+              onEdit={onEditTask}
+              onDelete={onDeleteTask}
+            />
+          ))}
+        </div>
+      )}
+      
+      {backlogTasks.length === 0 ? (
+        <div className="p-12 text-center bg-white border-2 border-dashed border-slate-100 rounded-2xl">
+          <List size={32} className="mx-auto text-slate-200 mb-3" />
+          <p className="text-sm font-bold text-slate-300">No items in backlog</p>
+          <p className="text-xs text-slate-400 mt-1">Create tasks to populate your backlog</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {otherTasks.length > 0 && (
+            <>
+              <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-4">Tasks & Stories</h4>
+              {otherTasks.map((task, index) => (
+                <BacklogTaskCard 
+                  key={task._id} 
+                  task={task} 
+                  index={index}
+                  allTasks={otherTasks}
+                  onReorder={onReorder}
+                  onUpdatePriority={onUpdatePriority}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Board View Component
+const BoardView: React.FC<{ 
+  tasks: Task[];
+  onStatusChange?: (taskId: string, newStatus: string) => void;
+  onTaskClick?: (task: Task) => void;
+}> = ({ tasks, onStatusChange, onTaskClick }) => {
+  const columns = useMemo(() => {
+    const cols: Record<string, Task[]> = {};
+    WORKFLOW_STATUSES.forEach(status => {
+      cols[status] = tasks.filter(t => t.status === status);
+    });
+    return cols;
+  }, [tasks]);
+
+  const getColumnColor = (status: string) => {
+    const colors: Record<string, string> = {
+      "Backlog": "bg-slate-100 text-slate-700",
+      "To Do": "bg-blue-100 text-blue-700",
+      "In Progress": "bg-yellow-100 text-yellow-700",
+      "Review": "bg-purple-100 text-purple-700",
+      "Done": "bg-green-100 text-green-700",
+      "On Hold": "bg-red-100 text-red-700"
+    };
+    return colors[status] || "bg-slate-100 text-slate-700";
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          <KanbanSquare size={14} /> Board View
+        </h3>
+        <span className="text-xs font-bold text-slate-500">{tasks.length} total tasks</span>
+      </div>
+      
+      <div className="grid grid-cols-6 gap-4 overflow-x-auto pb-4">
+        {WORKFLOW_STATUSES.map(status => (
+          <div key={status} className="min-w-[220px]">
+            <div className={`p-3 rounded-xl mb-3 ${getColumnColor(status)}`}>
+              <h4 className="text-[9px] font-black uppercase">{status}</h4>
+              <span className="text-[10px] font-bold opacity-70">{columns[status].length} tasks</span>
+            </div>
+            
+            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
+              {columns[status].length === 0 ? (
+                <div className="p-6 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-xl">
+                  <p className="text-[8px] font-bold text-slate-300 uppercase">Empty</p>
+                </div>
+              ) : (
+                columns[status].map(task => (
+                  <div 
+                    key={task._id} 
+                    className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => onTaskClick && onTaskClick(task)}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{task.taskId}</span>
+                        {task.issueType && (
+                          <span className={`text-[7px] font-black px-1.5 py-0.5 rounded ${ISSUE_TYPE_COLORS[task.issueType]}`}>
+                            {ISSUE_TYPE_ICONS[task.issueType]}
+                          </span>
+                        )}
+                      </div>
+                      {task.priority && (
+                        <span className={`text-[7px] font-black px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
+                          {task.priority}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-[10px] font-bold text-slate-700 line-clamp-2 mb-2">{task.remarks}</p>
+                    
+                    {onStatusChange && status !== "Done" && (
+                      <select
+                        value={task.status}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onStatusChange(task._id, e.target.value);
+                        }}
+                        className="w-full text-[8px] font-bold px-2 py-1 mb-2 rounded border border-slate-200 bg-slate-50"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {WORKFLOW_STATUSES.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        {task.assigneeNames.slice(0, 2).map((name, i) => (
+                          <div key={i} className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[7px] font-black text-blue-600">
+                            {name.charAt(0)}
+                          </div>
+                        ))}
+                        {task.assigneeNames.length > 2 && (
+                          <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[7px] font-black text-slate-600">
+                            +{task.assigneeNames.length - 2}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {task.subtasks && task.subtasks.length > 0 && (
+                          <span className="text-[8px] text-slate-400 font-bold flex items-center gap-1">
+                            <GitBranch size={8} /> {task.subtasks.length}
+                          </span>
+                        )}
+                        <span className="text-[8px] font-bold text-slate-400">{task.completion}%</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Search & Filter Component
+const SearchAndFilter: React.FC<{
+  tasks: Task[];
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  statusFilter: string;
+  setStatusFilter: (s: string) => void;
+  issueTypeFilter: string;
+  setIssueTypeFilter: (t: string) => void;
+}> = ({ tasks, searchQuery, setSearchQuery, statusFilter, setStatusFilter, issueTypeFilter, setIssueTypeFilter }) => {
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.taskId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         task.remarks.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         task.assigneeNames.some(name => name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = statusFilter === "All" || task.status === statusFilter;
+    const matchesIssueType = issueTypeFilter === "All" || task.issueType === issueTypeFilter;
+    return matchesSearch && matchesStatus && matchesIssueType;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          <Search size={14} /> Search & Filter
+        </h3>
+        <span className="text-xs font-bold text-slate-500">{filteredTasks.length} results</span>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+        <div>
+          <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Search</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by ID, description, or assignee..."
+              className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="All">All Statuses</option>
+              {WORKFLOW_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Issue Type</label>
+            <select
+              value={issueTypeFilter}
+              onChange={(e) => setIssueTypeFilter(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="All">All Types</option>
+              {Object.keys(ISSUE_TYPE_ICONS).map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar">
+        {filteredTasks.length === 0 ? (
+          <div className="p-12 text-center bg-white border-2 border-dashed border-slate-100 rounded-2xl">
+            <Filter size={32} className="mx-auto text-slate-200 mb-3" />
+            <p className="text-sm font-bold text-slate-300">No tasks found</p>
+          </div>
+        ) : (
+          filteredTasks.map(task => (
+            <div key={task._id} className="p-4 bg-white border border-slate-100 rounded-xl hover:border-blue-200 transition-all">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{task.taskId}</span>
+                {task.issueType && (
+                  <span className={`text-[8px] font-black px-2 py-0.5 rounded ${ISSUE_TYPE_COLORS[task.issueType]}`}>
+                    {ISSUE_TYPE_ICONS[task.issueType]} {task.issueType}
+                  </span>
+                )}
+                <span className={`text-[8px] font-black px-2 py-0.5 rounded ${PRIORITY_COLORS[task.priority || 'Medium']}`}>
+                  {task.priority || 'Medium'}
+                </span>
+                <span className="text-[8px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                  {task.status}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-slate-700 mb-2">{task.remarks}</p>
+              <div className="flex items-center gap-2">
+                {task.assigneeNames.slice(0, 3).map((name, i) => (
+                  <span key={i} className="text-[8px] text-slate-400 font-medium">{name}</span>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 export default function JiraSystem() {
   const [step, setStep] = useState("details");
@@ -166,14 +635,29 @@ export default function JiraSystem() {
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedProject, setSelectedProject] = useState<SavedProject | null>(null);
-  const [modalTab, setModalTab] = useState<"overview" | "tasks">("overview");
+  const [modalTab, setModalTab] = useState<"overview" | "tasks" | "backlog" | "board" | "search">("overview");
   const [projectTasks, setProjectTasks] = useState<Task[]>([]);
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [message, setMessage] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [issueTypeFilter, setIssueTypeFilter] = useState<string>("All");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const [isEditingProject, setIsEditingProject] = useState(false);
   const [editProjectData, setEditProjectData] = useState({ name: "", key: "" });
+
+  // Subtask creation state
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
+  const [selectedTaskForSubtask, setSelectedTaskForSubtask] = useState<string | null>(null);
+  const [subtaskForm, setSubtaskForm] = useState({
+    title: "",
+    assigneeName: "",
+    status: "To Do",
+    completion: "0",
+    remarks: ""
+  });
 
   const [projectFormData, setProjectFormData] = useState({
     name: "", key: "", description: "", type: "Scrum" as ProjectType,
@@ -191,24 +675,21 @@ export default function JiraSystem() {
     completion: "",
     status: "Backlog",
     remarks: "",
+    priority: "Medium" as Task['priority'],
+    issueType: "Task" as IssueType,
+    storyPoints: "",
+    epicLink: "",
   });
 
   // 1. Initial Load
   useEffect(() => { fetchInitialData(); }, []);
 
-  // 2. PROJECT SWITCH LOGIC: 
-  // This effect ensures that every time a user clicks a different project, 
-  // the task list is cleared immediately and then re-fetched for the specific ID.
+  // 2. PROJECT SWITCH LOGIC
   useEffect(() => { 
     if (selectedProject) {
-      // RESET: Clear previous project's tasks immediately so they don't "flicker"
       setProjectTasks([]); 
       setMessage("");
-      
-      // FETCH: Only for this project
       fetchTasksForProject(selectedProject._id);
-
-      // FORM SYNC: Update task form to match current project
       setTaskFormData(prev => ({
         ...prev,
         taskId: selectedProject.key,
@@ -216,7 +697,7 @@ export default function JiraSystem() {
       }));
       setEditProjectData({ name: selectedProject.name, key: selectedProject.key });
     } else {
-      setProjectTasks([]); // Clear if modal closes
+      setProjectTasks([]);
     }
   }, [selectedProject]);
 
@@ -243,16 +724,43 @@ export default function JiraSystem() {
 
   const fetchTasksForProject = async (projectId: string) => {
     try {
-      // Ensure the API call explicitly uses the projectId
       const res = await fetch(`/api/tasks?projectId=${projectId}`);
       const data = await res.json();
       const tasks = Array.isArray(data) ? data : (data.tasks || []);
-      
-      // DOUBLE-CHECK: Only update state if the selected project is still the one we fetched for
-      // (This prevents race conditions if a user clicks projects very fast)
       setProjectTasks(tasks);
     } catch (err) { 
       setProjectTasks([]); 
+    }
+  };
+
+  const handleStartSprint = async () => {
+    const backlogTasks = projectTasks.filter(t => t.status === "Backlog");
+    
+    if (backlogTasks.length === 0) {
+      setMessage("❌ No tasks in backlog to start a sprint.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updatedTasks = await Promise.all(
+        backlogTasks.map(async (task) => {
+          const res = await fetch(`/api/tasks/${task._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "To Do" }),
+          });
+          return res.json();
+        })
+      );
+
+      setMessage(" Sprint started! Tasks moved to 'To Do'.");
+      fetchTasksForProject(selectedProject!._id);
+      setModalTab("board");
+    } catch (error) {
+      setMessage("❌ Failed to initiate sprint.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -308,6 +816,107 @@ export default function JiraSystem() {
     } finally { 
         setLoading(false); 
     }
+  };
+
+  const handleReorderBacklog = (taskId: string, direction: 'up' | 'down') => {
+    setProjectTasks(prev => {
+      const backlogTasks = prev.filter(t => t.status === 'Backlog');
+      const otherTasks = prev.filter(t => t.status !== 'Backlog');
+      
+      const taskIndex = backlogTasks.findIndex(t => t._id === taskId);
+      if (taskIndex === -1) return prev;
+      
+      const newIndex = direction === 'up' ? taskIndex - 1 : taskIndex + 1;
+      if (newIndex < 0 || newIndex >= backlogTasks.length) return prev;
+      
+      const reordered = [...backlogTasks];
+      [reordered[taskIndex], reordered[newIndex]] = [reordered[newIndex], reordered[taskIndex]];
+      
+      const updated = reordered.map((task, idx) => ({ ...task, backlogOrder: idx }));
+      return [...updated, ...otherTasks];
+    });
+  };
+
+  const handleUpdatePriority = (taskId: string, priority: Task['priority']) => {
+    setProjectTasks(prev => prev.map(t => 
+      t._id === taskId ? { ...t, priority } : t
+    ));
+  };
+
+  const handleStatusChange = (taskId: string, newStatus: string) => {
+    setProjectTasks(prev => prev.map(t =>
+      t._id === taskId ? { ...t, status: newStatus } : t
+    ));
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!selectedProject) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (res.ok) {
+        setProjectTasks(prev => prev.filter(t => t._id !== taskId));
+        setMessage("✅ Task deleted successfully!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      setMessage("❌ Failed to delete task");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTaskFormData({
+      taskId: task.taskId,
+      projectName: task.project || selectedProject?.name || "",
+      assigneeNames: task.assigneeNames,
+      department: task.department,
+      startDate: task.startDate,
+      endDate: task.endDate || "",
+      dueDate: task.dueDate,
+      completion: task.completion.toString(),
+      status: task.status,
+      remarks: task.remarks,
+      priority: task.priority || "Medium",
+      issueType: task.issueType || "Task",
+      storyPoints: task.storyPoints?.toString() || "",
+      epicLink: task.epicLink || "",
+    });
+    setModalTab("tasks");
+  };
+
+  const handleAddSubtask = () => {
+    if (!selectedTaskForSubtask || !subtaskForm.title.trim()) {
+      setMessage("❌ Please enter a subtask title");
+      return;
+    }
+
+    const newSubtask: Subtask = {
+      id: `SUB-${Date.now()}`,
+      title: subtaskForm.title,
+      assigneeName: subtaskForm.assigneeName,
+      status: subtaskForm.status,
+      completion: Number(subtaskForm.completion),
+      remarks: subtaskForm.remarks
+    };
+
+    setProjectTasks(prev => prev.map(task => {
+      if (task._id === selectedTaskForSubtask) {
+        return {
+          ...task,
+          subtasks: [...(task.subtasks || []), newSubtask]
+        };
+      }
+      return task;
+    }));
+
+    setShowSubtaskForm(false);
+    setSelectedTaskForSubtask(null);
+    setSubtaskForm({ title: "", assigneeName: "", status: "To Do", completion: "0", remarks: "" });
+    setMessage("✅ Subtask added successfully!");
+    setTimeout(() => setMessage(""), 2000);
   };
 
   const filteredAssignees = useMemo(() => {
@@ -367,24 +976,55 @@ export default function JiraSystem() {
     }
     setLoading(true);
     try {
-      const uniqueSuffix = Date.now().toString().slice(-4);
-      const finalTaskId = `${taskFormData.taskId}-${uniqueSuffix}`;
-      const payload = {
-        ...taskFormData,
-        projectId: selectedProject._id, // LINKED TO CURRENT PROJECT
-        taskId: finalTaskId,
-        completion: taskFormData.completion === "" ? 0 : Number(taskFormData.completion),
-      };
-      const res = await fetch("/api/tasks/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        setMessage("✅ Task created successfully!");
-        setTaskFormData({ ...taskFormData, assigneeNames: [], completion: "", remarks: "", status: "Backlog" });
-        fetchTasksForProject(selectedProject._id);
-        setTimeout(() => { setModalTab("overview"); setMessage(""); }, 1500);
+      if (editingTask) {
+        const res = await fetch(`/api/tasks/${editingTask._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...taskFormData,
+            completion: taskFormData.completion === "" ? 0 : Number(taskFormData.completion),
+            storyPoints: taskFormData.storyPoints ? Number(taskFormData.storyPoints) : undefined,
+          }),
+        });
+        if (res.ok) {
+          setMessage("✅ Task updated successfully!");
+          setEditingTask(null);
+          fetchTasksForProject(selectedProject._id);
+          setTimeout(() => { setModalTab("overview"); setMessage(""); }, 1500);
+        }
+      } else {
+        const uniqueSuffix = Date.now().toString().slice(-4);
+        const finalTaskId = `${taskFormData.taskId}-${uniqueSuffix}`;
+        const backlogTasks = projectTasks.filter(t => t.status === 'Backlog');
+        const payload = {
+          ...taskFormData,
+          projectId: selectedProject._id,
+          taskId: finalTaskId,
+          completion: taskFormData.completion === "" ? 0 : Number(taskFormData.completion),
+          backlogOrder: backlogTasks.length,
+          storyPoints: taskFormData.storyPoints ? Number(taskFormData.storyPoints) : undefined,
+        };
+        const res = await fetch("/api/tasks/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          setMessage("✅ Task created successfully!");
+          setTaskFormData({ 
+            ...taskFormData, 
+            assigneeNames: [], 
+            completion: "", 
+            remarks: "", 
+            status: "Backlog", 
+            priority: "Medium",
+            issueType: "Task",
+            storyPoints: "",
+            epicLink: ""
+          });
+          fetchTasksForProject(selectedProject._id);
+          setTimeout(() => { setModalTab("overview"); setMessage(""); }, 1500);
+        }
       }
     } catch (err) { setMessage("❌ Connection failed."); }
     finally { setLoading(false); }
@@ -394,7 +1034,7 @@ export default function JiraSystem() {
     const total = projectTasks.length;
     return {
       total,
-      done: projectTasks.filter(t => t.status === "Completed").length,
+      done: projectTasks.filter(t => t.status === "Done" || t.status === "Completed").length,
       active: projectTasks.filter(t => t.status === "In Progress").length,
       avg: total > 0 ? Math.round(projectTasks.reduce((a, b) => a + b.completion, 0) / total) : 0
     };
@@ -410,6 +1050,8 @@ export default function JiraSystem() {
   }, [savedProjects, startDateFilter, endDateFilter]);
 
   const formElementClass = "w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none text-black placeholder:text-gray-400 bg-slate-50 transition-all font-medium";
+
+  const epicTasks = projectTasks.filter(t => t.issueType === "Epic");
 
   return (
     <div className="min-h-screen bg-[#F4F7FA] p-4 lg:p-10 font-sans text-slate-900 flex items-center justify-center">
@@ -536,9 +1178,12 @@ export default function JiraSystem() {
                   </div>
                 )}
               </div>
-              <div className="flex bg-slate-100 p-1 rounded-2xl">
-                <button onClick={() => setModalTab("overview")} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${modalTab === "overview" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Dashboard</button>
-                <button onClick={() => setModalTab("tasks")} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${modalTab === "tasks" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>+ Create Task</button>
+              <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 overflow-x-auto">
+                <button onClick={() => setModalTab("overview")} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${modalTab === "overview" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Dashboard</button>
+                <button onClick={() => setModalTab("backlog")} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${modalTab === "backlog" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Backlog</button>
+                <button onClick={() => setModalTab("board")} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${modalTab === "board" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Board</button>
+                <button onClick={() => setModalTab("search")} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${modalTab === "search" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Search</button>
+                <button onClick={() => setModalTab("tasks")} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${modalTab === "tasks" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>+ Create</button>
               </div>
             </div>
 
@@ -571,7 +1216,20 @@ export default function JiraSystem() {
                               <div className="flex-1">
                                 <div className="flex items-center flex-wrap gap-2 mb-3">
                                   <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{task.taskId}</span>
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${task.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{task.status}</span>
+                                  {task.issueType && (
+                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded ${ISSUE_TYPE_COLORS[task.issueType]}`}>
+                                      {ISSUE_TYPE_ICONS[task.issueType]} {task.issueType}
+                                    </span>
+                                  )}
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${task.status === 'Completed' || task.status === 'Done' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{task.status}</span>
+                                  {task.priority && (
+                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>{task.priority}</span>
+                                  )}
+                                  {task.storyPoints && (
+                                    <span className="text-[8px] font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                                      {task.storyPoints} SP
+                                    </span>
+                                  )}
                                   <div className="text-[9px] text-orange-500 font-black bg-orange-50 px-2 py-1 rounded"><Clock size={10} className="inline mr-1" /> {calculateDaysRemaining(task.dueDate)}</div>
                                 </div>
                                 <p className="text-sm font-bold text-slate-800 mb-3">{task.remarks}</p>
@@ -591,6 +1249,23 @@ export default function JiraSystem() {
                                 {task.subtasks.map((sub, idx) => <SubtaskItem key={idx} sub={sub} level={0} />)}
                               </div>
                             )}
+                            <div className="mt-4 pt-4 border-t border-slate-50 flex gap-2">
+                              <button 
+                                onClick={() => {
+                                  setSelectedTaskForSubtask(task._id);
+                                  setShowSubtaskForm(true);
+                                }}
+                                className="text-[9px] font-black uppercase px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all flex items-center gap-1"
+                              >
+                                <Plus size={12} /> Add Subtask
+                              </button>
+                              <button 
+                                onClick={() => handleEditTask(task)}
+                                className="text-[9px] font-black uppercase px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all flex items-center gap-1"
+                              >
+                                <Edit2 size={12} /> Edit
+                              </button>
+                            </div>
                           </div>
                         )) : (
                           <div className="p-20 text-center bg-white border-2 border-dashed border-slate-100 rounded-[3rem] text-slate-300 font-black uppercase tracking-widest">
@@ -613,8 +1288,32 @@ export default function JiraSystem() {
                     </div>
                   </div>
                 </div>
+              ) : modalTab === "backlog" ? (
+                <BacklogManager 
+                  tasks={projectTasks}
+                  onReorder={handleReorderBacklog}
+                  onUpdatePriority={handleUpdatePriority}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteTask}
+                  onStartSprint={handleStartSprint}
+                />
+              ) : modalTab === "board" ? (
+                <BoardView 
+                  tasks={projectTasks}
+                  onStatusChange={handleStatusChange}
+                  onTaskClick={handleEditTask}
+                />
+              ) : modalTab === "search" ? (
+                <SearchAndFilter
+                  tasks={projectTasks}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  issueTypeFilter={issueTypeFilter}
+                  setIssueTypeFilter={setIssueTypeFilter}
+                />
               ) : (
-                /* --- TASK CREATION FORM --- */
                 <div className="max-w-5xl mx-auto pb-10">
                   <form onSubmit={handleTaskSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
@@ -623,8 +1322,34 @@ export default function JiraSystem() {
                            <div className="flex items-center gap-2 mb-4 text-slate-800"><Target size={18} /><h2 className="font-black text-xs uppercase tracking-widest">Core Metadata</h2></div>
                            <div className="grid grid-cols-2 gap-4">
                              <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Issue ID Base</label><input type="text" value={taskFormData.taskId} onChange={(e) => setTaskFormData({...taskFormData, taskId: e.target.value})} className={formElementClass} placeholder="e.g. TASK-01" /></div>
-                             <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Owner Department *</label><select value={taskFormData.department} onChange={(e) => setTaskFormData({...taskFormData, department: e.target.value, assigneeNames: []})} className={formElementClass}><option value="">Select Department</option>{DEPARTMENT_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                             <div>
+                               <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Issue Type</label>
+                               <select value={taskFormData.issueType} onChange={(e) => setTaskFormData({...taskFormData, issueType: e.target.value as IssueType})} className={formElementClass}>
+                                 <option value="Epic">📚 Epic</option>
+                                 <option value="Story">📖 Story</option>
+                                 <option value="Task">✓ Task</option>
+                                 <option value="Bug">🐛 Bug</option>
+                               </select>
+                             </div>
                            </div>
+                           <div className="grid grid-cols-2 gap-4 mt-4">
+                             <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Owner Department *</label><select value={taskFormData.department} onChange={(e) => setTaskFormData({...taskFormData, department: e.target.value, assigneeNames: []})} className={formElementClass}><option value="">Select Department</option>{DEPARTMENT_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                             <div>
+                               <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Story Points</label>
+                               <input type="number" min="0" value={taskFormData.storyPoints} onChange={(e) => setTaskFormData({...taskFormData, storyPoints: e.target.value})} className={formElementClass} placeholder="0" />
+                             </div>
+                           </div>
+                           {taskFormData.issueType !== "Epic" && epicTasks.length > 0 && (
+                             <div className="mt-4">
+                               <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Epic Link (Optional)</label>
+                               <select value={taskFormData.epicLink} onChange={(e) => setTaskFormData({...taskFormData, epicLink: e.target.value})} className={formElementClass}>
+                                 <option value="">No Epic</option>
+                                 {epicTasks.map(epic => (
+                                   <option key={epic._id} value={epic._id}>{epic.taskId} - {epic.remarks.slice(0, 40)}</option>
+                                 ))}
+                               </select>
+                             </div>
+                           )}
                         </div>
                         
                         <div className="h-px bg-slate-100" />
@@ -665,7 +1390,8 @@ export default function JiraSystem() {
                     <div className="space-y-6">
                       <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm space-y-6">
                         <div className="flex items-center gap-2 text-slate-800"><BarChart3 size={18} /><h2 className="font-black text-xs uppercase tracking-widest">Status & Completion</h2></div>
-                        <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Current State</label><select value={taskFormData.status} onChange={(e) => setTaskFormData({...taskFormData, status: e.target.value})} className={formElementClass}>{["Backlog", "In Progress", "Paused", "Completed", "On Hold"].map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                        <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Current State</label><select value={taskFormData.status} onChange={(e) => setTaskFormData({...taskFormData, status: e.target.value})} className={formElementClass}>{WORKFLOW_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                        <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Priority</label><select value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value as Task['priority']})} className={formElementClass}><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Critical">Critical</option></select></div>
                         <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Progress (%)</label><input type="number" min="0" max="100" value={taskFormData.completion} onChange={(e) => setTaskFormData({...taskFormData, completion: e.target.value})} className={formElementClass} /></div>
                       </div>
                       <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
@@ -673,12 +1399,131 @@ export default function JiraSystem() {
                         <textarea rows={6} value={taskFormData.remarks} onChange={(e) => setTaskFormData({...taskFormData, remarks: e.target.value})} placeholder="Describe the task objective..." className={`${formElementClass} resize-none min-h-[120px]`} />
                       </div>
                       <button type="submit" disabled={loading} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black text-[10px] uppercase shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2 tracking-[0.2em]">
-                        <Plus size={16} /> {loading ? 'Saving...' : 'Create Task'}
+                        {editingTask ? <><Save size={16} /> {loading ? 'Updating...' : 'Update Task'}</> : <><Plus size={16} /> {loading ? 'Saving...' : 'Create Task'}</>}
                       </button>
+                      {editingTask && (
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setEditingTask(null);
+                            setTaskFormData({
+                              taskId: selectedProject?.key || "",
+                              projectName: selectedProject?.name || "",
+                              assigneeNames: [],
+                              department: "",
+                              startDate: new Date().toISOString().split("T")[0],
+                              endDate: "",
+                              dueDate: "",
+                              completion: "",
+                              status: "Backlog",
+                              remarks: "",
+                              priority: "Medium",
+                              issueType: "Task",
+                              storyPoints: "",
+                              epicLink: "",
+                            });
+                          }}
+                          className="w-full py-4 bg-slate-100 text-slate-600 rounded-[2rem] font-black text-[10px] uppercase hover:bg-slate-200 transition-all"
+                        >
+                          Cancel Edit
+                        </button>
+                      )}
                     </div>
                   </form>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subtask Creation Modal */}
+      {showSubtaskForm && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowSubtaskForm(false)} />
+          <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-slate-800">Add Subtask</h3>
+              <button onClick={() => setShowSubtaskForm(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Subtask Title *</label>
+                <input 
+                  type="text"
+                  value={subtaskForm.title}
+                  onChange={(e) => setSubtaskForm({...subtaskForm, title: e.target.value})}
+                  className={formElementClass}
+                  placeholder="e.g. Design mockup"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Assignee</label>
+                <input 
+                  type="text"
+                  value={subtaskForm.assigneeName}
+                  onChange={(e) => setSubtaskForm({...subtaskForm, assigneeName: e.target.value})}
+                  className={formElementClass}
+                  placeholder="Person responsible"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Status</label>
+                <select 
+                  value={subtaskForm.status}
+                  onChange={(e) => setSubtaskForm({...subtaskForm, status: e.target.value})}
+                  className={formElementClass}
+                >
+                  <option value="To Do">To Do</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Completion %</label>
+                <input 
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={subtaskForm.completion}
+                  onChange={(e) => setSubtaskForm({...subtaskForm, completion: e.target.value})}
+                  className={formElementClass}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Remarks</label>
+                <textarea 
+                  value={subtaskForm.remarks}
+                  onChange={(e) => setSubtaskForm({...subtaskForm, remarks: e.target.value})}
+                  rows={3}
+                  className={formElementClass}
+                  placeholder="Additional details..."
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowSubtaskForm(false)}
+                  className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleAddSubtask}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase hover:bg-blue-700 transition-all"
+                >
+                  Add Subtask
+                </button>
+              </div>
             </div>
           </div>
         </div>

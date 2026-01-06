@@ -1,5 +1,9 @@
 import mongoose, { Schema, models, model } from "mongoose";
 
+/**
+ * Project Schema for Jira-like Management System
+ * Tracks workspace configuration, team members, and framework types.
+ */
 const ProjectSchema = new Schema(
   {
     name: {
@@ -13,6 +17,7 @@ const ProjectSchema = new Schema(
       uppercase: true,
       unique: true,
       trim: true,
+      index: true,
     },
     description: {
       type: String,
@@ -24,7 +29,7 @@ const ProjectSchema = new Schema(
       default: "user_001",
     },
     members: {
-      type: [String], // Array of employee IDs from the "team" step
+      type: [String], // Array of employee IDs/Names from the project builder
       default: [],
     },
     visibility: {
@@ -39,10 +44,15 @@ const ProjectSchema = new Schema(
     },
     issueTypes: {
       type: [String],
-      default: ["Epic", "Story", "Task", "Bug"],
+      default: ["Epic", "Story", "Task", "Bug", "Subtask"],
     }
   },
-  { timestamps: true }
+  { 
+    timestamps: true // Automatically creates createdAt and updatedAt fields
+  }
 );
 
-export default models.Project || model("Project", ProjectSchema);
+// Prevent Mongoose from creating multiple models during Next.js Hot Module Replacement
+const Project = models.Project || model("Project", ProjectSchema);
+
+export default Project;

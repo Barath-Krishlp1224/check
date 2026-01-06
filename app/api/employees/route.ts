@@ -7,12 +7,11 @@ export async function GET(request: Request) {
     await connectDB();
 
     const url = new URL(request.url);
-
     const name = url.searchParams.get("name");
     const search = url.searchParams.get("search");
     const checkBirthdays = url.searchParams.get("birthdays");
 
-    // ✅ Unified field selection (covers payroll, profile, birthday, edit)
+    // Unified field selection for payroll, profile, and task assignment
     const selectFields =
       "_id empId name displayName department role team category salary accountNumber ifscCode joiningDate mailId dateOfBirth photo";
 
@@ -23,8 +22,6 @@ export async function GET(request: Request) {
       const today = new Date();
       const month = String(today.getMonth() + 1).padStart(2, "0");
       const day = String(today.getDate()).padStart(2, "0");
-
-      // Matches YYYY-MM-DD → -MM-DD
       const todaySuffix = `-${month}-${day}`;
 
       const birthdayFolks = await Employee.find(
@@ -43,20 +40,14 @@ export async function GET(request: Request) {
        ------------------------------------------------------------------ */
     if (search) {
       const regex = new RegExp(search, "i");
-
       const employees = await Employee.find(
-        {
-          $or: [{ name: regex }, { empId: regex }],
-        },
+        { $or: [{ name: regex }, { empId: regex }] },
         selectFields
       )
         .sort({ name: 1 })
         .lean();
 
-      return NextResponse.json({
-        success: true,
-        employees,
-      });
+      return NextResponse.json({ success: true, employees });
     }
 
     /* ------------------------------------------------------------------
@@ -69,16 +60,10 @@ export async function GET(request: Request) {
       ).lean();
 
       if (!employee) {
-        return NextResponse.json(
-          { success: false, error: "Not found" },
-          { status: 404 }
-        );
+        return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
       }
 
-      return NextResponse.json({
-        success: true,
-        employee,
-      });
+      return NextResponse.json({ success: true, employee });
     }
 
     /* ------------------------------------------------------------------
@@ -94,9 +79,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error fetching employees:", error);
-    return NextResponse.json(
-      { success: false, error: "Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Server Error" }, { status: 500 });
   }
 }

@@ -9,8 +9,6 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
-  Pause,
-  Play,
   ChevronRight,
   Eye,
   Calendar,
@@ -18,6 +16,7 @@ import {
   AlertTriangle,
   BarChart3,
   Loader2,
+  Play
 } from "lucide-react";
 import {
   Task,
@@ -25,17 +24,11 @@ import {
   Employee,
   SubtaskChangeHandler,
   SubtaskPathHandler,
-  SubtaskStatusChangeFunc,
 } from "./types";
 import TaskSubtaskEditor from "./TaskSubtaskEditor";
 import SubtaskModal from "./SubtaskModal";
 
 // --- Utilities ---
-
-/**
- * Safely calculates days difference between today and a target date.
- * Handles null/undefined to prevent ts(2345).
- */
 const calculateDaysDiff = (dateStr: string | undefined | null): number | null => {
   if (!dateStr) return null;
   try {
@@ -46,9 +39,7 @@ const calculateDaysDiff = (dateStr: string | undefined | null): number | null =>
     target.setHours(0, 0, 0, 0);
     const diffTime = target.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  } catch (error) {
-    return null;
-  }
+  } catch (error) { return null; }
 };
 
 const sumAllSubtasksTime = (subtasks: Subtask[] | undefined | null): number => {
@@ -71,18 +62,30 @@ const sumAllSubtasksStoryPoints = (subtasks: Subtask[] | undefined | null): numb
   }, 0);
 };
 
-// --- Sub-Components ---
+// --- Status Color Logic (Backgrounds only, Text is Black) ---
+const getStatusBgColor = (status: string = "") => {
+  switch (status) {
+    case "Completed":
+      return "bg-emerald-200 border-emerald-300";
+    case "In Progress":
+      return "bg-blue-200 border-blue-300";
+    case "To Do":
+      return "bg-slate-200 border-slate-300";
+    case "Paused":
+      return "bg-amber-200 border-amber-300";
+    case "Backlog":
+      return "bg-purple-200 border-purple-300";
+    default:
+      return "bg-slate-100 border-slate-200";
+  }
+};
 
+// --- Sub-Components ---
 const DueDateReminder: React.FC<{ dueDate?: string | null; endDate?: string | null; status?: string }> = ({ dueDate, endDate, status }) => {
   const daysToDue = calculateDaysDiff(dueDate);
   const daysToEnd = calculateDaysDiff(endDate);
-  
   if (status === "Completed" || (daysToDue === null && daysToEnd === null)) return null;
-
   const daysRemaining = (daysToDue ?? daysToEnd) as number;
-  const dateLabel = daysToDue !== null ? "Due Date" : "End Date";
-  const targetDate = (dueDate ?? endDate) as string;
-  
   const isOverdue = daysRemaining < 0;
   const isUrgent = daysRemaining <= 2;
 
@@ -96,9 +99,8 @@ const DueDateReminder: React.FC<{ dueDate?: string | null; endDate?: string | nu
       </div>
       <div className="flex-1">
         <p className="font-bold text-lg leading-tight">
-          {isOverdue ? `${dateLabel} overdue by ${Math.abs(daysRemaining)} days` : daysRemaining === 0 ? `${dateLabel} is today!` : `${daysRemaining} days remaining until ${dateLabel}`}
+          {isOverdue ? `Target overdue by ${Math.abs(daysRemaining)} days` : daysRemaining === 0 ? `Target is today!` : `${daysRemaining} days remaining`}
         </p>
-        <p className="text-xs opacity-70 font-medium">Target Date: {new Date(targetDate).toLocaleDateString()}</p>
       </div>
     </div>
   );
@@ -114,41 +116,25 @@ const SubtaskViewer: React.FC<{
   return (
     <ul className={`space-y-3 ${level > 0 ? "mt-3 border-l-2 border-slate-200 ml-4 pl-4" : ""}`}>
       {subtasks.map((sub, i) => (
-        <li key={sub.id || i} className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-indigo-200 transition-all">
+        <li key={sub.id || i} className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-blue-200 transition-all">
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">
-                {sub.id ?? "NEW"} 
-              </span>
-              <p className="font-bold text-slate-800">{sub.title || "Untitled Subtask"}</p>
+              <span className="text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase">{sub.id ?? "SUB"}</span>
+              <p className="font-bold text-black">{sub.title}</p>
             </div>
             <div className="flex items-center gap-3">
               <select
-                value={sub.status || "Pending"}
-                onChange={(e) => {
-                  // Guard against null id before passing to handler
-                  if (sub.id) handleSubtaskStatusChange(sub.id, e.target.value);
-                }}
-                className="text-xs font-bold border-none bg-slate-100 rounded-lg px-2 py-1 outline-none focus:ring-2 ring-indigo-500"
+                value={sub.status || "To Do"}
+                onChange={(e) => sub.id && handleSubtaskStatusChange(sub.id, e.target.value)}
+                className={`text-xs font-black border rounded-lg px-2 py-1 outline-none cursor-pointer text-black ${getStatusBgColor(sub.status)}`}
               >
-                {["Pending", "In Progress", "Completed", "Paused"].map(s => <option key={s} value={s}>{s}</option>)}
+                {["To Do", "In Progress", "Completed", "Paused"].map(s => <option key={s} value={s} className="bg-white text-black">{s}</option>)}
               </select>
-              <button onClick={() => onView(sub)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Eye size={16} /></button>
+              <button onClick={() => onView(sub)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg"><Eye size={16} /></button>
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            <span className="flex items-center gap-1"><User size={12}/> {sub.assigneeName || 'Unassigned'}</span>
-            <span className="flex items-center gap-1"><Clock size={12}/> {sub.timeSpent || 0}h</span>
-            <span className="flex items-center gap-1"><BarChart3 size={12}/> {sub.storyPoints || 0}pts</span>
-            <span className="flex items-center gap-1"><Calendar size={12}/> {sub.date || "N/A"}</span>
-          </div>
           {sub.subtasks && sub.subtasks.length > 0 && (
-            <SubtaskViewer 
-              subtasks={sub.subtasks} 
-              level={level + 1} 
-              handleSubtaskStatusChange={handleSubtaskStatusChange} 
-              onView={onView} 
-            />
+            <SubtaskViewer subtasks={sub.subtasks} level={level + 1} handleSubtaskStatusChange={handleSubtaskStatusChange} onView={onView} />
           )}
         </li>
       ))}
@@ -157,7 +143,6 @@ const SubtaskViewer: React.FC<{
 };
 
 // --- Main Modal Component ---
-
 interface TaskModalProps {
   task: Task;
   isOpen: boolean;
@@ -194,172 +179,168 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
   } = props;
 
   const [selectedSubtask, setSelectedSubtask] = useState<Subtask | null>(null);
-
   const subtasksToDisplay = isEditing ? subtasks : (task.subtasks || []);
   const totalTime = useMemo(() => sumAllSubtasksTime(subtasksToDisplay), [subtasksToDisplay]);
   const totalPoints = useMemo(() => sumAllSubtasksStoryPoints(subtasksToDisplay), [subtasksToDisplay]);
-
   const current = isEditing ? draftTask : task;
 
   if (!isOpen) return null;
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm">
-        <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60"><Loader2 className="w-12 h-12 animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md" onClick={onClose}>
-      <div className="bg-white rounded-[3rem] shadow-2xl flex flex-col w-full max-w-6xl max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md" onClick={onClose}>
+      <div className="bg-white rounded-[3rem] shadow-2xl flex flex-col w-full max-w-7xl max-h-[95vh] overflow-hidden" onClick={e => e.stopPropagation()}>
         
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-20">
+        {/* Header */}
+        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              
-              <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{task.project}</span>
-            </div>
-            <h2 className="text-2xl font-black text-slate-800">{isEditing ? "Modify Task" : "Task Insight"}</h2>
+            <span className="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1 block">{task.project} / {task.taskId}</span>
+            <h2 className="text-3xl font-black text-slate-800">{isEditing ? "Edit Task Details" : "Task Intelligence"}</h2>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X /></button>
+          <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full text-slate-400"><X /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-10 bg-slate-50/30">
           <DueDateReminder dueDate={task.dueDate} endDate={task.endDate} status={task.status} />
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {/* KPI Dashboard */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
             {[
-              { label: "Total Effort", val: `${totalTime} hrs`, icon: <Clock className="text-blue-500"/> },
-              { label: "Story Points", val: totalPoints, icon: <BarChart3 className="text-purple-500"/> },
-              { label: "Completion", val: `${current.completion || 0}%`, icon: <CheckCircle2 className="text-emerald-500"/> },
-              { label: "Status", val: current.status || "Backlog", icon: <AlertCircle className="text-orange-500"/> }
+              { label: "Logged Effort", val: `${totalTime} hrs`, icon: <Clock className="text-blue-500"/> },
+              { label: "Complexity", val: `${totalPoints} SP`, icon: <BarChart3 className="text-purple-500"/> },
+              { label: "Progress", val: `${current.completion || 0}%`, icon: <CheckCircle2 className="text-emerald-500"/> },
+              { label: "Current State", val: current.status || "Backlog", icon: <AlertCircle className="text-orange-500"/> }
             ].map((s, i) => (
-              <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4">
-                <div className="bg-slate-50 p-3 rounded-2xl">{s.icon}</div>
+              <div key={i} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-5">
+                <div className="bg-slate-50 p-4 rounded-2xl">{s.icon}</div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
-                  <p className="text-lg font-black text-slate-800">{s.val}</p>
+                  <p className="text-xl font-black text-black">{s.val}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 border-b pb-4">Task Parameters</h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Assignee</label>
-                    {isEditing ? (
-                      <select name="assigneeNames" value={current.assigneeNames?.[0] || ""} onChange={handleDraftChange} className="w-full mt-2 p-3 bg-slate-50 border-none rounded-xl font-bold outline-none ring-indigo-500 focus:ring-2">
-                        <option value="">Select Assignee</option>
-                        {employees.map(e => <option key={e._id} value={e.name}>{e.name}</option>)}
-                      </select>
-                    ) : <p className="mt-2 p-3 bg-slate-50 rounded-xl font-bold text-slate-700">{task.assigneeNames?.join(', ') || 'N/A'}</p>}
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Current Status</label>
-                    <select 
-                      name="status" value={current.status} 
-                      onChange={isEditing ? handleDraftChange : (e) => onTaskStatusChange(task._id, e.target.value)} 
-                      className="w-full mt-2 p-3 bg-slate-50 border-none rounded-xl font-bold outline-none ring-indigo-500 focus:ring-2"
-                    >
-                      {allTaskStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
+          <div className="grid grid-cols-1 gap-10">
+            {/* Multi-Column Specification Section */}
+            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em] mb-8 pb-4 border-b">Core Specifications</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8">
+                {/* 1. Project/Task Name */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Task Identity</label>
+                  {isEditing ? (
+                    <input name="project" placeholder="Enter project name..." value={current.project || ""} onChange={handleDraftChange} className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 ring-blue-500 outline-none text-sm text-black placeholder:text-slate-500" />
+                  ) : <p className="p-4 bg-slate-50 rounded-2xl font-bold text-black text-sm truncate">{task.project || 'N/A'}</p>}
                 </div>
-                <div className="mt-6">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Remarks / Context</label>
-                    {isEditing ? (
-                      <textarea name="remarks" value={current.remarks} onChange={handleDraftChange} rows={3} className="w-full mt-2 p-4 bg-slate-50 border-none rounded-xl font-bold outline-none ring-indigo-500 focus:ring-2 resize-none" />
-                    ) : <p className="mt-2 p-4 bg-slate-50 rounded-xl font-bold text-slate-600 leading-relaxed">{task.remarks || 'No remarks provided.'}</p>}
+
+                {/* 2. Assignee */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Primary Lead</label>
+                  {isEditing ? (
+                    <select name="assigneeNames" value={current.assigneeNames?.[0] || ""} onChange={handleDraftChange} className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 ring-blue-500 outline-none text-sm text-black">
+                      <option value="" className="text-slate-500 italic">Unassigned</option>
+                      {employees.map(e => <option key={e._id} value={e.name} className="text-black">{e.name}</option>)}
+                    </select>
+                  ) : <p className="p-4 bg-slate-50 rounded-2xl font-bold text-black text-sm">{task.assigneeNames?.join(', ') || 'N/A'}</p>}
+                </div>
+
+                {/* 3. Status - Dynamically colored Background, Black Text */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Workflow</label>
+                  <select 
+                    name="status" 
+                    value={current.status} 
+                    onChange={isEditing ? handleDraftChange : (e) => onTaskStatusChange(task._id, e.target.value)} 
+                    className={`w-full p-4 rounded-2xl font-black border focus:ring-2 ring-blue-500 outline-none text-sm text-black transition-all ${getStatusBgColor(current.status)}`}
+                  >
+                    {allTaskStatuses.map(s => <option key={s} value={s} className="bg-white text-black font-bold">{s}</option>)}
+                  </select>
+                </div>
+
+                {/* 4. Dates */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Deadline</label>
+                  {isEditing ? (
+                    <input type="date" name="dueDate" value={current.dueDate || ""} onChange={handleDraftChange} className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 ring-blue-500 outline-none text-sm text-black" />
+                  ) : <p className="p-4 bg-slate-50 rounded-2xl font-bold text-black text-sm">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</p>}
+                </div>
+
+                {/* 5. Progress */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Completion</label>
+                  {isEditing ? (
+                    <input type="number" name="completion" placeholder="0" value={current.completion || 0} onChange={handleDraftChange} className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 ring-blue-500 outline-none text-sm text-black placeholder:text-slate-500" />
+                  ) : <p className="p-4 bg-slate-50 rounded-2xl font-bold text-black text-sm">{task.completion || 0}%</p>}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <ChevronRight size={18} className="text-indigo-600" /> Component Breakdown
-                </h3>
-                {isEditing ? (
-                  <TaskSubtaskEditor
-                    subtasks={subtasks}
-                    employees={employees}
-                    currentProjectPrefix={currentProjectPrefix}
-                    handleSubtaskChange={handleSubtaskChange}
-                    addSubtask={addSubtask}
-                    removeSubtask={removeSubtask}
-                    onToggleEdit={onToggleEdit}
-                    onToggleExpansion={onToggleExpansion}
-                    onViewSubtask={setSelectedSubtask}
-                    allTaskStatuses={["Pending", "In Progress", "Completed", "Paused"]}
-                  />
-                ) : (
-                  <SubtaskViewer 
-                    subtasks={task.subtasks || []} 
-                    level={0} 
-                    handleSubtaskStatusChange={(subId, status) => {
-                      if (task._id) onSubtaskStatusChange(task._id, subId, status);
-                    }} 
-                    onView={setSelectedSubtask} 
-                  />
-                )}
+              {/* Remarks */}
+              <div className="mt-8 space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Strategic Remarks</label>
+                  {isEditing ? (
+                    <textarea name="remarks" placeholder="Add detailed notes here..." value={current.remarks} onChange={handleDraftChange} rows={3} className="w-full p-5 bg-slate-50 rounded-2xl font-bold border-none focus:ring-2 ring-blue-500 outline-none resize-none text-sm text-black placeholder:text-slate-500" />
+                  ) : <p className="p-5 bg-slate-50 rounded-2xl font-bold text-black leading-relaxed text-sm">{task.remarks || 'No specific instructions provided.'}</p>}
               </div>
             </div>
 
+            {/* Subtasks Section */}
             <div className="space-y-6">
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-4">Lifecycle Dates</h4>
-                {[
-                  { key: 'startDate', label: 'Start Date' },
-                  { key: 'dueDate', label: 'Due Date' },
-                  { key: 'endDate', label: 'End Date' }
-                ].map(f => (
-                  <div key={f.key} className="flex items-center gap-4">
-                    <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><Calendar size={16}/></div>
-                    <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase">{f.label}</p>
-                      <p className="text-sm font-black text-slate-700">
-                        {task[f.key as keyof Task] ? new Date(task[f.key as keyof Task] as string).toLocaleDateString() : 'Not Defined'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Work Breakdown Structure</h3>
               </div>
-              <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-4">Sprint Control</h4>
-                {task.status === "Backlog" && !isEditing && (
-                  <button onClick={() => handleStartSprint(task._id)} className="w-full mt-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
-                    <Play size={16} fill="currentColor" /> Initiate Sprint
-                  </button>
-                )}
-                <p className="mt-4 text-[10px] text-slate-500 font-bold leading-relaxed italic">
-                  Note: Total effort and points are automatically calculated by summing all nested subtasks.
-                </p>
-              </div>
+              {isEditing ? (
+                <TaskSubtaskEditor
+                  subtasks={subtasks}
+                  employees={employees}
+                  currentProjectPrefix={currentProjectPrefix}
+                  handleSubtaskChange={handleSubtaskChange}
+                  addSubtask={addSubtask}
+                  removeSubtask={removeSubtask}
+                  onToggleEdit={onToggleEdit}
+                  onToggleExpansion={onToggleExpansion}
+                  onViewSubtask={setSelectedSubtask}
+                  allTaskStatuses={["To Do", "In Progress", "Completed", "Paused"]}
+                />
+              ) : (
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                   <SubtaskViewer 
+                    subtasks={task.subtasks || []} 
+                    level={0} 
+                    handleSubtaskStatusChange={(subId, status) => onSubtaskStatusChange(task._id, subId, status)} 
+                    onView={setSelectedSubtask} 
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="p-8 border-t border-slate-100 flex justify-end gap-3 bg-white sticky bottom-0 z-20">
+        {/* Action Footer */}
+        <div className="p-10 border-t border-slate-100 flex justify-end gap-4 bg-white sticky bottom-0 z-20">
+          {task.status === "Backlog" && !isEditing && (
+             <button onClick={() => handleStartSprint(task._id)} className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] font-black text-[10px] uppercase shadow-lg transition-all flex items-center gap-2">
+                <Play size={18}/> Start Sprint
+             </button>
+          )}
+
           {isEditing ? (
             <>
-              <button onClick={handleUpdate} className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all flex items-center gap-2">
-                <Save size={16}/> Save Updates
+              <button onClick={handleUpdate} className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-[10px] uppercase shadow-xl transition-all flex items-center gap-2">
+                <Save size={18}/> Commit Changes
               </button>
-              <button onClick={cancelEdit} className="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase transition-all">
-                Discard Changes
+              <button onClick={cancelEdit} className="px-10 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-[2rem] font-black text-[10px] uppercase transition-all">
+                Cancel
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => handleEdit(task)} className="px-8 py-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all flex items-center gap-2">
-                <Edit2 size={16}/> Edit Mode
+              <button onClick={() => handleEdit(task)} className="px-10 py-4 bg-slate-900 hover:bg-blue-600 text-white rounded-[2rem] font-black text-[10px] uppercase shadow-xl transition-all flex items-center gap-2">
+                <Edit2 size={18}/> Modify Task
               </button>
-              <button onClick={() => handleDelete(task._id)} className="px-8 py-3 text-red-600 hover:bg-red-50 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center gap-2">
-                <Trash2 size={16}/> Delete Task
+              <button onClick={() => handleDelete(task._id)} className="px-10 py-4 text-red-500 hover:bg-red-50 rounded-[2rem] font-black text-[10px] uppercase transition-all flex items-center gap-2">
+                <Trash2 size={18}/> Remove
               </button>
             </>
           )}

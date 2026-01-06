@@ -1,7 +1,7 @@
 import React from "react";
 import { Subtask, Employee, SubtaskChangeHandler, SubtaskPathHandler } from "./types";
 import { Eye, ChevronDown, ChevronRight, Edit, Save, Trash2, PlusCircle, Clock, CheckCircle2, Pause, AlertCircle } from "lucide-react";
-const subtaskStatuses = ["Pending", "In Progress", "Completed", "Paused"];
+
 const getStatusBadge = (status: string, isSubtask: boolean = true) => {
   const baseClasses = "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full";
   let colorClasses = "";
@@ -26,6 +26,7 @@ const getStatusBadge = (status: string, isSubtask: boolean = true) => {
     </span>
   );
 };
+
 interface SubtaskRowProps {
   subtask: Subtask;
   index: number;
@@ -40,6 +41,7 @@ interface SubtaskRowProps {
   onView: (subtask: Subtask) => void;
   path: number[];
 }
+
 const SubtaskRow: React.FC<SubtaskRowProps> = ({
   subtask,
   index,
@@ -61,32 +63,14 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
   
   const StatusSelect = (
     <select
-      value={subtask.status}
+      value={subtask.status || "Pending"}
       onChange={(e) => onSubtaskChange(path, "status", e.target.value)}
-      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900 bg-white"
       disabled={!isEditing}
     >
       {subtaskStatuses.map((status) => (
         <option key={status} value={status}>
           {status}
-        </option>
-      ))}
-    </select>
-  );
-  
-  const AssigneeSelect = (
-    <select
-      value={subtask.assigneeName || ""}
-      onChange={(e) => onSubtaskChange(path, "assigneeName", e.target.value)}
-      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
-      disabled={!isEditing}
-    >
-      <option value="" className="text-gray-500">
-        Select Assignee
-      </option>
-      {employees.map((employee) => (
-        <option key={employee._id} value={employee.name}>
-          {employee.name}
         </option>
       ))}
     </select>
@@ -125,16 +109,6 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
     />
   );
   
-  const TextInput = (field: keyof Subtask, placeholder: string) => (
-    <input
-      value={String(subtask[field] || "")}
-      onChange={(e) => onSubtaskChange(path, field, e.target.value)}
-      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
-      placeholder={placeholder}
-      disabled={!isEditing}
-    />
-  );
-  
   const ProgressInput = (
     <input
       type="number"
@@ -147,9 +121,23 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
       disabled={!isEditing}
     />
   );
+
+  // Reusable text input to ensure Title and Remarks are editable
+  const renderTextInput = (field: keyof Subtask, placeholder: string) => (
+    <input
+      type="text"
+      value={subtask[field] === null || subtask[field] === undefined ? "" : String(subtask[field])}
+      onChange={(e) => onSubtaskChange(path, field, e.target.value)}
+      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900 bg-white"
+      placeholder={placeholder}
+      disabled={!isEditing}
+    />
+  );
   
   const DisplayText = (field: keyof Subtask) => (
-    <span className="text-gray-700 block px-3 py-2">{String(subtask[field] ?? (field === 'storyPoints' ? 0 : "-"))}</span>
+    <span className="text-gray-700 block px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
+        {String(subtask[field] ?? (field === 'storyPoints' ? 0 : "-"))}
+    </span>
   );
   
   return (
@@ -167,8 +155,13 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
             {subtask.id || `New-${index + 1}`}
           </div>
         </td>
-        <td className="px-4 py-3">{isEditing ? TextInput("title", "Subtask Title") : DisplayText("title")}</td>
-        <td className="px-4 py-3">{isEditing ? AssigneeSelect : DisplayText("assigneeName")}</td>
+        
+        {/* Title Column */}
+        <td className="px-4 py-3">
+            {isEditing ? renderTextInput("title", "Subtask Title") : DisplayText("title")}
+        </td>
+
+        {/* Assignee Column Removed */}
         
         <td className="px-4 py-3">{isEditing ? DateInput : DisplayText("date")}</td> 
 
@@ -178,7 +171,12 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
         
         <td className="px-4 py-3">{isEditing ? StatusSelect : getStatusBadge(subtask.status)}</td>
         <td className="px-4 py-3 text-center">{isEditing ? ProgressInput : <span className="text-gray-700 block px-3 py-2">{subtask.completion ?? 0}%</span>}</td>
-        <td className="px-4 py-3">{isEditing ? TextInput("remarks", "Add remarks") : DisplayText("remarks")}</td>
+        
+        {/* Remarks Column */}
+        <td className="px-4 py-3">
+            {isEditing ? renderTextInput("remarks", "Add remarks") : DisplayText("remarks")}
+        </td>
+
         <td className="px-4 py-3 text-center">
           <div className="flex items-center justify-center gap-2">
             <button
@@ -230,4 +228,5 @@ const SubtaskRow: React.FC<SubtaskRowProps> = ({
     </>
   );
 };
+
 export default SubtaskRow;

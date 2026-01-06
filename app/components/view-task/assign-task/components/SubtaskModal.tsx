@@ -1,7 +1,8 @@
 import React from "react";
 import { X, Clock, CheckCircle2, Pause, AlertCircle } from "lucide-react";
 import { Subtask } from "./types";
-const getStatusBadge = (status: string) => {
+
+const getStatusBadgeModal = (status: string) => {
   const baseClasses = "inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-full";
   let colorClasses = "";
   let icon = null;
@@ -25,11 +26,13 @@ const getStatusBadge = (status: string) => {
     </span>
   );
 };
+
 interface SubtaskModalProps {
   subtask: Subtask | null;
   isOpen: boolean;
   onClose: () => void;
 }
+
 const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose }) => {
   if (!isOpen || !subtask) return null;
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
@@ -59,9 +62,10 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
               <p className="text-xs font-medium text-slate-500 mb-1">Title</p>
               <p className="text-slate-800 font-semibold">{subtask.title || "N/A"}</p>
             </div>
+            {/* Assignee section removed here */}
             <div>
-              <p className="text-xs font-medium text-slate-500 mb-1">Assignee</p>
-              <p className="text-slate-800">{subtask.assigneeName || "Unassigned"}</p>
+              <p className="text-xs font-medium text-slate-500 mb-1">Date</p>
+              <p className="text-slate-800">{subtask.date || "N/A"}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-slate-500 mb-1">Progress</p>
@@ -77,7 +81,7 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
             </div>
             <div className='col-span-2'>
               <p className="text-xs font-medium text-slate-500 mb-1">Status</p>
-              {getStatusBadge(subtask.status)}
+              {getStatusBadgeModal(subtask.status)}
             </div>
             <div className="col-span-2">
               <p className="text-xs font-medium text-slate-500 mb-1">Remarks</p>
@@ -91,4 +95,5 @@ const SubtaskModal: React.FC<SubtaskModalProps> = ({ subtask, isOpen, onClose })
     </div>
   );
 };
+
 export default SubtaskModal;

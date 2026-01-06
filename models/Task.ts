@@ -1,11 +1,15 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model, models } from "mongoose";
 
+/**
+ * Recursive Subtask Schema
+ * Supports infinite nesting of subtasks as defined in the frontend.
+ */
 const BaseSubtaskSchema = new Schema(
   {
     id: { type: String },
     title: { type: String, required: true },
-    status: { type: String, default: "Pending" },
-    completion: { type: Number, default: 0, min: 0 },
+    status: { type: String, default: "To Do" },
+    completion: { type: Number, default: 0, min: 0, max: 100 },
     remarks: { type: String },
     startDate: { type: String },
     dueDate: { type: String },
@@ -13,67 +17,84 @@ const BaseSubtaskSchema = new Schema(
     timeSpent: { type: String },
     assigneeName: { type: String },
     date: { type: String },
-    storyPoints: { type: Number, default: 0, min: 0 }, 
+    storyPoints: { type: Number, default: 0, min: 0 },
   },
   { _id: false }
 );
 
-// Recursive subtasks
+// Enable recursive nesting for subtasks
 BaseSubtaskSchema.add({
   subtasks: [BaseSubtaskSchema],
 });
 
-const SubtaskSchema = BaseSubtaskSchema;
-
+/**
+ * Main Task Schema
+ * Stores Epics, Stories, Tasks, and Bugs.
+ */
 const TaskSchema = new Schema(
   {
-    // 1. CHANGED: projectId must NOT be unique so multiple tasks can belong to one project
-    projectId: { type: String, required: true, unique: false },
+    // ID of the Project this task belongs to (Allows multiple tasks per project)
+    projectId: { 
+      type: String, 
+      required: true, 
+      unique: false,
+      index: true 
+    },
 
-    // 2. ADDED: taskId to store the display ID sent from frontend (e.g., TASK-01)
+    // Human-readable ID (e.g., PROJ-101)
     taskId: { type: String, required: true },
 
-    assigneeNames: { type: [String], required: true },
-
+    // Project Name for display purposes
     project: { type: String, required: true },
 
+    // Core Task Data
+    assigneeNames: { type: [String], required: true },
     department: {
       type: String,
       enum: [
-        "Tech",
-        "Accounts",
-        "IT Admin",
-        "Manager",
-        "Admin & Operations",
-        "HR",
-        "Founders",
-        "TL-Reporting Manager",
-        "TL Accountant",
+        "Tech", "Accounts", "IT Admin", "Manager", "Admin & Operations",
+        "HR", "Founders", "TL-Reporting Manager", "TL Accountant",
       ],
       required: false,
     },
 
+    // Jira Specific Fields
+    issueType: { 
+      type: String, 
+      enum: ["Epic", "Story", "Task", "Bug", "Subtask"],
+      default: "Task" 
+    },
+    priority: { 
+      type: String, 
+      enum: ["Low", "Medium", "High", "Critical"],
+      default: "Medium" 
+    },
+    backlogOrder: { type: Number, default: 0 }, // For manual drag-and-drop ordering
+    epicLink: { type: String, default: "" },    // To link Stories/Tasks to an Epic
+
+    // Details & Progress
     remarks: { type: String },
     startDate: { type: String },
     endDate: { type: String },
     dueDate: { type: String },
-
     status: { type: String, default: "Backlog" },
-
-    completion: { type: Number, default: 0, min: 0 },
+    completion: { type: Number, default: 0, min: 0, max: 100 },
     
+    // Metrics
     taskStoryPoints: { type: Number, default: 0, min: 0 },
     taskTimeSpent: { type: String }, 
 
-    subtasks: [SubtaskSchema],
+    // Hierarchical Data
+    subtasks: [BaseSubtaskSchema],
 
+    // Notification states
     dueReminderSent: { type: Boolean, default: false },
     overdueNotified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-// 3. IMPORTANT: If an index named 'projectId_1' exists in your DB, 
-// you MUST delete it in MongoDB Atlas or Compass for this change to take effect.
+// Ensure the model is only compiled once in Next.js development mode
 const Task = models.Task || model("Task", TaskSchema);
+
 export default Task;

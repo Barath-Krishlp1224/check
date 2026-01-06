@@ -15,6 +15,7 @@ export interface Subtask {
 
 export interface Task {
   _id: string;
+  taskId: string;      // Fixed: Added this to solve ts(2339)
   projectId: string;
   project: string;
   assigneeNames: string[];
@@ -37,14 +38,17 @@ export interface Task {
   remarks?: string;
   subtasks?: Subtask[];
   department?: "Tech" | "Accounts" | string;
-  // New/Updated fields
   taskTimeSpent?: string;
   taskStoryPoints: number;
+  issueType?: "Epic" | "Story" | "Task" | "Bug"; // Added for Jira logic
+  priority?: "Low" | "Medium" | "High" | "Critical"; // Added for Jira logic
 }
 
 export interface Employee {
   _id: string;
   name: string;
+  empId?: string;
+  team?: string;
 }
 
 export type SubtaskChangeHandler = (path: number[], field: keyof Subtask, value: string | number) => void;

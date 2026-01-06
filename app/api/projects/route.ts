@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import connectDB from "@/lib/mongodb";
 import Project from "@/models/Project";
 import mongoose from "mongoose";
 
@@ -50,13 +50,10 @@ export async function POST(req: NextRequest) {
 }
 
 // PUT: Edit and Save changes
-// Fixed to accept ID within the body as your frontend sends it
 export async function PUT(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    
-    // The frontend sends selectedProject._id
     const { _id, ...updateData } = body;
 
     if (!_id || !mongoose.Types.ObjectId.isValid(_id)) {
@@ -75,7 +72,6 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
-    console.error("UPDATE_ERROR:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -92,7 +88,6 @@ export async function DELETE(req: NextRequest) {
     }
 
     const deleted = await Project.findByIdAndDelete(id);
-
     if (!deleted) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
