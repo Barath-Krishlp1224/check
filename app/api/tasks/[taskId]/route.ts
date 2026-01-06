@@ -27,8 +27,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ taskId:
   try {
     const { taskId } = await context.params;
     const body = await req.json();
+    
     const existingTask: any = await Task.findById(taskId).lean();
-
     if (!existingTask) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const updatedTask: any = await Task.findByIdAndUpdate(taskId, { $set: body }, { new: true }).lean();

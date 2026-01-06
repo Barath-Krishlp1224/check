@@ -121,18 +121,12 @@ const TasksPage: React.FC = () => {
     storyPoints: 0,
   });
 
-  /**
-   * UPDATED: updateSubtaskState
-   * Uses deep cloning and recursive mapping to ensure immutability.
-   * This ensures that typing in Title/Remarks updates the state correctly.
-   */
   const updateSubtaskState = (
     currentSubs: Subtask[], 
     path: number[], 
     updater: (sub: Subtask) => Subtask | null, 
     action: 'update' | 'remove' | 'add' = 'update'
   ): Subtask[] => {
-    // Top-level Addition
     if (action === 'add' && path.length === 0) {
       return [...currentSubs, getNewSubtask(currentProjectPrefix, (currentSubs.length + 1).toString())];
     }
@@ -143,7 +137,6 @@ const TasksPage: React.FC = () => {
       return list.map((item, i) => {
         if (i !== idx) return item;
 
-        // Found target node level
         if (rest.length === 0) {
           if (action === 'add') {
             const newNestedSubs = [...(item.subtasks || [])];
@@ -155,10 +148,9 @@ const TasksPage: React.FC = () => {
             const updated = updater(item);
             return updated ? { ...updated } : item;
           }
-          return item; // 'remove' is handled by filtering
+          return item;
         }
 
-        // Keep searching deeper
         return {
           ...item,
           subtasks: traverse(item.subtasks || [], rest)
@@ -169,7 +161,6 @@ const TasksPage: React.FC = () => {
     return traverse(currentSubs, path);
   };
 
-  // --- Task Operations ---
   const openTaskModal = (task: Task) => {
     const aggregated = getAggregatedTaskData(task);
     setSelectedTaskForModal(aggregated);
@@ -272,7 +263,6 @@ const TasksPage: React.FC = () => {
     init();
   }, [fetchTasks]);
 
-  // --- Filtering ---
   const filteredTasks = useMemo(() => {
     let base = tasks;
     if (currentUserRole === "Employee" && currentUserName) {
@@ -289,8 +279,6 @@ const TasksPage: React.FC = () => {
     return base;
   }, [tasks, currentUserRole, currentUserName, searchTerm]);
 
-  const uniqueProjects = useMemo(() => Array.from(new Set(tasks.map(t => t.project).filter(Boolean))), [tasks]);
-
   if (loading) return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-white">
       <img src="/load.gif" alt="Loading..." className="h-64" />
@@ -302,7 +290,6 @@ const TasksPage: React.FC = () => {
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <ToastContainer position="top-right" autoClose={2000} theme="dark" /> 
       
-      {/* GLOBAL NAVIGATION */}
       <nav className="fixed top-25 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] rounded-full px-14 py-5 flex items-center space-x-16 z-[100] border border-white/50">
         {[
           { id: "attendance", icon: UserCheck, label: "Attendance" },
@@ -337,7 +324,6 @@ const TasksPage: React.FC = () => {
         <div className="max-w-[1750px] mx-auto">
           {currentScreen === "tasks" ? (
             <div className="space-y-12">
-              {/* HEADER */}
               <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 px-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-blue-600">
@@ -347,36 +333,8 @@ const TasksPage: React.FC = () => {
                   <h1 className="text-6xl font-black text-slate-900 tracking-tighter">Workspace</h1>
                   <p className="text-slate-500 font-medium text-xl">Active Task Management ({filteredTasks.length})</p>
                 </div>
-                
-                {/* TOOLBAR */}
-                <div className="flex flex-wrap items-center gap-5 bg-white p-4 rounded-[2.5rem] shadow-xl border border-slate-100">
-                  <div className="relative group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="Filter Workspace..." 
-                      className="pl-14 pr-8 py-4 bg-slate-50 rounded-3xl border-none text-sm font-bold focus:ring-2 focus:ring-blue-500 w-72 transition-all"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <TaskTableHeader 
-                    uniqueProjects={uniqueProjects} 
-                    employees={employees} 
-                    downloadFilterType="all" 
-                    setDownloadFilterType={() => {}} 
-                    downloadFilterValue="" 
-                    setDownloadFilterValue={() => {}} 
-                    xlsxLoaded={true} 
-                    handleExcelDownload={() => {}} 
-                  />
-                  <button onClick={fetchTasks} className="p-4 hover:bg-slate-100 rounded-2xl text-slate-400 transition-all active:scale-95 shadow-inner">
-                    <RefreshCcw size={20} />
-                  </button>
-                </div>
               </div>
 
-              {/* TASK LIST/BOARD */}
               {filteredTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-40 bg-white rounded-[4rem] border-2 border-dashed border-slate-100 shadow-inner text-center">
                   <Trello className="w-24 h-24 text-slate-100 mb-8" />
@@ -395,7 +353,6 @@ const TasksPage: React.FC = () => {
                 </div>
               )}
 
-              {/* TASK MODAL */}
               {selectedTaskForModal && (
                 <TaskModal 
                   task={selectedTaskForModal} 
@@ -439,7 +396,6 @@ const TasksPage: React.FC = () => {
 
       <HolidaysModal open={isHolidaysOpen} onClose={() => setIsHolidaysOpen(false)} />
       
-      {/* FLOATING ACTION BUTTON */}
       <div className="fixed bottom-12 right-12 flex flex-col items-center space-y-5 z-[110]">
         <button 
           onClick={() => setIsNotesOpen(!isNotesOpen)} 
@@ -451,7 +407,6 @@ const TasksPage: React.FC = () => {
         </button>
       </div>
 
-      {/* SCRATCHPAD MODAL */}
       {isNotesOpen && (
         <div className="fixed bottom-40 right-12 w-[550px] h-[750px] bg-white/95 backdrop-blur-3xl border border-slate-200 rounded-[4rem] shadow-[0_45px_120px_rgba(0,0,0,0.3)] z-[110] flex flex-col overflow-hidden animate-in slide-in-from-right-10 duration-500">
           <div className="bg-slate-900 p-12 text-white flex justify-between items-center">

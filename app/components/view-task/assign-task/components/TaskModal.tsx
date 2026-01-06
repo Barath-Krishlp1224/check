@@ -189,13 +189,17 @@ const TaskModal: React.FC<TaskModalProps> = (props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md" onClick={onClose}>
-      <div className="bg-white rounded-[3rem] shadow-2xl flex flex-col w-full max-w-7xl max-h-[95vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-[3rem] shadow-2xl flex flex-col w-full max-w-7xl max-h-[80vh] mt-20 overflow-hidden" onClick={e => e.stopPropagation()}>
         
-        {/* Header */}
+        {/* Header - MODIFIED FOR BOLD PROJECT NAME */}
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
           <div>
-            <span className="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1 block">{task.project} / {task.taskId}</span>
-            <h2 className="text-3xl font-black text-slate-800">{isEditing ? "Edit Task Details" : "Task Intelligence"}</h2>
+            <span className="text-blue-500 text-[11px] font-[1000] uppercase tracking-[0.4em] mb-1 block">
+              {task.taskId}
+            </span>
+            <h2 className="text-4xl font-[1000] text-slate-900 tracking-tighter uppercase">
+              {task.project || "No Project Specified"}
+            </h2>
           </div>
           <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full text-slate-400"><X /></button>
         </div>

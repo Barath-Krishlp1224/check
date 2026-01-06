@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
-import Employee from "@/models/Employee";
 
 const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   tech: process.env.SLACK_WEBHOOK_URL,
@@ -32,7 +31,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // DROP THE UNIQUE INDEX FIX
+    // DROP THE UNIQUE INDEX FIX (Ensures project scalability)
     try {
       const collection = Task.collection;
       await collection.dropIndex("projectId_1");
@@ -46,7 +45,7 @@ export async function POST(req: Request) {
       projectId: body.projectId,
       taskId: body.taskId,
       project: body.projectName,
-      assigneeNames: body.assigneeNames,
+      assigneeNames: body.assigneeNames || [],
       department: body.department,
       startDate: body.startDate,
       endDate: body.endDate,
@@ -55,19 +54,23 @@ export async function POST(req: Request) {
       status: body.status || "Backlog",
       remarks: body.remarks,
       subtasks: body.subtasks || [],
-      taskStoryPoints: Number(body.storyPoints) || 0,
+      storyPoints: Number(body.storyPoints) || 0,
+      priority: body.priority || "Medium",
+      issueType: body.issueType || "Task",
+      labels: body.labels || [],
+      originalEstimate: Number(body.originalEstimate) || 0
     });
 
     const savedTask = await newTask.save();
 
-    // Slack Logic
+    // Slack Notification Logic
     const deptKey = normalizeDeptKey(body.department);
     const webhookUrl = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
 
     if (webhookUrl) {
       const blocks = [
         { type: "section", text: { type: "mrkdwn", text: `🚀 *New Task Created*\n*Project:* ${body.projectName}` } },
-        { type: "section", text: { type: "mrkdwn", text: `👤 *Assignee:* ${body.assigneeNames[0]}\n📅 *Deadline:* ${body.dueDate || 'N/A'}` } }
+        { type: "section", text: { type: "mrkdwn", text: `👤 *Assignee:* ${body.assigneeNames?.[0] || 'Unassigned'}\n📅 *Deadline:* ${body.dueDate || 'N/A'}` } }
       ];
       await postToSlack(webhookUrl, { blocks });
     }

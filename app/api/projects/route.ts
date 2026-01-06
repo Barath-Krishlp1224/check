@@ -14,7 +14,7 @@ export async function GET() {
   }
 }
 
-// POST: Create a new project
+// POST: Create a new project (Provision Project)
 export async function POST(req: NextRequest) {
   try {
     await connectDB();

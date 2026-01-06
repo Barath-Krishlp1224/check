@@ -15,6 +15,7 @@ export interface Subtask {
 
 export interface Task {
   _id: string;
+  title: string; // Added this to fix Property 'title' does not exist on type 'Task'
   projectId: string;
   project: string;
   assigneeNames: string[];
@@ -37,7 +38,6 @@ export interface Task {
   remarks?: string;
   subtasks?: Subtask[];
   department?: "Tech" | "Accounts" | string;
-  // New/Updated fields
   taskTimeSpent?: string;
   taskStoryPoints: number;
 }
