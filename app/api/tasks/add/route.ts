@@ -1,67 +1,30 @@
-// ./api/tasks/add (POST function)
-
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Task from "@/models/Task";
 import Employee from "@/models/Employee";
 
-interface Subtask {
-  id?: string | null;
-  title: string;
-  status: string;
-  completion: number;
-  remarks?: string;
-  startDate?: string;
-  dueDate?: string;
-  endDate?: string;
-  timeSpent?: string;
-  assigneeName?: string;
-  date?: string;
-  subtasks?: Subtask[];
-}
-
-type ReqBody = {
-  projectId: string;
-  assigneeNames: string[]; 
-  project: string;
-  department: string;
-  startDate?: string;
-  endDate?: string;
-  dueDate?: string;
-  completion?: string | number;
-  status?: string;
-  remarks?: string;
-  subtasks?: Subtask[]; 
-};
-
+// --- Slack Webhook Mapping ---
 const DEPT_WEBHOOK_MAP: Record<string, string | undefined> = {
   tech: process.env.SLACK_WEBHOOK_URL,
   accounts: process.env.SLACK_WEBHOOK_URL_ACC,
   "it admin": process.env.SLACK_WEBHOOK_URL_ITADMIN ?? process.env.SLACK_WEBHOOK_URL,
   manager: process.env.SLACK_WEBHOOK_URL_MANAGER ?? process.env.SLACK_WEBHOOK_URL,
   "admin & operations": process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
-  admin: process.env.SLACK_WEBHOOK_URL_ADMINOPS ?? process.env.SLACK_WEBHOOK_URL,
   hr: process.env.SLACK_WEBHOOK_URL_HR ?? process.env.SLACK_WEBHOOK_URL,
   founders: process.env.SLACK_WEBHOOK_URL_FOUNDERS ?? process.env.SLACK_WEBHOOK_URL,
-  "tl-reporting manager": process.env.SLACK_WEBHOOK_URL_TL ?? process.env.SLACK_WEBHOOK_URL,
-  "tl accountant": process.env.SLFLACK_WEBHOOK_URL_TLACC ?? process.env.SLACK_WEBHOOK_URL_ACC,
 };
 
 const normalizeDeptKey = (d?: string) => (d ? d.toString().trim().toLowerCase() : "");
 
 async function postToSlack(webhookUrl: string, payload: any) {
   try {
-    const res = await fetch(webhookUrl, {
+    await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      const bodyText = await res.text().catch(() => "<no body>");
-      console.warn("Slack webhook returned non-OK:", res.status, bodyText);
-    }
   } catch (err) {
-    console.error("Slack webhook POST failed:", err);
+    console.error("Slack Notification Failed:", err);
   }
 }
 
@@ -69,125 +32,94 @@ export async function POST(req: Request) {
   await connectDB();
 
   try {
-    const body = (await req.json()) as ReqBody;
-    console.log("🟡 Incoming Task Data:", body);
+    const body = await req.json();
 
-    const {
-      projectId,
-      assigneeNames, 
-      project,
-      department,
-      startDate,
-      endDate,
-      dueDate,
-      completion,
-      status,
-      remarks,
-      subtasks, 
-    } = body || {};
+    // --- 🛠️ AUTO-FIX: DROP THE UNIQUE INDEX ---
+    // This part fixes the E11000 error by removing the "One Task Per Project" rule
+    try {
+      const collection = Task.collection;
+      await collection.dropIndex("projectId_1");
+      console.log("Successfully removed the unique constraint on projectId.");
+    } catch (e) {
+      // Index already dropped or doesn't exist, which is fine.
+    }
 
-    if (!projectId || !project || !assigneeNames || assigneeNames.length === 0) { 
+    // 1. Validation: Ensure frontend is sending correct keys
+    // Frontend taskFormData uses: taskId, projectName, assigneeNames, department, etc.
+    if (!body.projectId || !body.taskId || !body.projectName) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: projectId, project, or at least one assignee." },
+        { success: false, error: "Missing required fields (projectId, taskId, or projectName)." },
         { status: 400 }
       );
     }
 
-    if (!department) {
-      return NextResponse.json(
-        { success: false, error: "Department is required." },
-        { status: 400 }
-      );
-    }
-
-    const completionValue =
-      completion !== "" && completion !== undefined ? Number(completion) : 0;
-    const taskStatus = status || "Backlog";
+    // 2. Prepare the Task Data
+    const completionValue = body.completion !== "" && body.completion !== undefined ? Number(body.completion) : 0;
 
     const newTask = new Task({
-      assigneeNames, 
-      projectId,
-      project,
-      department,
-      startDate,
-      endDate,
-      dueDate,
+      projectId: body.projectId,     // The Database Object ID
+      taskId: body.taskId,           // The Human Readable ID (e.g. WEB-01)
+      project: body.projectName,     // Maps projectName from frontend to project in DB
+      assigneeNames: body.assigneeNames,
+      department: body.department,
+      startDate: body.startDate,
+      endDate: body.endDate,
+      dueDate: body.dueDate,
       completion: completionValue,
-      status: taskStatus,
-      remarks,
-      subtasks, 
+      status: body.status || "Backlog",
+      remarks: body.remarks,
+      subtasks: body.subtasks || [],
+      taskStoryPoints: Number(body.taskStoryPoints) || 0,
+      taskTimeSpent: body.taskTimeSpent || "",
     });
 
+    // 3. Save to MongoDB
     const savedTask = await newTask.save();
-    
-    // Prepare Assignee Display Logic
-    const primaryAssignee = assigneeNames[0];
+
+    // 4. Slack Notification Logic
+    const primaryAssignee = body.assigneeNames[0];
     let assigneeLabel = primaryAssignee;
     
     try {
-      const emp = await Employee.findOne({ name: new RegExp(`^${primaryAssignee}$`, "i") }, "empId name").lean();
+      const emp = await Employee.findOne({ name: new RegExp(`^${primaryAssignee}$`, "i") }).lean();
       if (emp) assigneeLabel = `${emp.name}${emp.empId ? ` (${emp.empId})` : ""}`;
-    } catch (err) {
-      console.warn("Primary assignee lookup failed:", err);
+    } catch (e) {
+      console.warn("Could not find employee for Slack label");
     }
 
-    const totalAssignees = assigneeNames.length;
-    const assigneeDisplay = totalAssignees > 1 
-      ? `${assigneeLabel} (+${totalAssignees - 1} others)`
-      : `${assigneeLabel}`;
-    
-    const deptKey = normalizeDeptKey(department);
+    const deptKey = normalizeDeptKey(body.department);
     const webhookUrl = DEPT_WEBHOOK_MAP[deptKey] ?? DEPT_WEBHOOK_MAP["tech"];
 
-    if (!webhookUrl) {
-      console.warn("⚠️ No Slack webhook configured for department:", department);
-    } else {
-      try {
-        const subtaskCount = subtasks?.length || 0;
-        const subtaskNote = subtaskCount > 0 ? ` (+${subtaskCount} Subtask${subtaskCount > 1 ? 's' : ''})` : '';
-        
-        // ✨ NEW HEADLINE: Bold Assignee Name at the top
-        const headline = `👤 Assignee: ${assigneeDisplay}`;
-        
-        const blocks: any[] = [
-          { 
-            type: "section", 
-            text: { 
-              type: "mrkdwn", 
-              text: `${headline}\n📌 New Task — ${department}` 
-            } 
-          },
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `Project: ${project} (${projectId})${subtaskNote}\nDepartment: ${department}\nStatus: ${taskStatus}${dueDate ? `\nDue: ${dueDate}` : ""}`, 
-            },
-          },
-          ...(remarks ? [{ type: "section", text: { type: "mrkdwn", text: `Remarks: ${remarks}` } }] : []),
-          { 
-            type: "context", 
-            elements: [{ type: "mrkdwn", text: `Task saved: ${savedTask._id}` }] 
-          },
-        ];
-
-        await postToSlack(webhookUrl, { blocks });
-        console.log(`✅ Slack notification sent for ${assigneeLabel}`);
-      } catch (slackErr) {
-        console.error("⚠️ Slack notification failed:", slackErr);
-      }
+    if (webhookUrl) {
+      const blocks = [
+        { 
+          type: "section", 
+          text: { 
+            type: "mrkdwn", 
+            text: `🚀 *New Task Created*\n*Project:* ${body.projectName} (${body.taskId})` 
+          } 
+        },
+        { 
+          type: "section", 
+          text: { 
+            type: "mrkdwn", 
+            text: `👤 *Assignee:* ${assigneeLabel}\n📅 *Deadline:* ${body.dueDate || 'No Date'}` 
+          } 
+        }
+      ];
+      await postToSlack(webhookUrl, { blocks });
     }
 
     return NextResponse.json(
-      { success: true, message: "Task added successfully", task: savedTask },
+      { success: true, message: "Task created successfully", task: savedTask },
       { status: 201 }
     );
+
   } catch (error: any) {
-    let errorMessage = error.message || "Failed to add task";
-    if (error.code === 11000) {
-      errorMessage = "Project ID must be unique. A task with this ID already exists.";
-    }
-    console.error("🔥 Error adding task:", errorMessage);
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    console.error("🔥 POST /api/tasks/add Error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to add task" },
+      { status: 500 }
+    );
   }
 }

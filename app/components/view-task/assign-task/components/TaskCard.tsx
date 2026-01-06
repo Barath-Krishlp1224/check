@@ -56,7 +56,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onViewDetails }) => {
     >
       <div className="flex justify-between items-start mb-3">
         {getStatusBadge(task.status)}
-        <span className="text-xs font-medium text-black bg-indigo-50 px-2 py-1 rounded-lg">{task.projectId}</span>
+        
       </div>
       <h3 className="text-lg font-bold text-black mb-1 truncate">{task.project}</h3>
       

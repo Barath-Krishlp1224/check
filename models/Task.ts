@@ -10,14 +10,15 @@ const BaseSubtaskSchema = new Schema(
     startDate: { type: String },
     dueDate: { type: String },
     endDate: { type: String },
-    timeSpent: { type: String }, // <-- UPDATED/CONFIRMED
+    timeSpent: { type: String },
     assigneeName: { type: String },
     date: { type: String },
-    storyPoints: { type: Number, default: 0, min: 0 }, // ✨ ADDED STORY POINTS
+    storyPoints: { type: Number, default: 0, min: 0 }, 
   },
   { _id: false }
 );
 
+// Recursive subtasks
 BaseSubtaskSchema.add({
   subtasks: [BaseSubtaskSchema],
 });
@@ -26,7 +27,11 @@ const SubtaskSchema = BaseSubtaskSchema;
 
 const TaskSchema = new Schema(
   {
-    projectId: { type: String, required: true, unique: true },
+    // 1. CHANGED: projectId must NOT be unique so multiple tasks can belong to one project
+    projectId: { type: String, required: true, unique: false },
+
+    // 2. ADDED: taskId to store the display ID sent from frontend (e.g., TASK-01)
+    taskId: { type: String, required: true },
 
     assigneeNames: { type: [String], required: true },
 
@@ -57,7 +62,6 @@ const TaskSchema = new Schema(
 
     completion: { type: Number, default: 0, min: 0 },
     
-    // ✨ ADDED MAIN TASK FIELDS
     taskStoryPoints: { type: Number, default: 0, min: 0 },
     taskTimeSpent: { type: String }, 
 
@@ -69,5 +73,7 @@ const TaskSchema = new Schema(
   { timestamps: true }
 );
 
+// 3. IMPORTANT: If an index named 'projectId_1' exists in your DB, 
+// you MUST delete it in MongoDB Atlas or Compass for this change to take effect.
 const Task = models.Task || model("Task", TaskSchema);
 export default Task;
