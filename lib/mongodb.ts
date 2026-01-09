@@ -51,4 +51,7 @@ export async function connectDB() {
   return cache.conn;
 }
 
+// Add this for compatibility with files that are using connectToDatabase
+export const connectToDatabase = connectDB;
+
 export default connectDB;

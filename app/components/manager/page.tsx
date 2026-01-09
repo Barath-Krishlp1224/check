@@ -94,7 +94,7 @@ export default function AdminPage() {
       title: "My Tasks",
       description: "Personal task list",
       icon: List,
-      onClick: () => router.push("/components/view-task"),
+      onClick: () => router.push("/components/employee"),
       gradient: "from-pink-500 to-pink-600",
     },
   ];
