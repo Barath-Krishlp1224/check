@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, X, AlertCircle, Check } from "lucide-react";
-import { Employee, SavedProject } from "./page";
+import { Employee, SavedProject } from "../../types/project";
 
 interface ProjectCreationModalProps {
   show: boolean;

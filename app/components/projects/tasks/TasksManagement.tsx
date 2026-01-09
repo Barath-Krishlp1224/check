@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronUp, MoreVertical, ExternalLink,
   User, AlertTriangle, Bug, ClipboardCheck, Bookmark
 } from "lucide-react";
-import { Employee, SavedProject } from "../page";
+import type { Employee, SavedProject, Task as TaskType } from "@/app/types/project";
 
 interface Epic {
   _id: string;

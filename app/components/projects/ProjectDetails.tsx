@@ -5,7 +5,7 @@ import {
   BarChart3, ListTodo, Layers, Target,
   Users, Trash2, FolderKanban
 } from "lucide-react";
-import { Employee, SavedProject } from "./page";
+import { Employee, SavedProject } from "../../types/project";
 
 interface Epic {
   _id: string;

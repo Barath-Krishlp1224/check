@@ -1,33 +1,34 @@
+// app/components/employee/holidays/page.tsx
 "use client";
 
 import React, { useState, useMemo } from "react";
 import { Calendar, ChevronLeft, Clock, CheckCircle2, CalendarDays, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export interface Holiday {
+interface Holiday {
   date: string;
   name: string;
   description: string;
   actualDate: Date;
 }
 
-export const staticHolidays: Holiday[] = [
-  { date: "January 1", name: "New Year's Day", description: "A national holiday to mark the beginning of the new year.", actualDate: new Date(2026, 0, 1) },
-  { date: "January 15", name: "Pongal", description: "Harvest festival holidays.", actualDate: new Date(2026, 0, 15) },
-  { date: "January 26", name: "Republic Day", description: "Commemorating the adoption of the Constitution.", actualDate: new Date(2026, 0, 26) },
-  { date: "February 15", name: "Shivaratri", description: "Lord Shiva's birthday celebration.", actualDate: new Date(2026, 1, 15) },
-  { date: "March 19", name: "Ugadi", description: "Telugu New Year.", actualDate: new Date(2026, 2, 19) },
-  { date: "April 3", name: "Good Friday", description: "Observed during the Holy Week.", actualDate: new Date(2026, 3, 3) },
-  { date: "May 1", name: "Labor's Day", description: "Celebrating workers and laborers.", actualDate: new Date(2026, 4, 1) },
-  { date: "August 15", name: "Independence Day", description: "Marking India's independence.", actualDate: new Date(2026, 7, 15) },
-  { date: "October 2", name: "Gandhi Jayanti", description: "Birth anniversary of Mahatma Gandhi.", actualDate: new Date(2026, 9, 2) },
-  { date: "November 8", name: "Diwali", description: "The festival of lights.", actualDate: new Date(2026, 10, 8) },
-  { date: "December 25", name: "Christmas", description: "The birth of Jesus Christ.", actualDate: new Date(2026, 11, 25) },
-];
-
 const HolidaysPage = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"upcoming" | "recent" | "finished">("upcoming");
+  
+  const staticHolidays: Holiday[] = [
+    { date: "January 1", name: "New Year's Day", description: "A national holiday to mark the beginning of the new year.", actualDate: new Date(2026, 0, 1) },
+    { date: "January 15", name: "Pongal", description: "Harvest festival holidays.", actualDate: new Date(2026, 0, 15) },
+    { date: "January 26", name: "Republic Day", description: "Commemorating the adoption of the Constitution.", actualDate: new Date(2026, 0, 26) },
+    { date: "February 15", name: "Shivaratri", description: "Lord Shiva's birthday celebration.", actualDate: new Date(2026, 1, 15) },
+    { date: "March 19", name: "Ugadi", description: "Telugu New Year.", actualDate: new Date(2026, 2, 19) },
+    { date: "April 3", name: "Good Friday", description: "Observed during the Holy Week.", actualDate: new Date(2026, 3, 3) },
+    { date: "May 1", name: "Labor's Day", description: "Celebrating workers and laborers.", actualDate: new Date(2026, 4, 1) },
+    { date: "August 15", name: "Independence Day", description: "Marking India's independence.", actualDate: new Date(2026, 7, 15) },
+    { date: "October 2", name: "Gandhi Jayanti", description: "Birth anniversary of Mahatma Gandhi.", actualDate: new Date(2026, 9, 2) },
+    { date: "November 8", name: "Diwali", description: "The festival of lights.", actualDate: new Date(2026, 10, 8) },
+    { date: "December 25", name: "Christmas", description: "The birth of Jesus Christ.", actualDate: new Date(2026, 11, 25) },
+  ];
   
   const today = new Date(2026, 0, 9); // Jan 09, 2026
 

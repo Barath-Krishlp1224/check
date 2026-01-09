@@ -1,3 +1,4 @@
+// app/components/projects/epics/EpicsManagement.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -7,42 +8,7 @@ import {
   CalendarDays, Hash, BarChart3, Target, ChevronRight,
   MoreVertical, CheckCircle, PlayCircle, Eye, Circle
 } from "lucide-react";
-import { Employee, SavedProject } from "../page";
-
-// Define consistent interfaces for the epic data structure
-interface EpicOwner {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-interface EpicAssignee {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-// Epic interface - consistent with main page
-interface Epic {
-  _id: string;
-  epicId: string;
-  name: string;
-  summary: string;
-  description: string;
-  status: "Todo" | "In Progress" | "Review" | "Done";
-  priority: "Low" | "Medium" | "High" | "Critical";
-  startDate: string;
-  endDate: string;
-  // Store as structured objects as expected by backend
-  owner: EpicOwner;
-  assignees: EpicAssignee[];
-  labels: string[];
-  projectId: string;
-  projectName: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Employee, SavedProject, Epic } from "@/app/types/project";
 
 interface EpicsManagementProps {
   selectedProject: SavedProject | null;
@@ -83,42 +49,35 @@ export default function EpicsManagement({
     currentLabel: "",
   });
 
-  // Helper function to get employee with email
-  const getEmployeeWithEmail = (employee: Employee): EpicOwner => ({
-    _id: employee._id,
-    name: employee.name,
-    email: employee.email || ""
-  });
-
-  // Helper to get owner data from epic
-  const getOwnerFromEpic = (epic: Epic): EpicOwner => {
-    if (epic.owner && epic.owner._id) {
-      return epic.owner;
+  // Helper to get owner name from epic
+  const getOwnerName = (epic: Epic): string => {
+    if (epic.owner && typeof epic.owner === 'object' && epic.owner.name) {
+      return epic.owner.name;
     }
-    
-    // Fallback: look up from employees
-    const employee = employees.find(emp => emp._id === epic.owner?._id || "");
-    if (employee) {
-      return getEmployeeWithEmail(employee);
+    if (epic.ownerId) {
+      const employee = employees.find(emp => emp._id === epic.ownerId);
+      return employee?.name || `User ${epic.ownerId?.substring(0, 4) || ""}`;
     }
-    
-    return { 
-      _id: epic.owner?._id || "", 
-      name: epic.owner?.name || `User ${epic.owner?._id?.substring(0, 4) || ""}`, 
-      email: epic.owner?.email || "" 
-    };
+    return "Unknown Owner";
   };
 
-  // Helper to get assignees data from epic
-  const getAssigneesFromEpic = (epic: Epic): EpicAssignee[] => {
-    if (epic.assignees && epic.assignees.length > 0) {
-      return epic.assignees;
+  // Helper to get assignee data from epic
+  const getAssignees = (epic: Epic): {name: string; id: string}[] => {
+    if (epic.assignees && Array.isArray(epic.assignees)) {
+      return epic.assignees.map(a => ({
+        name: a.name,
+        id: a._id
+      }));
     }
-    
-    // Fallback: look up from employees
-    return employees
-      .filter(emp => epic.assignees?.some(a => a._id === emp._id))
-      .map(emp => getEmployeeWithEmail(emp));
+    if (epic.assigneeIds && Array.isArray(epic.assigneeIds)) {
+      return epic.assigneeIds
+        .map(id => {
+          const employee = employees.find(emp => emp._id === id);
+          return employee ? { name: employee.name, id } : null;
+        })
+        .filter(Boolean) as {name: string; id: string}[];
+    }
+    return [];
   };
 
   const fetchEpics = async (projectId: string) => {
@@ -173,7 +132,6 @@ export default function EpicsManagement({
       });
 
       if (response.ok) {
-        // Update local state
         setEpics(prev => prev.map(e => 
           e._id === epicId ? { ...e, status: newStatus } : e
         ));
@@ -192,34 +150,6 @@ export default function EpicsManagement({
     }
   };
 
-  // Transform form data to match API expectations
-  const prepareEpicDataForAPI = () => {
-    const selectedOwner = employees.find(emp => emp._id === epicFormData.ownerId);
-    if (!selectedOwner) {
-      throw new Error("Owner not found");
-    }
-
-    const selectedAssignees = employees
-      .filter(emp => epicFormData.assigneeIds.includes(emp._id))
-      .map(emp => getEmployeeWithEmail(emp));
-
-    return {
-      name: epicFormData.name.trim(),
-      summary: epicFormData.summary.trim(),
-      description: epicFormData.description.trim(),
-      status: epicFormData.status,
-      priority: epicFormData.priority,
-      startDate: epicFormData.startDate,
-      endDate: epicFormData.endDate || null,
-      owner: getEmployeeWithEmail(selectedOwner),
-      assignees: selectedAssignees,
-      labels: epicFormData.labels,
-      projectId: selectedProject!._id,
-      projectName: selectedProject!.name,
-      createdBy: "user", // You might want to get this from auth context
-    };
-  };
-
   const handleEpicSubmit = async () => {
     if (!selectedProject || !epicFormData.name.trim() || !epicFormData.summary.trim()) {
       setMessage("❌ Please fill in required fields (Name and Summary)");
@@ -229,7 +159,21 @@ export default function EpicsManagement({
 
     setLoading(true);
     try {
-      const epicData = prepareEpicDataForAPI();
+      const epicData = {
+        name: epicFormData.name.trim(),
+        summary: epicFormData.summary.trim(),
+        description: epicFormData.description.trim(),
+        status: epicFormData.status,
+        priority: epicFormData.priority,
+        startDate: epicFormData.startDate,
+        endDate: epicFormData.endDate || null,
+        ownerId: epicFormData.ownerId,
+        assigneeIds: epicFormData.assigneeIds,
+        labels: epicFormData.labels,
+        projectId: selectedProject._id,
+        projectName: selectedProject.name,
+        createdBy: "user",
+      };
 
       const url = editingEpicId ? `/api/epics/${editingEpicId}` : "/api/epics";
       const method = editingEpicId ? "PUT" : "POST";
@@ -260,7 +204,6 @@ export default function EpicsManagement({
           currentLabel: "",
         });
         
-        // Refresh epics list
         await fetchEpics(selectedProject._id);
         setShowEpicForm(false);
         setEditingEpicId(null);
@@ -285,8 +228,8 @@ export default function EpicsManagement({
       priority: epic.priority,
       startDate: epic.startDate.split('T')[0],
       endDate: epic.endDate ? epic.endDate.split('T')[0] : "",
-      ownerId: epic.owner._id,
-      assigneeIds: epic.assignees.map(a => a._id),
+      ownerId: epic.ownerId || epic.owner?._id || "",
+      assigneeIds: epic.assigneeIds || epic.assignees?.map(a => a._id) || [],
       labels: epic.labels || [],
       currentLabel: "",
     });
@@ -363,12 +306,11 @@ export default function EpicsManagement({
   // Filter epics
   const filteredEpics = useMemo(() => {
     return epics.filter((epic) => {
-      const owner = getOwnerFromEpic(epic);
       const matchesSearch = 
         epic.name.toLowerCase().includes(epicSearchQuery.toLowerCase()) ||
         epic.summary.toLowerCase().includes(epicSearchQuery.toLowerCase()) ||
         epic.epicId.toLowerCase().includes(epicSearchQuery.toLowerCase()) ||
-        owner.name.toLowerCase().includes(epicSearchQuery.toLowerCase());
+        getOwnerName(epic).toLowerCase().includes(epicSearchQuery.toLowerCase());
       
       const matchesStatus = statusFilter ? epic.status === statusFilter : true;
       const matchesPriority = priorityFilter ? epic.priority === priorityFilter : true;
@@ -611,8 +553,7 @@ export default function EpicsManagement({
                   </div>
                 ) : (
                   filteredEpics.map((epic) => {
-                    const owner = getOwnerFromEpic(epic);
-                    const assignees = getAssigneesFromEpic(epic);
+                    const assignees = getAssignees(epic);
                     
                     return (
                       <div 
@@ -663,9 +604,9 @@ export default function EpicsManagement({
                           <span className="text-[10px] font-bold text-slate-500">Owner:</span>
                           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full">
                             <div className="w-4 h-4 bg-blue-300 rounded-full flex items-center justify-center text-[8px] font-bold">
-                              {owner.name.charAt(0)}
+                              {getOwnerName(epic).charAt(0)}
                             </div>
-                            <span className="text-[10px] font-bold text-blue-700">{owner.name}</span>
+                            <span className="text-[10px] font-bold text-blue-700">{getOwnerName(epic)}</span>
                           </div>
                         </div>
                         
@@ -673,7 +614,7 @@ export default function EpicsManagement({
                         {assignees.length > 0 && (
                           <div className={`flex gap-1 mb-2 ${assignees.length > 3 ? 'overflow-x-auto pb-2' : 'flex-wrap'}`}>
                             {assignees.slice(0, assignees.length > 3 ? 10 : 3).map((assignee) => (
-                              <div key={assignee._id} className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-full flex-shrink-0">
+                              <div key={assignee.id} className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-full flex-shrink-0">
                                 <div className="w-4 h-4 bg-slate-300 rounded-full flex items-center justify-center text-[8px] font-bold">
                                   {assignee.name.charAt(0)}
                                 </div>
